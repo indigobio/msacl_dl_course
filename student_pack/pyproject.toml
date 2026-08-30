@@ -1,0 +1,46 @@
+[project]
+name = "msacl-ds301-labs"
+version = "0.1.0"
+description = "MSACL DS301 Deep Learning — lab environment (runs locally via uv and on Google Colab)"
+requires-python = ">=3.10,<3.13"
+
+# Base scientific + deep-learning stack, shared by ALL environments (local AND
+# Colab). NOTE: torch is intentionally NOT here — it lives in the `local`
+# dependency-group below. On Colab we keep the preinstalled GPU build of torch,
+# so the Colab install path reads only these base dependencies and never
+# reinstalls torch.
+dependencies = [
+    "numpy",
+    "pandas",
+    "scikit-learn",
+    "matplotlib",
+    "openpyxl",        # Lab 1 reads the MTBLS90 .xlsx
+    "transformers",    # Lab 3
+    "datasets",        # Lab 3
+    "accelerate",      # Lab 3 (hard-depends on torch; satisfied by Colab's torch)
+]
+
+[dependency-groups]
+# CPU build of torch for LOCAL use only. Kept out of Colab installs so Colab's
+# preinstalled GPU torch is never touched (CUDA-mismatch / wasted minutes).
+local = ["torch"]
+# Local-only convenience for running notebooks under the uv env; Colab already
+# provides Jupyter.
+dev = ["jupyterlab", "ipykernel"]
+
+[tool.uv]
+# A bare `uv sync` locally installs base deps + CPU torch + Jupyter.
+default-groups = ["local", "dev"]
+
+# On Linux/Windows, pull CPU torch from the PyTorch CPU index so `uv sync` never
+# drags in multi-GB CUDA/nvidia wheels. macOS has no override here, so it uses
+# the default PyPI index (already CPU-only on macOS).
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
