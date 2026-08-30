@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 5 · Convolutional Neural Networks</title>
+<link rel="stylesheet" href="../assets/theme.css">
+<script src="../assets/slides.js"></script>
+<script>
+/* Worked example (Hung-yi Lee's grids): edit these arrays and every
+   step slide, feature map, and calc line updates automatically. */
+window.IMG = [
+  [1,0,0,0,0,1],
+  [0,1,0,0,1,0],
+  [0,0,1,1,0,0],
+  [1,0,0,0,1,0],
+  [0,1,0,0,1,0],
+  [0,0,1,0,1,0]
+];
+window.F1 = [[1,-1,-1],[-1,1,-1],[-1,-1,1]];   /* diagonal detector */
+window.F2 = [[-1,1,-1],[-1,1,-1],[-1,1,-1]];   /* vertical-line detector */
+window.MAP1 = conv2d(window.IMG, window.F1, 1);
+</script>
+</head>
+<body>
+
+<!-- 1 ─ title -->
+<section class="slide title-slide" id="s1">
+  <div class="eyebrow"><b>MSACL</b> · DS301 Deep Learning · Segment 2 · Lecture 5</div>
+  <h1>Convolutional networks: <em>seeing patterns</em> in images and spectra</h1>
+  <div class="sub">Filters, feature maps, pooling — computed by hand · then peaks as objects</div>
+  <aside class="notes">Sunday afternoon, hour two. Energy check after Lecture 4. Promise of the hour: by the end you will compute a convolution by hand, and see why the same machinery reads your spectra and even finds your chromatographic peaks. Nothing in this hour needs more math than multiply-and-add.</aside>
+</section>
+
+<!-- 2 ─ roadmap -->
+<section class="slide" id="s2">
+  <div class="eyebrow">Lecture 5 · Where this hour goes</div>
+  <h2 class="slide-title">Four stops, one idea</h2>
+  <div class="body center">
+    <ul style="max-width:44em">
+      <li><strong>Why CNNs fit images and spectra</strong> — three properties of the data <span style="color:var(--muted);font-family:var(--mono);font-size:18px">· 8 min</span></li>
+      <li><strong>Convolution by hand</strong> — filters, stride, padding, channels, pooling, on a 6×6 grid <span style="color:var(--muted);font-family:var(--mono);font-size:18px">· 26 min</span></li>
+      <li><strong>The same trick in 1D</strong> — spectra and chromatograms <span style="color:var(--muted);font-family:var(--mono);font-size:18px">· 6 min</span></li>
+      <li><strong>Deeper, then further</strong> — ResNet, and detection: finding peaks, not just labeling them <span style="color:var(--muted);font-family:var(--mono);font-size:18px">· 16 min</span></li>
+    </ul>
+  </div>
+  <aside class="notes">The order is deliberate: mechanics in 2D first with real numbers (easier to see), then transfer to the 1D data this room actually works with. Quiz 5 at the end reuses exactly these grids.</aside>
+</section>
+
+<!-- 3 ─ the problem with fully-connected -->
+<section class="slide" id="s3">
+  <div class="eyebrow">Why CNN · 1 of 4</div>
+  <h2 class="slide-title">A fully connected layer doesn't scale to images</h2>
+  <div class="body center">
+    <div class="cols">
+      <figure class="fig">
+        <svg width="480" height="290" viewBox="0 0 480 290">
+          <rect x="20" y="45" width="180" height="180" rx="6" fill="#F1F1EC" stroke="#8A9099"/>
+          <g stroke="#D9D9D2" stroke-width="1">
+            <line x1="20" y1="90"  x2="200" y2="90"/><line x1="20" y1="135" x2="200" y2="135"/>
+            <line x1="20" y1="180" x2="200" y2="180"/><line x1="65" y1="45" x2="65" y2="225"/>
+            <line x1="110" y1="45" x2="110" y2="225"/><line x1="155" y1="45" x2="155" y2="225"/>
+          </g>
+          <text x="110" y="250" text-anchor="middle" class="m" font-size="15" fill="#8A9099">100 × 100 × 3 pixels</text>
+          <g stroke="#C9C9C1" stroke-width="1">
+            <line x1="200" y1="67"  x2="360" y2="65"/><line x1="200" y1="67"  x2="360" y2="135"/><line x1="200" y1="67"  x2="360" y2="205"/>
+            <line x1="200" y1="135" x2="360" y2="65"/><line x1="200" y1="135" x2="360" y2="135"/><line x1="200" y1="135" x2="360" y2="205"/>
+            <line x1="200" y1="203" x2="360" y2="65"/><line x1="200" y1="203" x2="360" y2="135"/><line x1="200" y1="203" x2="360" y2="205"/>
+          </g>
+          <circle cx="372" cy="65"  r="14" fill="#fff" stroke="#3D444C" stroke-width="2"/>
+          <circle cx="372" cy="135" r="14" fill="#fff" stroke="#3D444C" stroke-width="2"/>
+          <text x="372" y="180" text-anchor="middle" class="m" font-size="18" fill="#8A9099">⋮</text>
+          <circle cx="372" cy="205" r="14" fill="#fff" stroke="#3D444C" stroke-width="2"/>
+          <text x="372" y="250" text-anchor="middle" class="m" font-size="15" fill="#8A9099">1,000 neurons</text>
+          <text x="286" y="34" text-anchor="middle" class="m" font-size="16" fill="#A9721A">every pixel → every neuron</text>
+        </svg>
+        <figcaption>30,000 inputs × 1,000 neurons = 30,000,000 weights in layer one</figcaption>
+      </figure>
+      <p class="big-claim">One modest photo, one layer: <em>30 million weights</em> — each one needing data to learn it.</p>
+    </div>
+    <div class="callout ms">Your MALDI-TOF spectrum has the same problem in 1D: 6,000 bins into that layer is 6 million weights, and the MLP must relearn "what a peak looks like" separately at every position.</div>
+  </div>
+  <aside class="notes">The motivating example is a plain photo — the classic doorway to CNNs. Every pixel wired to every neuron; the waste isn't just memory, every weight needs training data. Callback to Lab 1: our MLP was fine there because 189 metabolite features have no spatial order — pixels do. Three observations about images fix this, and each transfers verbatim to spectra at the end of the section.</aside>
+</section>
+
+<!-- 4 ─ property 1: local -->
+<section class="slide" id="s4">
+  <div class="eyebrow">Why CNN · 2 of 4</div>
+  <h2 class="slide-title">Property 1 — patterns are <em>local</em></h2>
+  <div class="body">
+    <div class="cols">
+      <figure class="fig">
+        <div style="position:relative;width:520px;margin:0 auto">
+          <img src="../assets/img/sparrow.jpg" alt="male house sparrow" style="width:100%;display:block;border-radius:8px">
+          <div style="position:absolute;left:64.5%;top:41%;width:11.5%;height:16%;border:3px solid #E09E2F;border-radius:4px"></div>
+          <div style="position:absolute;left:47%;top:31%;font-family:var(--mono);font-size:16px;color:#FFD98A;text-shadow:0 1px 4px rgba(0,0,0,.75)">the beak lives here</div>
+        </div>
+        <figcaption>a "beak detector" only needs this window · photo: M. Pennington, geograph.org.uk, CC BY-SA 2.0</figcaption>
+      </figure>
+      <div>
+        <p class="lead">To recognize a beak, a neuron doesn't need the whole bird — a <strong>small window</strong> is enough.</p>
+        <p class="lead" style="margin-top:16px">So connect neurons to <strong>windows</strong>, not to every pixel.</p>
+        <div class="callout ms" style="margin-top:22px">Exactly as true of your data: a peak lives in a narrow m/z window — the rest of the spectrum is baseline.</div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Hung-yi Lee's beak detector, told on the image itself. Consequence: connect each detector neuron to a small window instead of everything → far fewer weights. Then land the MS beat via the callout — a peak is every bit as local in a spectrum.</aside>
+</section>
+
+<!-- 5 ─ property 2: anywhere -->
+<section class="slide" id="s5">
+  <div class="eyebrow">Why CNN · 3 of 4</div>
+  <h2 class="slide-title">Property 2 — the same pattern appears <em>anywhere</em></h2>
+  <div class="body">
+    <div class="cols">
+      <figure class="fig">
+        <div style="position:relative;width:430px;margin:0 auto">
+          <img src="../assets/img/sparrows_two.jpg" alt="two tree sparrows" style="width:100%;display:block;border-radius:8px">
+          <div style="position:absolute;left:43%;top:24.5%;width:9%;height:8%;border:3px solid #E09E2F;border-radius:4px"></div>
+          <div style="position:absolute;left:37.5%;top:55.5%;width:10%;height:9%;border:3px solid #E09E2F;border-radius:4px"></div>
+          <div style="position:absolute;left:54%;top:25.5%;font-family:var(--mono);font-size:16px;color:#FFD98A;text-shadow:0 1px 4px rgba(0,0,0,.75)">a beak here…</div>
+          <div style="position:absolute;left:11%;top:58%;font-family:var(--mono);font-size:16px;color:#FFD98A;text-shadow:0 1px 4px rgba(0,0,0,.75)">…and here</div>
+        </div>
+        <figcaption>one detector could handle both · photo: hedera.baltica, CC BY-SA 2.0</figcaption>
+      </figure>
+      <div>
+        <p class="lead">An "upper-left beak detector" and a "lower-right beak detector" would do <strong>almost the same job</strong>.</p>
+        <p class="lead" style="margin-top:16px">So make them <strong>share one set of weights</strong> — one detector, slid everywhere.</p>
+        <div class="callout ms" style="margin-top:22px">A Gaussian peak at m/z 300 looks just like one at m/z 4,800 — one peak detector, slid along the whole axis.</div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">This is weight sharing — the single most important idea of the hour, and what "convolution" will mean mechanically in a minute. One beak detector reused at every position instead of one per location; the callout lands the same move for spectra: one peak-shape detector for all 6,000 bins.</aside>
+</section>
+
+<!-- 6 ─ property 3: subsampling -->
+<section class="slide" id="s6">
+  <div class="eyebrow">Why CNN · 4 of 4</div>
+  <h2 class="slide-title">Property 3 — <em>downsampling</em> doesn't change what it is</h2>
+  <div class="body">
+    <div class="cols">
+      <figure class="fig">
+        <div style="display:flex;gap:26px;align-items:center;justify-content:center">
+          <div>
+            <img src="../assets/img/sparrow.jpg" alt="sparrow, full resolution" style="width:230px;display:block;border-radius:8px">
+            <div style="font-family:var(--mono);font-size:15px;color:var(--muted);margin-top:10px;text-align:center">960 × 638 px</div>
+          </div>
+          <div style="font-family:var(--mono);font-size:22px;color:var(--muted)">→</div>
+          <div>
+            <img src="../assets/img/sparrow_48.jpg" alt="sparrow, downsampled to 48 pixels" style="width:230px;display:block;border-radius:8px;image-rendering:pixelated">
+            <div style="font-family:var(--mono);font-size:15px;color:#0E7C7B;margin-top:10px;text-align:center">48 × 32 px — still a bird</div>
+          </div>
+        </div>
+        <figcaption>keeping 1 pixel in 20 shrinks the image, not the bird · photo: M. Pennington, CC BY-SA 2.0</figcaption>
+      </figure>
+      <div>
+        <p class="lead">One pixel kept out of every twenty: <strong>same bird</strong> — and the next layer gets far less to process.</p>
+        <p class="lead" style="margin-top:16px">This will justify <strong>pooling</strong> in a few slides.</p>
+        <div class="callout ms" style="margin-top:22px">Downsample 6,000 bins to 1,500: the spectrum is still unmistakably itself.</div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Subsampling the pixels does not change the object — cheaper for the next layer, identity preserved; this is the license for pooling later. Wrap the section: three properties → three design moves — local windows, shared weights, pooling — and each held for spectra too (the callouts). Now we compute all three by hand.</aside>
+</section>
+
+<!-- 7 ─ convolution setup -->
+<section class="slide" id="s7">
+  <div class="eyebrow">Convolution by hand · setup</div>
+  <h2 class="slide-title">A filter is a tiny pattern detector</h2>
+  <div class="body center">
+    <div class="conv-demo" data-pos="0,0" data-show="0"
+         data-imglabel="image <b>6×6</b>" data-flabel="filter <b>3×3</b> — hunts diagonals"
+         data-maplabel="feature map <b>4×4</b> — about to fill in"></div>
+    <div class="calc-line" style="margin-top:26px">the <b>9 filter values are learned weights</b> — training discovers what to hunt for</div>
+  </div>
+  <aside class="notes">Grids straight from Hung-yi Lee's tutorial. The image is 0/1 for arithmetic comfort. Read the filter aloud: +1 down the diagonal, −1 elsewhere — it will "light up" wherever the image has a diagonal streak. Emphasize: WE won't choose these values in practice; gradient descent (Lecture 2!) learns them. Today we hand-pick them so we can compute.</aside>
+</section>
+
+<!-- 8 ─ step 1 -->
+<section class="slide" id="s8">
+  <div class="eyebrow">Convolution by hand · step 1</div>
+  <h2 class="slide-title">Overlay, multiply, add — that's the whole operation</h2>
+  <div class="body center">
+    <div class="conv-demo" data-pos="0,0" data-show="1" data-calc></div>
+  </div>
+  <aside class="notes">Walk the nine products slowly — this is the only full dot product we do out loud. Six are zero; the three 1×1 hits are exactly the diagonal matching. Result 3 = strong match. This number is a neuron's weighted sum from Lecture 1 — same operation, arranged spatially.</aside>
+</section>
+
+<!-- 9 ─ step 2: stride -->
+<section class="slide" id="s9">
+  <div class="eyebrow">Convolution by hand · step 2</div>
+  <h2 class="slide-title">Slide one step — <em>stride 1</em></h2>
+  <div class="body center">
+    <div class="conv-demo" data-pos="0,1" data-show="2" data-calc></div>
+    <div class="calc-line">stride = how far the window jumps each step</div>
+  </div>
+  <aside class="notes">Same nine weights, new window — this is weight sharing happening before their eyes. −1 = weak match here. Keep momentum; don't recompute every term aloud.</aside>
+</section>
+
+<!-- 10 ─ checkpoint -->
+<section class="slide" id="s10">
+  <div class="eyebrow">Convolution by hand · checkpoint</div>
+  <h2 class="slide-title">Your turn</h2>
+  <div class="body center">
+    <div class="conv-demo" data-pos="0,2" data-show="3" data-quiz="0,3;1,1"></div>
+    <div class="callout check" style="align-self:center">Compute the two <b>?</b> cells with your neighbor — 90 seconds. Overlay the window, multiply, add.</div>
+  </div>
+  <aside class="notes">Answers: (row 0, col 3) = −1 · (row 1, col 1) = +1. Have two volunteers give answers and one sentence of how. This is the live checkpoint from the session plan — everyone must have done one dot product by hand before we automate the rest.</aside>
+</section>
+
+<!-- 11 ─ full map -->
+<section class="slide" id="s11">
+  <div class="eyebrow">Convolution by hand · result</div>
+  <h2 class="slide-title">The feature map is a <em>where-is-my-pattern</em> map</h2>
+  <div class="body center">
+    <div class="conv-demo"></div>
+    <div class="calc-line" style="margin-top:24px">large values = "diagonal found here" · 36 pixels → 16 responses, using only <b>9 weights</b></div>
+  </div>
+  <aside class="notes">Point at the two 3s — the image really does have diagonal streaks starting there. Contrast with the MLP from slide 3: nine shared weights replaced thousands. The feature map is itself an image — which is why we'll be able to stack another convolution on top of it.</aside>
+</section>
+
+<!-- 12 ─ stride 2 -->
+<section class="slide" id="s12">
+  <div class="eyebrow">Convolution by hand · stride</div>
+  <h2 class="slide-title">Stride 2: bigger jumps, smaller map</h2>
+  <div class="body center">
+    <div class="conv-demo" data-stride="2" data-pos="0,0" data-maplabel="feature map <b>2×2</b> · stride 2"></div>
+    <div class="calc-line" style="margin-top:24px">same weights, half the stops in each direction → a quarter of the outputs</div>
+  </div>
+  <aside class="notes">Stride is a resolution/cost dial. They will turn this dial themselves in Lab 2's hyperparameter play.</aside>
+</section>
+
+<!-- 13 ─ padding -->
+<section class="slide" id="s13">
+  <div class="eyebrow">Convolution by hand · padding</div>
+  <h2 class="slide-title">Zero padding keeps the edges in play</h2>
+  <div class="body center">
+    <div class="conv-demo" data-pad="1" data-small data-hidefilter
+         data-imglabel="image padded to <b>8×8</b> (zeros added)"
+         data-maplabel="feature map back to <b>6×6</b>"></div>
+    <div class="calc-line" style="margin-top:20px">without padding the map shrinks every layer — and edge pixels get fewer looks</div>
+  </div>
+  <aside class="notes">One idea, one slide: ring of zeros → output size matches input. In spectra terms: without padding, the peaks at the very start and end of your m/z range are under-observed.</aside>
+</section>
+
+<!-- 14 ─ filter 2 → channels -->
+<section class="slide" id="s14">
+  <div class="eyebrow">Convolution by hand · channels</div>
+  <h2 class="slide-title">Every filter gets its own map — maps stack into <em>channels</em></h2>
+  <div class="body center">
+    <div class="conv-demo" data-filter="F2" data-flabel="filter 2 <b>3×3</b> — hunts vertical lines"
+         data-maplabel="feature map #2 <b>4×4</b>"></div>
+    <div class="calc-line" style="margin-top:24px">a conv layer with 32 filters turns one image into a <b>32-channel</b> stack of pattern maps</div>
+  </div>
+  <aside class="notes">Filter 2 hunts vertical strokes; the image barely has any, so responses stay low — filters specialize. "Channels" finally defined: the depth axis of the stack. An RGB input already arrives as 3 channels; filters then see all channels at once (mention only, don't compute).</aside>
+</section>
+
+<!-- 14b ─ real filters on a real image -->
+<section class="slide" id="s14b">
+  <div class="eyebrow">Convolution by hand · filters in the wild</div>
+  <h2 class="slide-title">Different weights, different features — <em>for real</em></h2>
+  <div class="body center">
+    <div style="display:flex;gap:22px;justify-content:center;align-items:flex-start">
+      <div class="grid-block">
+        <div class="glabel">input <b>grayscale</b></div>
+        <div style="height:146px;display:flex;align-items:center;justify-content:center">
+          <span style="font-family:var(--mono);font-size:15px;color:var(--muted)">480 × 319 px</span>
+        </div>
+        <img src="../assets/img/sparrow_gray.jpg" alt="grayscale sparrow" style="width:196px;border-radius:6px;display:block">
+      </div>
+      <div class="grid-block">
+        <div class="glabel">vertical <b>edges</b></div>
+        <div style="height:146px;display:flex;align-items:center;justify-content:center">
+          <table class="ngrid small">
+            <tr><td class="negv">−1</td><td>0</td><td class="pos">1</td></tr>
+            <tr><td class="negv">−2</td><td>0</td><td class="pos">2</td></tr>
+            <tr><td class="negv">−1</td><td>0</td><td class="pos">1</td></tr>
+          </table>
+        </div>
+        <img src="../assets/img/sparrow_vedge.jpg" alt="vertical edge map" style="width:196px;border-radius:6px;display:block">
+      </div>
+      <div class="grid-block">
+        <div class="glabel">horizontal <b>edges</b></div>
+        <div style="height:146px;display:flex;align-items:center;justify-content:center">
+          <table class="ngrid small">
+            <tr><td class="negv">−1</td><td class="negv">−2</td><td class="negv">−1</td></tr>
+            <tr><td>0</td><td>0</td><td>0</td></tr>
+            <tr><td class="pos">1</td><td class="pos">2</td><td class="pos">1</td></tr>
+          </table>
+        </div>
+        <img src="../assets/img/sparrow_hedge.jpg" alt="horizontal edge map" style="width:196px;border-radius:6px;display:block">
+      </div>
+      <div class="grid-block">
+        <div class="glabel">blobs &amp; <b>spots</b></div>
+        <div style="height:146px;display:flex;align-items:center;justify-content:center">
+          <table class="ngrid small">
+            <tr><td>0</td><td class="pos">1</td><td>0</td></tr>
+            <tr><td class="pos">1</td><td class="negv">−4</td><td class="pos">1</td></tr>
+            <tr><td>0</td><td class="pos">1</td><td>0</td></tr>
+          </table>
+        </div>
+        <img src="../assets/img/sparrow_blob.jpg" alt="blob map" style="width:196px;border-radius:6px;display:block">
+      </div>
+      <div class="grid-block">
+        <div class="glabel">smoothing <b>(÷9)</b></div>
+        <div style="height:146px;display:flex;align-items:center;justify-content:center">
+          <table class="ngrid small">
+            <tr><td class="pos">1</td><td class="pos">1</td><td class="pos">1</td></tr>
+            <tr><td class="pos">1</td><td class="pos">1</td><td class="pos">1</td></tr>
+            <tr><td class="pos">1</td><td class="pos">1</td><td class="pos">1</td></tr>
+          </table>
+        </div>
+        <img src="../assets/img/sparrow_blur.jpg" alt="blurred sparrow" style="width:196px;border-radius:6px;display:block">
+      </div>
+    </div>
+    <div class="calc-line" style="margin-top:24px">each map really was computed with the 3×3 kernel above it — <b>a CNN learns kernels like these on its own</b>, in layer 1</div>
+  </div>
+  <aside class="notes">These are genuine convolutions of the sparrow photo with the kernels shown (Sobel x, Sobel y, Laplacian, box blur) — not illustrations. Point out: vertical branches blaze in the vertical-edge map and vanish from the horizontal one; the Laplacian lights up speckles and fine texture (blob detection); the all-ones kernel smooths instead of detecting. Punchline: nobody hand-picks these in a CNN — gradient descent rediscovers edge- and blob-like filters in layer 1 because they're useful, and deeper layers combine them. Same story on spectra: layer-1 kernels become peak-shape and baseline-slope detectors.</aside>
+</section>
+
+<!-- 15 ─ pooling -->
+<section class="slide" id="s15">
+  <div class="eyebrow">Convolution by hand · pooling</div>
+  <h2 class="slide-title">Max pooling: keep each region's <em>strongest response</em></h2>
+  <div class="body center">
+    <div class="pool-demo" data-img="MAP1" data-imglabel="feature map <b>4×4</b> (from filter 1)"></div>
+    <div class="calc-line" style="margin-top:24px">property 3 in action: half the size, the "diagonal found" story intact — and shifted-by-one-pixel inputs now give the same answer</div>
+  </div>
+  <aside class="notes">Pooling has no weights — nothing to learn, purely mechanical. Two gifts: cheaper next layer, and tolerance to tiny shifts (a peak wobbling one bin left doesn't change the pooled answer). This is exactly why calibration jitter doesn't wreck CNNs on spectra.</aside>
+</section>
+
+<!-- 16 ─ whole CNN -->
+<section class="slide" id="s16">
+  <div class="eyebrow">Convolution by hand · assembly</div>
+  <h2 class="slide-title">The whole CNN</h2>
+  <div class="body center">
+    <div class="pipe">
+      <div class="stage">input<small>spectrum / image</small></div>
+      <div class="arrow">→</div>
+      <div class="stage conv">conv<small>pattern maps</small></div>
+      <div class="arrow">→</div>
+      <div class="stage pool">pool<small>shrink</small></div>
+      <div class="arrow">→</div>
+      <div class="loop">repeat ×N<br>patterns of patterns</div>
+      <div class="arrow">→</div>
+      <div class="stage">flatten<small>to a vector</small></div>
+      <div class="arrow">→</div>
+      <div class="stage">fully connected<small>your Lecture 1–3 network</small></div>
+      <div class="arrow">→</div>
+      <div class="stage conv" style="border-style:dashed">susceptible /<br>resistant<small>softmax</small></div>
+    </div>
+    <div class="callout" style="align-self:center;margin-top:36px">Early layers find edges and peak shapes; deeper layers find <strong>patterns of patterns</strong> — the hierarchy from Lecture 1, now with a mechanism.</div>
+  </div>
+  <aside class="notes">Land the composition: everything after "flatten" is literally the MLP they already trained in Lab 1 — a CNN is a learned feature extractor bolted onto their old friend. The output labels aren't cat/dog here on purpose: this is the exact shape of Lab 2 on MALDI-TOF spectra.</aside>
+</section>
+
+<!-- 17 ─ output size arithmetic -->
+<section class="slide" id="s17">
+  <div class="eyebrow">Convolution by hand · the one formula</div>
+  <h2 class="slide-title">How big is the output? One formula, no calculus</h2>
+  <div class="body center">
+    <div style="text-align:center">
+      <div style="font-family:var(--mono);font-size:36px;margin-bottom:14px">out&nbsp;=&nbsp;<span style="color:var(--signal)">(n − k + 2p)&thinsp;/&thinsp;s</span>&nbsp;+&nbsp;1</div>
+      <figure class="fig" style="margin:0 auto">
+        <svg width="680" height="176" viewBox="0 0 760 200">
+          <!-- stride: distance between two consecutive window starts -->
+          <text x="299" y="26" text-anchor="middle" class="m" font-size="15" font-weight="700" fill="#0E7C7B">s</text>
+          <line x1="245" y1="40" x2="353" y2="40" stroke="#0E7C7B" stroke-width="2"/>
+          <path d="M245 40 l9 -5 M245 40 l9 5 M353 40 l-9 -5 M353 40 l-9 5" stroke="#0E7C7B" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+          <!-- k: width of one filter window -->
+          <text x="326" y="58" text-anchor="middle" class="m" font-size="15" font-weight="700" fill="#A9721A">k</text>
+          <path d="M245 64 V85 M407 64 V85 M245 64 H407" stroke="#A9721A" stroke-width="1.5" fill="none"/>
+
+          <!-- the padded strip: 7 cells, padding at each end -->
+          <rect x="191" y="86" width="54" height="54" fill="#F4F4EF" stroke="#C9C9C1" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <rect x="245" y="86" width="54" height="54" fill="#fff" stroke="#3D444C" stroke-width="1.5"/>
+          <rect x="299" y="86" width="54" height="54" fill="#fff" stroke="#3D444C" stroke-width="1.5"/>
+          <rect x="353" y="86" width="54" height="54" fill="#fff" stroke="#3D444C" stroke-width="1.5"/>
+          <rect x="407" y="86" width="54" height="54" fill="#fff" stroke="#3D444C" stroke-width="1.5"/>
+          <rect x="461" y="86" width="54" height="54" fill="#fff" stroke="#3D444C" stroke-width="1.5"/>
+          <rect x="515" y="86" width="54" height="54" fill="#F4F4EF" stroke="#C9C9C1" stroke-width="1.5" stroke-dasharray="4 3"/>
+
+          <!-- two consecutive filter positions, shifted by stride s -->
+          <rect x="245" y="86" width="162" height="54" fill="#FBF0DC" opacity="0.75" stroke="#E09E2F" stroke-width="2.5" rx="4"/>
+          <rect x="353" y="86" width="162" height="54" fill="#E3F0EF" opacity="0.7" stroke="#0E7C7B" stroke-width="2.5" rx="4"/>
+
+          <!-- n: the true input, padding excluded -->
+          <path d="M245 140 V156 M515 140 V156 M245 156 H515" stroke="#3D444C" stroke-width="1.5" fill="none"/>
+          <text x="380" y="176" text-anchor="middle" class="m" font-size="15" font-weight="700" fill="#1B2025">n</text>
+
+          <!-- p: the padding ring, one label per side -->
+          <path d="M191 140 V152 M245 140 V152 M191 152 H245" stroke="#8A9099" stroke-width="1.2" fill="none" stroke-dasharray="3 2"/>
+          <text x="218" y="168" text-anchor="middle" class="m" font-size="15" font-weight="700" fill="#8A9099">p</text>
+          <path d="M515 140 V152 M569 140 V152 M515 152 H569" stroke="#8A9099" stroke-width="1.2" fill="none" stroke-dasharray="3 2"/>
+          <text x="542" y="168" text-anchor="middle" class="m" font-size="15" font-weight="700" fill="#8A9099">p</text>
+        </svg>
+        <figcaption><b>n</b> input size (excl. padding) · <b>k</b> filter size · <b>p</b> padding per side · <b>s</b> stride — two consecutive filter positions shown, amber then teal</figcaption>
+      </figure>
+      <div style="display:flex;gap:60px;justify-content:center;margin-top:22px">
+        <div class="calc-line">our stride-1 walk:&nbsp; (6 − 3 + 0)/1 + 1 = <b>4</b> ✓</div>
+        <div class="calc-line">with padding 1:&nbsp; (6 − 3 + 2)/1 + 1 = <b>6</b> ✓</div>
+      </div>
+    </div>
+    <div class="callout check" style="align-self:center;margin-top:24px">Quiz 5 asks you to run this formula once — and to fill in feature-map cells on grids just like today's.</div>
+  </div>
+  <aside class="notes">The diagram makes all four letters concrete before the formula runs: n is the plain input width (no padding counted), p is the ring added on each side, k is the filter window's own width, and s is how far that window jumps between the amber and teal positions shown. Verify the formula against the maps we just built — it should feel like bookkeeping, not math. This is the only formula of the hour.</aside>
+</section>
+
+<!-- 18 ─ divider: 1D -->
+<section class="slide divider" id="s18">
+  <svg class="peak" viewBox="0 0 1280 380" preserveAspectRatio="none">
+    <path d="M0 340 L340 336 L480 330 L560 300 L610 140 L640 60 L670 140 L720 300 L800 330 L940 336 L1280 340"
+          fill="none" stroke="#0E7C7B" stroke-width="3"/>
+    <line x1="0" y1="341" x2="1280" y2="341" stroke="#D9D9D2" stroke-width="1"/>
+  </svg>
+  <div class="divider-inner">
+    <div class="eyebrow">Lecture 5 · part three</div>
+    <h1>The same trick, in one dimension</h1>
+    <div class="sub">your data was never really "images" — it was signals all along</div>
+  </div>
+  <aside class="notes">Transition beat. Everything computed so far transfers by deleting one dimension.</aside>
+</section>
+
+<!-- 19 ─ 1D conv on spectrum -->
+<section class="slide" id="s19">
+  <div class="eyebrow">1D · spectra</div>
+  <h2 class="slide-title">A 1D filter is <em>the same peak detector, everywhere on the m/z axis</em></h2>
+  <div class="body center">
+    <figure class="fig">
+      <svg width="1000" height="380" viewBox="0 0 1000 380">
+        <line x1="30" y1="170" x2="970" y2="170" stroke="#8A9099" stroke-width="1.5"/>
+        <path d="M30 168 L150 166 L210 100 L235 36 L260 100 L320 167 L430 165 L560 168
+                 L640 120 L665 70 L690 120 L750 167 L880 165 L970 167"
+              fill="none" stroke="#1B2025" stroke-width="2.5"/>
+        <rect x="600" y="46" width="160" height="130" fill="#FBF0DC" stroke="#E09E2F" stroke-width="2.5" rx="6" opacity="0.9"/>
+        <text x="680" y="34" text-anchor="middle" class="m" font-size="16" fill="#A9721A">filter window · k = 15 bins</text>
+        <text x="500" y="200" class="m" font-size="15" fill="#8A9099">← slides along m/z →</text>
+        <line x1="30" y1="330" x2="970" y2="330" stroke="#8A9099" stroke-width="1"/>
+        <path d="M30 328 L180 326 L215 262 L235 240 L255 262 L300 327 L560 326
+                 L640 280 L665 252 L690 280 L740 327 L970 326"
+              fill="none" stroke="#0E7C7B" stroke-width="2.5"/>
+        <text x="30" y="248" class="m" font-size="16" fill="#0E7C7B">feature map: "peak-shape found here"</text>
+      </svg>
+      <figcaption>one detector · 15 weights · all 6,000 positions</figcaption>
+    </figure>
+  </div>
+  <aside class="notes">Same overlay-multiply-add, window now a short segment. The feature map is a new signal that lights up where the pattern lives. Chromatograms: identical story on a time axis. This is precisely the architecture of Lab 2, next hour.</aside>
+</section>
+
+<!-- 20 ─ Conv1d code -->
+<section class="slide" id="s20">
+  <div class="eyebrow">1D · in PyTorch</div>
+  <h2 class="slide-title">You already know every argument</h2>
+  <div class="body center">
+    <div class="cols">
+      <pre class="code">nn.Conv1d(
+    in_channels=<span class="n">1</span>,    <span class="c"># one raw spectrum</span>
+    out_channels=<span class="n">8</span>,   <span class="c"># 8 filters → 8 maps</span>
+    kernel_size=<span class="n">15</span>,   <span class="c"># window: 15 bins</span>
+    stride=<span class="n">1</span>,
+    padding=<span class="n">7</span>,       <span class="c"># keep length 6000</span>
+)
+nn.MaxPool1d(<span class="n">2</span>)     <span class="c"># halve: 6000 → 3000</span></pre>
+      <div>
+        <p class="lead">Every argument is a dial you just turned by hand on the 6×6 grid.</p>
+        <p class="lead" style="margin-top:16px">Check the padding with the formula:<br><span style="font-family:var(--mono);font-size:22px">(6000 − 15 + 14)/1 + 1 = 6000 ✓</span></p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Demystification moment — read each line and point back at the slide where that concept was computed by hand. In Lab 2 they fill these arguments in themselves.</aside>
+</section>
+
+<!-- 21 ─ pair prompt -->
+<section class="slide" id="s21">
+  <div class="eyebrow">1D · your data</div>
+  <h2 class="slide-title">Which of your data would a CNN read?</h2>
+  <div class="body center">
+    <div class="cols">
+      <div>
+        <div class="grid-block" style="text-align:left"><div class="glabel">1D convolutions</div></div>
+        <ul>
+          <li>MALDI-TOF / full-scan spectra</li>
+          <li>chromatograms &amp; EICs</li>
+          <li>QC drift traces across runs</li>
+        </ul>
+      </div>
+      <div>
+        <div class="grid-block" style="text-align:left"><div class="glabel">2D convolutions</div></div>
+        <ul>
+          <li>MS imaging (pixel = spectrum)</li>
+          <li>gels, plates, slide scans</li>
+          <li>LC×MS heatmaps (RT × m/z)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout pair" style="align-self:center">Name one signal in <strong>your</strong> workflow a 1D CNN could read — and one that's really 2D. Two minutes.</div>
+  </div>
+  <aside class="notes">The 💬 pair prompt from the session plan. Harvest 2–3 answers; write good ones on the whiteboard — they seed Discussion D2 after Lab 2.</aside>
+</section>
+
+<!-- 22 ─ architecture story -->
+<section class="slide" id="s22">
+  <div class="eyebrow">Deeper · a 20-year story in one row</div>
+  <h2 class="slide-title">Deeper kept winning</h2>
+  <div class="body center">
+    <div class="pipe" style="gap:20px">
+      <div class="stage">LeNet<small>1998 · 5 layers<br>reads checks</small></div>
+      <div class="arrow">→</div>
+      <div class="stage">AlexNet<small>2012 · 8 layers<br>ImageNet moment</small></div>
+      <div class="arrow">→</div>
+      <div class="stage">VGG<small>2014 · 19 layers<br>just stack more?</small></div>
+      <div class="arrow">→</div>
+      <div class="stage" style="border-style:dashed;color:var(--neg);border-color:var(--neg)">…then it<br>stopped working<small>deeper got WORSE</small></div>
+    </div>
+    <div class="callout" style="align-self:center;margin-top:40px">2012's AlexNet halving the error rate overnight is why this whole field exists. But past ~20 layers, adding depth started <strong>hurting</strong> — even on training data. Why?</div>
+  </div>
+  <aside class="notes">Tell it as a cliffhanger. The audience should answer the "why" themselves: Lecture 4's vanishing gradients — the whisper-down-the-lane problem. Let someone say it before advancing.</aside>
+</section>
+
+<!-- 22b ─ inside VGG-16 -->
+<section class="slide" id="s22b">
+  <div class="eyebrow">Deeper · what "just stack more" looks like</div>
+  <h2 class="slide-title">Inside VGG: <em>your grid tricks</em>, stacked sixteen deep</h2>
+  <div class="body center">
+    <figure class="fig">
+      <div style="background:#fff;border:1px solid var(--hairline);border-radius:10px;padding:20px 26px">
+        <img src="../assets/img/vgg16.png" alt="VGG16 architecture: five conv+pooling blocks followed by three dense layers"
+             style="width:1050px;display:block">
+      </div>
+      <figcaption>VGG-16 · diagram: Gorlapraveen, Wikimedia Commons, CC BY-SA 4.0</figcaption>
+    </figure>
+    <div class="calc-line" style="margin-top:20px">every filter is <b>3×3</b> — the size you computed by hand · channels grow 64 → 128 → 256 → 512 as pooling shrinks the maps · ≈ <b>138M</b> weights</div>
+  </div>
+  <aside class="notes">Fast beat — 60 seconds, part of the ~6-minute architecture story; don't walk every block. One point: there is nothing new here. Conv (their 6×6 grid), pooling (their max-pool), a fully connected head (Lab 1) — repeated 16 layers deep, channels doubling as maps shrink. The uniform all-3×3 design is why VGG became the "just stack more" poster child, and 138M weights is the cliffhanger's setup: stacking further stopped working — advance to ResNet for why and the fix.</aside>
+</section>
+
+<!-- 23 ─ ResNet -->
+<section class="slide" id="s23">
+  <div class="eyebrow">Deeper · the fix</div>
+  <h2 class="slide-title">ResNet: give the signal a <em>shortcut</em></h2>
+  <div class="body center">
+    <div class="cols">
+      <figure class="fig">
+        <svg width="490" height="330" viewBox="0 0 520 330">
+          <line x1="300" y1="0"   x2="300" y2="18"  stroke="#3D444C" stroke-width="2"/>
+          <rect x="235" y="18"  width="130" height="50" rx="8" fill="#fff" stroke="#3D444C" stroke-width="2"/>
+          <text x="300" y="49" text-anchor="middle" font-size="19">conv</text>
+          <line x1="300" y1="68"  x2="300" y2="126" stroke="#3D444C" stroke-width="2"/>
+          <rect x="235" y="126" width="130" height="50" rx="8" fill="#fff" stroke="#3D444C" stroke-width="2"/>
+          <text x="300" y="157" text-anchor="middle" font-size="19">conv</text>
+          <line x1="300" y1="176" x2="300" y2="224" stroke="#3D444C" stroke-width="2"/>
+          <circle cx="300" cy="250" r="24" fill="#E3F0EF" stroke="#0E7C7B" stroke-width="2.5"/>
+          <text x="300" y="259" text-anchor="middle" font-size="24" fill="#0E7C7B">+</text>
+          <line x1="300" y1="274" x2="300" y2="320" stroke="#3D444C" stroke-width="2"/>
+          <path d="M300 8 C 190 8, 190 250, 276 250" fill="none" stroke="#0E7C7B" stroke-width="3"/>
+          <text x="20" y="148" class="m" font-size="15" fill="#0E7C7B">skip connection:</text>
+          <text x="20" y="169" class="m" font-size="15" fill="#0E7C7B">x rides around</text>
+          <text x="342" y="245" font-size="16" fill="#3D444C">output =</text>
+          <text x="342" y="266" font-size="16" fill="#3D444C">x + learned tweak</text>
+        </svg>
+        <figcaption>the residual block — ResNet, 2015 · 152 layers</figcaption>
+      </figure>
+      <div>
+        <p class="lead">The gradient now has a <strong>highway</strong> straight back through the network — no more vanishing whisper.</p>
+        <p class="lead" style="margin-top:16px">Each block only learns a small <strong>correction</strong> to what flows through.</p>
+        <div class="callout ms" style="margin-top:22px">1D ResNets are now the standard workhorse for spectra — including the MALDI-TOF resistance models this course builds on.</div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Payoff of the Lecture 4 setup. 152 layers, better-than-human ImageNet accuracy in 2015. "Skip connection" will also reappear inside transformers on Monday — plant that flag.</aside>
+</section>
+
+<!-- 24 ─ divider: beyond classification -->
+<section class="slide divider" id="s24">
+  <svg class="peak" viewBox="0 0 1280 380" preserveAspectRatio="none">
+    <path d="M0 340 L240 336 L360 330 L430 290 L470 160 L500 80 L530 160 L575 300 L640 332
+             L760 328 L820 240 L850 190 L880 240 L935 330 L1080 336 L1280 340"
+          fill="none" stroke="#0E7C7B" stroke-width="3"/>
+    <rect x="424" y="60" width="160" height="276" fill="none" stroke="#E09E2F" stroke-width="2.5" rx="6"/>
+    <rect x="752" y="170" width="190" height="166" fill="none" stroke="#E09E2F" stroke-width="2.5" rx="6"/>
+    <line x1="0" y1="341" x2="1280" y2="341" stroke="#D9D9D2" stroke-width="1"/>
+  </svg>
+  <div class="divider-inner">
+    <div class="eyebrow">Lecture 5 · part four</div>
+    <h1>Where, not just what</h1>
+    <div class="sub">object detection — and why it's secretly peak picking</div>
+  </div>
+  <aside class="notes">Final 12 minutes. Classification answers "what is this?" — but a lot of lab work is "where are the things?" The divider art already gives it away: boxes on a chromatogram.</aside>
+</section>
+
+<!-- 25 ─ detection idea -->
+<section class="slide" id="s25">
+  <div class="eyebrow">Detection · the idea</div>
+  <h2 class="slide-title">Object detection = boxes + confidence scores</h2>
+  <div class="body center">
+    <div class="cols">
+      <figure class="fig">
+        <svg width="470" height="330" viewBox="0 0 470 330">
+          <rect x="20" y="20" width="430" height="290" rx="8" fill="#F1F1EC" stroke="#8A9099"/>
+          <g stroke="#D9D9D2" stroke-width="1">
+            <line x1="127" y1="20" x2="127" y2="310"/><line x1="235" y1="20" x2="235" y2="310"/><line x1="342" y1="20" x2="342" y2="310"/>
+            <line x1="92" y1="20" x2="92" y2="310" opacity="0"/><line x1="20" y1="117" x2="450" y2="117"/><line x1="20" y1="213" x2="450" y2="213"/>
+          </g>
+          <ellipse cx="150" cy="180" rx="60" ry="42" fill="#0E7C7B" opacity=".25"/>
+          <ellipse cx="330" cy="120" rx="46" ry="34" fill="#C4534F" opacity=".25"/>
+          <rect x="82" y="130" width="140" height="102" fill="none" stroke="#E09E2F" stroke-width="3" rx="4"/>
+          <rect x="278" y="80" width="106" height="82" fill="none" stroke="#E09E2F" stroke-width="3" rx="4"/>
+          <text x="86" y="122" class="m" font-size="15" fill="#A9721A">cell · 0.94</text>
+          <text x="282" y="72" class="m" font-size="15" fill="#A9721A">debris · 0.71</text>
+        </svg>
+        <figcaption>one CNN pass over a grid of positions → every box, every score, at once (the YOLO idea)</figcaption>
+      </figure>
+      <div>
+        <p class="lead">The CNN backbone is <strong>the one you just built</strong>. Only the last layers change: instead of one label, predict <strong>box positions + confidences</strong>.</p>
+        <p class="lead" style="margin-top:16px">Names you'll meet: <strong>YOLO</strong> (fast, one pass) · <strong>Faster&nbsp;R-CNN</strong> (propose, then verify).</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Keep it at this altitude — no anchor boxes, no NMS, no loss functions. The message: detection is a small change of output head on the same convolutional machinery.</aside>
+</section>
+
+<!-- 26 ─ chromatogram as detection -->
+<section class="slide" id="s26">
+  <div class="eyebrow">Detection · your version of it</div>
+  <h2 class="slide-title">A chromatogram is an image whose objects are <em>peaks</em></h2>
+  <div class="body center">
+    <figure class="fig">
+      <svg width="1000" height="300" viewBox="0 0 1000 300">
+        <line x1="30" y1="250" x2="970" y2="250" stroke="#8A9099" stroke-width="1.5"/>
+        <path d="M30 248 L150 246 L220 238 L280 170 L310 60 L340 170 L390 245
+                 L470 243 L560 246 L640 190 L672 130 L704 190 L760 246 L850 243 L920 247 L970 245"
+              fill="none" stroke="#1B2025" stroke-width="2.5"/>
+        <rect x="262" y="40" width="146" height="212" fill="none" stroke="#E09E2F" stroke-width="3" rx="6"/>
+        <rect x="622" y="110" width="150" height="142" fill="none" stroke="#E09E2F" stroke-width="3" rx="6"/>
+        <text x="335" y="30" text-anchor="middle" class="m" font-size="16" fill="#A9721A">peak · 0.97</text>
+        <text x="697" y="100" text-anchor="middle" class="m" font-size="16" fill="#A9721A">peak · 0.83</text>
+        <text x="500" y="282" text-anchor="middle" class="m" font-size="15" fill="#8A9099">retention time →</text>
+      </svg>
+      <figcaption>object → peak · bounding box → RT window (your integration bounds) · score → how sure</figcaption>
+    </figure>
+    <div class="callout ms" style="align-self:center">The manual step your lab calls <strong>peak review</strong> is, to a CNN, a detection problem it already knows how to solve.</div>
+  </div>
+  <aside class="notes">The reframe of the segment. Every element maps: boxes are integration windows, scores are reviewer confidence, class could be "real peak vs. noise". Someone in the room integrates peaks by hand every week — speak to them.</aside>
+</section>
+
+<!-- 27 ─ PeakOnly -->
+<section class="slide" id="s27">
+  <div class="eyebrow">Detection · a real system</div>
+  <h2 class="slide-title">PeakOnly (2020): CNNs doing peak review for real</h2>
+  <div class="body center">
+    <div class="pipe">
+      <div class="stage">ROI<small>candidate window<br>from raw LC-MS</small></div>
+      <div class="arrow">→</div>
+      <div class="stage conv">CNN #1<small>peak or noise?</small></div>
+      <div class="arrow">→</div>
+      <div class="stage conv">CNN #2<small>where are the<br>boundaries?</small></div>
+      <div class="arrow">→</div>
+      <div class="stage pool">integrate<small>area, reported</small></div>
+    </div>
+    <div class="callout" style="align-self:center;margin-top:36px">Trained on <strong>5,365 hand-annotated windows</strong> (serum LC-MS + public studies) — it approached expert-level manual curation. <strong>You'll train on this exact dataset</strong> in the capstone's peak-QC track.</div>
+  </div>
+  <aside class="notes">Melnikov et al., Anal. Chem. 2020 — full citation on the reading list handout. Lineage if asked: PeakOnly (2020) → EVA (2021) → NeatMS (2022) → RL-based MsTargetPeaker (2026): active, publishable territory. The dataset callout is real — our prepared slice is 3.8 MB.</aside>
+</section>
+
+<!-- 28 ─ segmentation -->
+<section class="slide" id="s28">
+  <div class="eyebrow">Detection · one door further</div>
+  <h2 class="slide-title">Segmentation: a label for <em>every pixel</em></h2>
+  <div class="body center">
+    <div class="cols">
+      <figure class="fig">
+        <svg width="440" height="300" viewBox="0 0 440 300">
+          <g>
+            <rect x="20" y="30" width="180" height="180" fill="#F1F1EC" stroke="#8A9099"/>
+            <rect x="66" y="76" width="96" height="80" fill="none" stroke="#E09E2F" stroke-width="3" rx="4"/>
+            <text x="110" y="240" text-anchor="middle" class="m" font-size="15" fill="#8A9099">detection: a box</text>
+          </g>
+          <g>
+            <rect x="240" y="30" width="180" height="180" fill="#F1F1EC" stroke="#8A9099"/>
+            <path d="M290 150 Q 285 100 320 86 Q 360 74 378 110 Q 392 145 358 160 Q 320 172 290 150 Z"
+                  fill="#0E7C7B" opacity=".55"/>
+            <text x="330" y="240" text-anchor="middle" class="m" font-size="15" fill="#8A9099">segmentation: the exact shape</text>
+          </g>
+        </svg>
+        <figcaption>Mask R-CNN, U-Net — the usual names</figcaption>
+      </figure>
+      <div>
+        <p class="lead">Where a box isn't enough: tumor margins in MS imaging, cell outlines, lesion areas.</p>
+        <div class="callout ms" style="margin-top:20px">In imaging MS, every pixel <strong>is</strong> a spectrum — segmentation draws the tissue-region map directly from chemistry.</div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">One slide, as promised in the session plan. If questions go deep, defer to the reading list — the U-Net rabbit hole eats hours.</aside>
+</section>
+
+<!-- 29 ─ summary -->
+<section class="slide" id="s29">
+  <div class="eyebrow">Lecture 5 · what you can do now</div>
+  <h2 class="slide-title">You can now…</h2>
+  <div class="body center">
+    <ul style="max-width:46em">
+      <li><strong>Compute a convolution by hand</strong> — window, multiply, add, slide — and read a feature map as a "pattern found here" map</li>
+      <li><strong>Size any conv layer</strong> with (n − k + 2p)/s + 1, and say what stride, padding, pooling, and channels each do</li>
+      <li><strong>Say why deep needed ResNet</strong> — vanishing gradients, and the skip-connection highway</li>
+      <li><strong>Reframe peak picking as object detection</strong> — boxes = integration windows, scores = confidence</li>
+    </ul>
+    <div class="callout" style="align-self:flex-start;margin-top:14px"><strong>Next hour — Lab 2:</strong> you build a 1D CNN on 3,000 real clinical MALDI-TOF spectra and beat your own Lab-1 MLP at calling MRSA.</div>
+  </div>
+  <aside class="notes">Map each bullet to a quiz item so the assessment feels fair, then sell Lab 2 hard — same code skeleton as Lab 1, new superpower.</aside>
+</section>
+
+<!-- 30 ─ quiz -->
+<section class="slide" id="s30">
+  <div class="eyebrow">Lecture 5 · assessment</div>
+  <h2 class="slide-title">Quiz 5 — grids on paper</h2>
+  <div class="body center">
+    <ul style="max-width:44em">
+      <li>Fill in <strong>three feature-map cells</strong> (stride 1) and <strong>one at stride 2</strong> — a 5×5 image, a 3×3 filter, same drill as today</li>
+      <li><strong>Max-pool</strong> a given 4×4 map</li>
+      <li>One <strong>output-size count</strong> with padding</li>
+      <li>Peak picking as detection: <strong>what is the box? what is the score?</strong></li>
+    </ul>
+    <div class="callout check" style="align-self:flex-start;margin-top:14px">4 minutes solo → we mark it together as Lab 2 boots up. Keep the sheet — it's your conv cheat-sheet for the lab.</div>
+  </div>
+  <aside class="notes">Hand out while Colab loads. Walkthrough doubles as the Lab 2 opener: the first notebook blank is a Conv1d whose kernel size they must choose using exactly this arithmetic.</aside>
+</section>
+
+</body>
+</html>

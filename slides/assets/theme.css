@@ -1,0 +1,200 @@
+/* ============================================================
+   MSACL Deep Learning Course — shared slide design system
+   Slides are fixed 1280×720. Light theme only (projected).
+   Palette:  paper #FBFBF8 · ink #1B2025 · signal teal #0E7C7B
+             ROI amber #E09E2F · neg red #C4534F · muted #8A9099
+   Type:     Avenir Next (display+body) · SF Mono/Menlo (numbers)
+   ============================================================ */
+
+:root {
+  --paper: #FBFBF8;
+  --ink: #1B2025;
+  --ink-soft: #3D444C;
+  --muted: #8A9099;
+  --hairline: #D9D9D2;
+  --signal: #0E7C7B;          /* teal — computed values, emphasis, traces */
+  --signal-soft: #E3F0EF;
+  --roi: #E09E2F;             /* amber — the sliding window / active region */
+  --roi-soft: #FBF0DC;
+  --neg: #C4534F;             /* soft red — negative weights */
+  --neg-soft: #F7E4E3;
+  --sans: "Avenir Next", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --mono: "SF Mono", Menlo, Consolas, monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #E8E8E2;               /* review-page ground, never captured */
+  font-family: var(--sans);
+  color: var(--ink);
+  display: flex; flex-direction: column; align-items: center;
+  gap: 28px; padding: 28px 0;
+}
+
+/* ---------- the slide canvas ---------- */
+.slide {
+  position: relative;
+  width: 1280px; height: 720px;
+  background: var(--paper);
+  overflow: hidden;
+  box-shadow: 0 2px 14px rgba(27,32,37,.10);   /* review only; invisible in capture */
+  padding: 56px 76px 74px;
+  display: flex; flex-direction: column;
+}
+
+aside.notes { display: none; }       /* speaker notes: extracted to PPTX, hidden here */
+
+/* ---------- header zone ---------- */
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 15px; letter-spacing: .14em;
+  color: var(--muted); text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.eyebrow b { color: var(--signal); font-weight: 600; }
+
+h2.slide-title {
+  font-size: 44px; font-weight: 600; letter-spacing: -0.01em;
+  line-height: 1.12; margin-bottom: 26px;
+}
+h2.slide-title em { font-style: normal; color: var(--signal); }
+
+/* ---------- body zone ---------- */
+.body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.body.center { justify-content: center; }
+.cols { display: flex; gap: 48px; align-items: center; flex: 1; min-height: 0; }
+.cols > * { flex: 1; min-width: 0; }
+.cols > .narrow { flex: 0 0 34%; }
+
+p.lead { font-size: 26px; line-height: 1.5; color: var(--ink-soft); max-width: 21em; }
+li { font-size: 24px; line-height: 1.55; color: var(--ink-soft); margin: 0 0 12px 1.1em; }
+li::marker { color: var(--signal); }
+strong { color: var(--ink); font-weight: 600; }
+
+.big-claim {
+  font-size: 40px; font-weight: 600; line-height: 1.3;
+  max-width: 22em; letter-spacing: -0.01em;
+}
+.big-claim em { font-style: normal; color: var(--signal); }
+
+/* ---------- callout boxes ---------- */
+.callout {
+  border-left: 4px solid var(--signal);
+  background: var(--signal-soft);
+  padding: 18px 24px; border-radius: 0 8px 8px 0;
+  font-size: 22px; line-height: 1.5; color: var(--ink-soft);
+  margin-top: 22px; max-width: 46em;
+}
+.callout.ms::before   { content: "MASS SPEC ANCHOR"; }
+.callout.pair::before { content: "💬 TALK TO YOUR NEIGHBOR — 2 MIN"; }
+.callout.check::before{ content: "✏️ YOUR TURN"; }
+.callout::before {
+  display: block; font-family: var(--mono); font-size: 13px;
+  letter-spacing: .12em; color: var(--signal); margin-bottom: 6px;
+}
+.callout.pair, .callout.check { border-color: var(--roi); background: var(--roi-soft); }
+.callout.pair::before, .callout.check::before { color: #A9721A; }
+
+/* ---------- numeric grid diagrams ---------- */
+.grid-wrap { display: flex; gap: 44px; align-items: flex-start; justify-content: center; }
+.grid-block { text-align: center; }
+.grid-block .glabel {
+  font-family: var(--mono); font-size: 15px; letter-spacing: .1em;
+  color: var(--muted); text-transform: uppercase; margin-bottom: 10px;
+}
+.grid-block .glabel b { color: var(--ink); font-weight: 600; }
+
+table.ngrid { border-collapse: collapse; margin: 0 auto; }
+table.ngrid td {
+  width: 52px; height: 52px;
+  border: 1px solid var(--hairline);
+  font-family: var(--mono); font-size: 21px; text-align: center;
+  color: var(--ink-soft); background: #FFFFFF;
+}
+table.ngrid.small td { width: 44px; height: 44px; font-size: 18px; }
+
+/* cell states (applied by slides.js or by hand) —
+   selectors must outrank `table.ngrid td`, hence the full paths */
+table.ngrid td.win   { background: var(--roi-soft); border-color: var(--roi); box-shadow: inset 0 0 0 1px var(--roi); }
+table.ngrid td.pos   { background: var(--signal-soft); color: var(--signal); font-weight: 600; }
+table.ngrid td.negv  { background: var(--neg-soft); color: var(--neg); font-weight: 600; }
+table.ngrid td.done  { color: var(--ink); font-weight: 600; }
+table.ngrid td.now   { background: var(--signal); color: #fff; font-weight: 700; }
+table.ngrid td.blank { color: transparent; }
+table.ngrid td.quiz  { background: var(--roi-soft); color: #A9721A; font-weight: 700; }
+table.ngrid td.poolA { background: var(--signal-soft); }
+table.ngrid td.poolB { background: var(--roi-soft); }
+table.ngrid td.poolC { background: #ECEAF6; }
+table.ngrid td.poolD { background: #F1F1EC; }
+table.ngrid td.win.blankpad { background: var(--roi-soft); }
+
+.op {
+  align-self: center; font-family: var(--mono); font-size: 30px;
+  color: var(--muted); padding-top: 26px;
+}
+
+.calc-line {
+  font-family: var(--mono); font-size: 20px; color: var(--ink-soft);
+  text-align: center; margin-top: 22px;
+}
+.calc-line b { color: var(--signal); }
+
+/* ---------- pipeline (whole-CNN) diagram ---------- */
+.pipe { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; row-gap: 22px; }
+.pipe .stage {
+  border: 2px solid var(--ink-soft); border-radius: 10px;
+  padding: 13px 15px; font-size: 19px; font-weight: 600; text-align: center;
+  background: #fff; line-height: 1.3;
+}
+.pipe .stage small { display: block; font-family: var(--mono); font-weight: 400; font-size: 14px; color: var(--muted); margin-top: 4px; }
+.pipe .stage.conv { border-color: var(--signal); color: var(--signal); }
+.pipe .stage.pool { border-color: var(--roi); color: #A9721A; }
+.pipe .arrow { font-size: 24px; color: var(--muted); }
+.pipe .loop {
+  font-family: var(--mono); font-size: 15px; color: var(--muted);
+  border: 1px dashed var(--muted); border-radius: 8px; padding: 10px 14px;
+}
+
+/* ---------- code ---------- */
+pre.code {
+  font-family: var(--mono); font-size: 20px; line-height: 1.6;
+  background: #22272D; color: #E8EAED;
+  padding: 24px 28px; border-radius: 10px; overflow: hidden;
+}
+pre.code .c { color: #8A9099; }          /* comment */
+pre.code .k { color: #7FD1CF; }          /* keyword-ish */
+pre.code .n { color: #F0C674; }          /* number/arg   */
+
+/* ---------- section divider slides ---------- */
+.slide.divider { padding: 0; justify-content: center; align-items: center; }
+.slide.divider .divider-inner { text-align: center; z-index: 1; transform: translateY(-160px); }
+.slide.divider .eyebrow { margin-bottom: 16px; }
+.slide.divider h1 { font-size: 64px; font-weight: 600; letter-spacing: -0.015em; }
+.slide.divider .sub { font-size: 24px; color: var(--muted); margin-top: 14px; }
+.slide.divider svg.peak { position: absolute; left: 0; bottom: 40px; width: 1280px; height: 380px; }
+
+/* ---------- title slide ---------- */
+.slide.title-slide { justify-content: center; }
+.slide.title-slide h1 { font-size: 72px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.08; max-width: 14em; }
+.slide.title-slide h1 em { font-style: normal; color: var(--signal); }
+.slide.title-slide .sub { font-size: 26px; color: var(--muted); margin-top: 22px; }
+
+/* ---------- figures ---------- */
+figure.fig { text-align: center; }
+figure.fig figcaption { font-family: var(--mono); font-size: 15px; color: var(--muted); margin-top: 12px; letter-spacing: .06em; }
+svg text { font-family: var(--sans); }
+svg text.m { font-family: var(--mono); }
+
+/* ---------- the m/z ruler footer (signature) ---------- */
+.mz-ruler {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 44px;
+  pointer-events: none;
+}
+.mz-ruler svg { width: 100%; height: 100%; display: block; }
+.slide-no {
+  position: absolute; right: 26px; bottom: 14px;
+  font-family: var(--mono); font-size: 14px; color: var(--muted);
+}
+
+@media print { body { background: #fff; padding: 0; gap: 0; } .slide { box-shadow: none; } }

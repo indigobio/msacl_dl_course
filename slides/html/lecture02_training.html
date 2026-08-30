@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 2 · How Networks Learn</title>
+<link rel="stylesheet" href="../assets/theme.css">
+<link rel="stylesheet" href="../assets/katex/katex.min.css">
+<script src="../assets/slides.js"></script>
+<script defer src="../assets/katex/katex.min.js"></script>
+<script>
+/* Typeset any .keq element from its data-tex (KaTeX, bundled locally so the
+   deck renders offline / headless). display mode when data-display is present. */
+window.addEventListener("load", function () {
+  if (!window.katex) return;
+  document.querySelectorAll(".keq").forEach(function (el) {
+    try {
+      katex.render(el.getAttribute("data-tex"), el, {
+        displayMode: el.hasAttribute("data-display"),
+        throwOnError: false
+      });
+    } catch (e) { /* leave raw text on failure */ }
+  });
+});
+</script>
+<style>
+/* ---- Lecture 2 local helpers (kept tiny; palette from theme.css) ---- */
+.keq { color:var(--ink); }
+.keq.big { font-size:1.3em; }
+.eqcard { background:#fff; border:1px solid var(--hairline); border-radius:12px; padding:20px 24px; text-align:center; }
+.eqnote { font-family:var(--mono); font-size:14px; color:var(--muted); margin-top:10px; letter-spacing:.04em; }
+
+/* the chain-of-local-effects strip (Hung-yi-Lee style: one box per arrow) */
+.chain { display:flex; align-items:stretch; justify-content:center; gap:10px; flex-wrap:wrap; }
+.chain .lt { background:#fff; border:1px solid var(--hairline); border-radius:10px; padding:9px 14px; text-align:center; min-width:104px; }
+.chain .lt .cap { font-family:var(--mono); font-size:11.5px; color:var(--muted); letter-spacing:.03em; line-height:1.3; }
+.chain .lt .val { font-family:var(--mono); font-size:26px; font-weight:700; color:var(--signal); margin-top:4px; }
+.chain .lt .val.neg { color:var(--neg); }
+.chain .x { align-self:center; font-family:var(--mono); font-size:22px; color:var(--muted); }
+.chain .lt.res { background:var(--signal-soft); border-color:var(--signal); }
+.chain .lt.res .cap { color:#0E7C7B; }
+
+/* small multiples for loss-curve diagnosis */
+.gallery { display:flex; gap:20px; justify-content:center; align-items:stretch; }
+.gcard { flex:1; background:#fff; border:1px solid var(--hairline); border-radius:12px; padding:14px 14px 12px; text-align:center; min-width:0; }
+.gcard .gt { font-size:18px; font-weight:600; margin-top:6px; }
+.gcard .gt.hi  { color:var(--neg); }
+.gcard .gt.lo  { color:#A9721A; }
+.gcard .gt.ok  { color:var(--signal); }
+.gcard .gd { font-size:14.5px; color:var(--muted); line-height:1.35; margin-top:4px; }
+
+/* two-up loss curves for the pair prompt */
+.abcurve { display:flex; gap:26px; justify-content:center; }
+.abcurve figcaption { font-family:var(--mono); font-size:14px; color:var(--muted); margin-top:8px; }
+
+/* step-size mini bowls */
+.lrrow { display:flex; gap:20px; justify-content:center; align-items:stretch; }
+.lrcard { flex:1; background:#fff; border:1px solid var(--hairline); border-radius:12px; padding:12px; text-align:center; min-width:0; }
+.lrcard .lh { font-size:17px; font-weight:600; margin-top:4px; }
+.lrcard .lh.sm { color:#A9721A; } .lrcard .lh.bg { color:var(--neg); } .lrcard .lh.ok { color:var(--signal); }
+.lrcard .ls { font-size:13.5px; color:var(--muted); line-height:1.3; margin-top:3px; }
+
+/* forward-value pill under a matline */
+.matline { font-family:var(--mono); font-size:21px; color:var(--ink-soft); text-align:center; line-height:1.7; }
+.matline b { color:var(--signal); } .matline .neg { color:var(--neg); }
+
+pre.code .s { color:#C8E6A0; }   /* string-ish / label */
+
+/* partial-derivative reference labels above each chain box */
+.chain .lt .pd { min-height:26px; display:flex; align-items:center; justify-content:center; margin-bottom:5px; padding-bottom:5px; border-bottom:1px dashed var(--hairline); }
+.chain .lt .pd .keq { font-size:12.5px; color:var(--muted); }
+
+/* optional-slide badge */
+.optbadge { position:absolute; top:20px; right:30px; font-family:var(--mono); font-size:12px; letter-spacing:.1em;
+  font-weight:700; color:#A9721A; background:var(--roi-soft); border:1px solid var(--roi); border-radius:20px; padding:6px 14px; z-index:3; }
+</style>
+</head>
+<body>
+
+<!-- 1 ─ title -->
+<section class="slide title-slide" id="s1">
+  <div class="eyebrow"><b>MSACL</b> · DS301 Deep Learning · Segment 1 · Lecture 2</div>
+  <h1>How does a network <em>learn</em>?</h1>
+  <div class="sub">Loss, gradient descent, backpropagation — and the PyTorch training loop</div>
+  <aside class="notes">Sunday morning, hour two — straight after Lecture 1. In Lecture 1 we assumed the weights were handed to us and pushed numbers forward through the network. Today we answer the question we left open: where do those weights come from? Set the promise of the hour: by the end you will have taken one full learning step by hand on a two-weight network — forward, measure the error, send the blame backward, nudge every weight — and you will recognise those exact five moves in real PyTorch code. Still nothing beyond multiply, add, and "slope = how steep." No calculus.</aside>
+</section>
+
+<!-- 2 ─ recap bridge from Lecture 1 -->
+<section class="slide" id="s2">
+  <div class="eyebrow">Recap · where Lecture 1 left off</div>
+  <h2 class="slide-title">Last hour: a network <em>runs forward</em>. But who set the weights?</h2>
+  <div class="body center">
+    <div class="cols">
+      <figure class="fig">
+        <svg width="470" height="290" viewBox="0 0 470 290">
+          <text x="55" y="28" text-anchor="middle" class="m" font-size="13" fill="#8A9099">INPUT</text>
+          <text x="235" y="28" text-anchor="middle" class="m" font-size="13" fill="#0E7C7B">HIDDEN · ReLU</text>
+          <text x="418" y="28" text-anchor="middle" class="m" font-size="13" fill="#8A9099">OUTPUT</text>
+          <line x1="55" y1="105" x2="235" y2="95"  stroke="#0E7C7B" stroke-width="2"/>
+          <line x1="55" y1="105" x2="235" y2="205" stroke="#0E7C7B" stroke-width="2"/>
+          <line x1="55" y1="200" x2="235" y2="95"  stroke="#0E7C7B" stroke-width="2"/>
+          <line x1="55" y1="200" x2="235" y2="205" stroke="#C4534F" stroke-width="2"/>
+          <line x1="235" y1="95"  x2="418" y2="150" stroke="#0E7C7B" stroke-width="2"/>
+          <line x1="235" y1="205" x2="418" y2="150" stroke="#C4534F" stroke-width="2"/>
+          <text x="150" y="86"  class="m" font-size="14" fill="#0E7C7B">w?</text>
+          <text x="135" y="170" class="m" font-size="14" fill="#0E7C7B">w?</text>
+          <text x="330" y="112" class="m" font-size="14" fill="#0E7C7B">w?</text>
+          <text x="330" y="198" class="m" font-size="14" fill="#C4534F">w?</text>
+          <circle cx="55" cy="105" r="22" fill="#fff" stroke="#3D444C" stroke-width="2"/>
+          <circle cx="55" cy="200" r="22" fill="#fff" stroke="#3D444C" stroke-width="2"/>
+          <circle cx="235" cy="95"  r="22" fill="#E3F0EF" stroke="#0E7C7B" stroke-width="2.5"/>
+          <circle cx="235" cy="205" r="22" fill="#fff" stroke="#0E7C7B" stroke-width="2.5"/>
+          <circle cx="418" cy="150" r="24" fill="#0E7C7B"/>
+          <text x="418" y="157" text-anchor="middle" font-size="18" fill="#fff">ŷ</text>
+        </svg>
+        <figcaption>every arrow carries a weight — but what number should it be?</figcaption>
+      </figure>
+      <div>
+        <p class="lead">A neuron does three things: <strong>multiply</strong> inputs by weights, <strong>add</strong> them up, <strong>bend</strong> through an activation. A network is just that, stacked.</p>
+        <div class="callout" style="margin-top:16px">Lecture 1 <strong>assumed</strong> the weights. Real networks start with <strong>random</strong> weights and are terrible. Today: how they get <em>good</em>.</div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Two minutes. Rebuild the bridge before adding anything new. Point at the diagram: this is the Lecture 1 network — same two inputs, one hidden layer, one output — except every weight now reads "w?". That is the honest starting state of any real network: the weights are initialised at random, so the very first prediction is garbage. Learning is nothing more than repeatedly adjusting those numbers until the predictions stop being garbage. Everything today serves that one goal. Keep the mantra alive: multiply, add, bend — now we add a fourth verb, "correct."</aside>
+</section>
+
+<!-- 3 ─ the learning loop in one picture -->
+<section class="slide" id="s3">
+  <div class="eyebrow">Today · the whole idea in one loop</div>
+  <h2 class="slide-title">Learning = <em>guess → measure → correct</em>, over and over</h2>
+  <div class="body center">
+    <figure class="fig">
+      <svg width="960" height="300" viewBox="0 0 960 300">
+        <!-- boxes -->
+        <rect x="40"  y="120" width="170" height="72" rx="12" fill="#fff" stroke="#3D444C" stroke-width="2"/>
+        <text x="125" y="150" text-anchor="middle" font-size="19" font-weight="600">1 · Forward</text>
+        <text x="125" y="174" text-anchor="middle" class="m" font-size="13" fill="#8A9099">make a guess ŷ</text>
+
+        <rect x="300" y="120" width="170" height="72" rx="12" fill="#FBF0DC" stroke="#E09E2F" stroke-width="2"/>
+        <text x="385" y="150" text-anchor="middle" font-size="19" font-weight="600" fill="#A9721A">2 · Loss</text>
+        <text x="385" y="174" text-anchor="middle" class="m" font-size="13" fill="#A9721A">how wrong?</text>
+
+        <rect x="560" y="120" width="170" height="72" rx="12" fill="#F7E4E3" stroke="#C4534F" stroke-width="2"/>
+        <text x="645" y="150" text-anchor="middle" font-size="19" font-weight="600" fill="#C4534F">3 · Backprop</text>
+        <text x="645" y="174" text-anchor="middle" class="m" font-size="13" fill="#C4534F">assign the blame</text>
+
+        <rect x="800" y="120" width="150" height="72" rx="12" fill="#E3F0EF" stroke="#0E7C7B" stroke-width="2"/>
+        <text x="875" y="150" text-anchor="middle" font-size="19" font-weight="600" fill="#0E7C7B">4 · Step</text>
+        <text x="875" y="174" text-anchor="middle" class="m" font-size="13" fill="#0E7C7B">nudge weights</text>
+
+        <!-- arrows forward -->
+        <g stroke="#8A9099" stroke-width="2.5" fill="none" marker-end="url(#ah)">
+          <line x1="210" y1="156" x2="296" y2="156"/>
+          <line x1="470" y1="156" x2="556" y2="156"/>
+          <line x1="730" y1="156" x2="796" y2="156"/>
+        </g>
+        <!-- loop-back arrow -->
+        <path d="M875 120 C 875 40, 125 40, 125 116" stroke="#0E7C7B" stroke-width="2.5" fill="none" stroke-dasharray="6 5" marker-end="url(#ah2)"/>
+        <text x="500" y="34" text-anchor="middle" class="m" font-size="14" fill="#0E7C7B">repeat for many batches (an "epoch"), many epochs</text>
+        <defs>
+          <marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 Z" fill="#8A9099"/></marker>
+          <marker id="ah2" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 Z" fill="#0E7C7B"/></marker>
+        </defs>
+      </svg>
+      <figcaption>the entire lecture is these four boxes — we open each one in turn</figcaption>
+    </figure>
+    <div class="callout" style="align-self:center; margin-top:18px">These four steps <strong>are</strong> the PyTorch training loop you will read at the end of the hour. Everything in between is us explaining each box.</div>
+  </div>
+  <aside class="notes">Give them the map before the details, so nobody gets lost in the arithmetic later. Walk the loop once, slowly: (1) push an input forward and get a guess; (2) measure how wrong the guess is — that number is the loss; (3) send the blame backward to every weight — that is backpropagation; (4) nudge each weight a little in the improving direction — that is the step. Then repeat, thousands of times. Promise them the payoff slide: these four boxes will reappear as five lines of real PyTorch, and they will recognise every one. This slide is worth memorising; the rest of the hour just fills it in.</aside>
+</section>
+
+<!-- 3b ─ catapult analogy -->
+<section class="slide" id="s3b">
+  <div class="eyebrow">Today · the loop you already know</div>
+  <h2 class="slide-title">Sighting in a catapult: <em>miss, measure, adjust</em></h2>
+  <div class="body center">
+    <div class="cols">
+      <figure class="fig">
+        <svg width="540" height="300" viewBox="0 0 540 300">
+          <!-- ground -->
+          <line x1="20" y1="250" x2="525" y2="250" stroke="#8A9099" stroke-width="1.5"/>
+          <!-- trajectory arc (falls short of target) -->
+          <path d="M78 232 Q 220 55 360 244" fill="none" stroke="#0E7C7B" stroke-width="2.5" stroke-dasharray="5 5"/>
+          <!-- catapult: base, wheel, arm, bucket -->
+          <path d="M40 250 L58 214 L84 250 Z" fill="#fff" stroke="#3D444C" stroke-width="2"/>
+          <circle cx="62" cy="250" r="10" fill="#fff" stroke="#3D444C" stroke-width="2"/>
+          <line x1="58" y1="222" x2="86" y2="200" stroke="#3D444C" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="88" cy="198" r="7" fill="#E09E2F" stroke="#A9721A" stroke-width="1.5"/>
+          <!-- power dial -->
+          <text x="70" y="150" text-anchor="middle" class="m" font-size="13" fill="#A9721A">shooting power</text>
+          <path d="M70 158 L70 186" stroke="#A9721A" stroke-width="2" marker-end="url(#pu)"/>
+          <!-- hit marker -->
+          <circle cx="360" cy="244" r="7" fill="#E09E2F" stroke="#A9721A" stroke-width="1.5"/>
+          <text x="330" y="224" text-anchor="middle" class="m" font-size="12.5" fill="#A9721A">landed short</text>
+          <!-- target bullseye on ground -->
+          <circle cx="452" cy="244" r="16" fill="none" stroke="#C4534F" stroke-width="2"/>
+          <circle cx="452" cy="244" r="9"  fill="none" stroke="#C4534F" stroke-width="2"/>
+          <circle cx="452" cy="244" r="3"  fill="#C4534F"/>
+          <text x="452" y="278" text-anchor="middle" class="m" font-size="12.5" fill="#C4534F">target</text>
+          <!-- miss distance -->
+          <line x1="367" y1="244" x2="445" y2="244" stroke="#C4534F" stroke-width="2.5" marker-start="url(#ms)" marker-end="url(#ms)"/>
+          <text x="406" y="236" text-anchor="middle" class="m" font-size="12.5" fill="#C4534F">miss</text>
+          <defs>
+            <marker id="pu" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#A9721A"/></marker>
+            <marker id="ms" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#C4534F"/></marker>
+          </defs>
+        </svg>
+        <figcaption>fell short → add power · overshot → cut power · repeat until you hit</figcaption>
+      </figure>
+      <div>
+        <p class="lead">You would never solve the catapult with equations. You <strong>fire, measure the miss, adjust the power</strong>, and fire again — closing in on the target.</p>
+        <div class="callout" style="margin-top:16px">A network learns the very same way. The <strong>miss</strong> is the loss; the <strong>power</strong> is a weight; <strong>adjust and repeat</strong> is training. That is the whole hour.</div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">A homely analogy to demystify the whole loop before any math — everyone has an intuition for aiming. You are sighting in a catapult with no physics: you launch, see where the stone lands, measure how far off the target you are, and turn the shooting power up or down accordingly — too short, add power; too far, ease off — then fire again, tightening on the bullseye each shot. Map it explicitly onto the four boxes: the launch is the forward pass, the gap between where it lands and the target is the loss, deciding which way to turn the power dial is the gradient (which direction reduces the miss), and turning it is the step. A neural network does exactly this, just with millions of "power dials" (weights) instead of one. Keep this picture in your pocket; every abstract term today has a catapult twin.</aside>
+</section>
+
+<!-- 4 ─ divider: loss -->
+<section class="slide divider" id="s4">
+  <svg class="peak" viewBox="0 0 1280 380" preserveAspectRatio="none">
+    <line x1="0" y1="342" x2="1280" y2="342" stroke="#D9D9D2" stroke-width="1"/>
+    <path d="M120 300 C 360 300, 420 120, 640 120 C 860 120, 920 300, 1160 300" fill="none" stroke="#0E7C7B" stroke-width="2.5" opacity="0.5"/>
+    <circle cx="640" cy="120" r="10" fill="#0E7C7B"/>
+    <circle cx="300" cy="255" r="8" fill="#E09E2F"/>
+    <circle cx="980" cy="255" r="8" fill="#E09E2F"/>
+  </svg>
+  <div class="divider-inner">
+    <div class="eyebrow">Lecture 2 · part one</div>
+    <h1>Loss: how wrong are we?</h1>
+    <div class="sub">before you can fix a mistake, you have to measure it</div>
+  </div>
+  <aside class="notes">Transition to box 2. The one idea: to improve, the network needs a single number that says how wrong it currently is. That number is the loss, and driving it down is the entire objective of training. Keep energy up — this is the easy, intuitive part before we earn the backprop math.</aside>
+</section>
+
+<!-- 5 ─ loss = MSE intuition -->
+<section class="slide" id="s5">
+  <div class="eyebrow">Loss · the "how wrong" number</div>
+  <h2 class="slide-title">Loss = distance between <em>guess</em> and <em>truth</em></h2>
+  <div class="body center">
+    <div class="cols">
+      <figure class="fig">
+        <svg width="470" height="290" viewBox="0 0 470 290">
+          <line x1="50" y1="250" x2="440" y2="250" stroke="#8A9099" stroke-width="1.5"/>
+          <line x1="50" y1="30"  x2="50"  y2="250" stroke="#8A9099" stroke-width="1.5"/>
+          <text x="245" y="282" text-anchor="middle" class="m" font-size="13" fill="#8A9099">a sample</text>
+          <!-- truth points -->
+          <circle cx="120" cy="200" r="6" fill="#0E7C7B"/>
+          <circle cx="230" cy="120" r="6" fill="#0E7C7B"/>
+          <circle cx="340" cy="90"  r="6" fill="#0E7C7B"/>
+          <!-- prediction points -->
+          <circle cx="120" cy="150" r="6" fill="#E09E2F"/>
+          <circle cx="230" cy="175" r="6" fill="#E09E2F"/>
+          <circle cx="340" cy="140" r="6" fill="#E09E2F"/>
+          <!-- error bars -->
+          <line x1="120" y1="200" x2="120" y2="150" stroke="#C4534F" stroke-width="2.5"/>
+          <line x1="230" y1="120" x2="230" y2="175" stroke="#C4534F" stroke-width="2.5"/>
+          <line x1="340" y1="90"  x2="340" y2="140" stroke="#C4534F" stroke-width="2.5"/>
+          <text x="300" y="45" class="m" font-size="13" fill="#0E7C7B">● truth</text>
+          <text x="300" y="65" class="m" font-size="13" fill="#A9721A">● guess</text>
+          <text x="150" y="178" class="m" font-size="13" fill="#C4534F">error</text>
+        </svg>
+        <figcaption>each red gap is one error · MSE = average of those gaps, squared</figcaption>
+      </figure>
+      <div>
+        <div class="eqcard">
+          <span class="keq big" data-display
+            data-tex="\text{MSE}=\text{average of }(\text{guess}-\text{truth})^2"></span>
+          <div class="eqnote">mean squared error</div>
+        </div>
+        <p class="lead" style="font-size:20px; margin-top:14px">Why <strong>squared?</strong> It makes every gap positive, and it punishes a big miss far more than a small one.</p>
+        <div class="callout" style="margin-top:12px">One number for the whole dataset: <strong>small = good, big = bad.</strong> Training just tries to shrink it.</div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Ten minutes for the whole loss section; keep this to four. Define loss plainly: it scores how far the guesses are from the truth, collapsed to one number. Use MSE because it is the most intuitive — literally the average squared gap. Two reasons for the square, both on the slide: it kills the sign (a miss of −3 and +3 should both count as badness), and it disproportionately penalises large misses, so the network cares most about its worst mistakes. Do NOT introduce cross-entropy — that is Lecture 4, for classification; say so in one sentence so nobody thinks MSE is the only loss. The takeaway to land: loss is the single dial we will turn down for the rest of the hour.</aside>
+</section>
+
+<!-- 7 ─ divider: gradient descent -->
+<section class="slide divider" id="s7">
+  <svg class="peak" viewBox="0 0 1280 380" preserveAspectRatio="none">
+    <line x1="0" y1="342" x2="1280" y2="342" stroke="#D9D9D2" stroke-width="1"/>
+    <path d="M120 120 C 380 120, 460 300, 640 300 C 820 300, 900 120, 1160 120" fill="none" stroke="#0E7C7B" stroke-width="2.5" opacity="0.5"/>
+    <circle cx="240" cy="150" r="9" fill="#E09E2F"/>
+    <circle cx="380" cy="215" r="9" fill="#E09E2F"/>
+    <circle cx="520" cy="278" r="9" fill="#E09E2F"/>
+    <circle cx="640" cy="300" r="11" fill="#0E7C7B"/>
+  </svg>
+  <div class="divider-inner">
+    <div class="eyebrow">Lecture 2 · part two</div>
+    <h1>Gradient descent</h1>
+    <div class="sub">roll downhill on the loss surface, one small step at a time</div>
+  </div>
+  <aside class="notes">Box 4, previewed before box 3 — because the "which way is downhill" intuition motivates why we bother computing gradients at all. The ball on the curve is the mental model for the whole section: the height is the loss, the position is the weights, and we want the bottom.</aside>
+</section>
+
+<!-- 8 ─ gradient descent = downhill -->
+<section class="slide" id="s8">
+  <div class="eyebrow">Gradient descent · the ball on the hill</div>
+  <h2 class="slide-title">Downhill = the direction that <em>lowers the loss</em></h2>
+  <div class="body center">
+    <div class="cols">
+      <figure class="fig">
+        <svg width="470" height="300" viewBox="0 0 470 300">
+          <line x1="40" y1="255" x2="450" y2="255" stroke="#8A9099" stroke-width="1.5"/>
+          <line x1="40" y1="30"  x2="40"  y2="255" stroke="#8A9099" stroke-width="1.5"/>
+          <text x="20" y="150" class="m" font-size="13" fill="#8A9099" transform="rotate(-90 20 150)">loss</text>
+          <text x="245" y="288" text-anchor="middle" class="m" font-size="13" fill="#8A9099">weight value</text>
+          <path d="M70 60 C 190 60, 210 235, 250 235 C 290 235, 310 60, 430 60" fill="none" stroke="#0E7C7B" stroke-width="3"/>
+          <!-- ball + steps -->
+          <circle cx="110" cy="105" r="9" fill="#E09E2F" stroke="#A9721A" stroke-width="1.5"/>
+          <circle cx="160" cy="175" r="7" fill="#E09E2F" opacity="0.6"/>
+          <circle cx="205" cy="222" r="7" fill="#E09E2F" opacity="0.45"/>
+          <circle cx="250" cy="235" r="9" fill="#0E7C7B"/>
+          <path d="M120 108 L152 168" stroke="#A9721A" stroke-width="2" marker-end="url(#a)"/>
+          <path d="M168 178 L198 216" stroke="#A9721A" stroke-width="2" marker-end="url(#a)"/>
+          <text x="250" y="258" text-anchor="middle" class="m" font-size="12" fill="#0E7C7B">lowest loss</text>
+          <defs><marker id="a" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#A9721A"/></marker></defs>
+        </svg>
+        <figcaption>the slope points uphill · we step the opposite way</figcaption>
+      </figure>
+      <div>
+        <p class="lead">At any weight setting, the <strong>slope</strong> of the loss tells us which way is uphill. Go the <em>other</em> way and the loss drops.</p>
+        <div class="eqcard" style="margin-top:14px">
+          <span class="keq" data-display style="font-size:1.05em"
+            data-tex="\text{new weight}=\text{weight}-\underbrace{\text{lr}\times\text{slope}}_{\text{step size}}"></span>
+          <div class="eqnote">how far we move = the <strong>step size</strong> · the <strong>learning rate</strong> (lr) is the dial that scales it</div>
+        </div>
+        <div class="callout" style="margin-top:12px">The <strong>gradient</strong> is just the slope of the loss for each weight; the minus sign means "go downhill." How big a step we take is the <strong>step size</strong> — up next.</div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">This is the engine of all of deep learning, stated with zero calculus. Height = loss, horizontal = a weight's value. The slope at the ball's feet points uphill; subtract a bit of it and you move downhill, toward lower loss. Read the update rule aloud twice — new weight = old weight − learning rate × slope — because it is literally the last line of the training loop and question 2 on the quiz. Introduce the intuitive term first: the amount we move each time is the "step size"; the "learning rate" is simply the dial that sets that step size (it multiplies the slope) — the next slide names it formally. "Gradient" is just our fancy word for "the slope of the loss with respect to a weight"; keep translating it back to "slope" every time. The one honesty note: real loss surfaces live in millions of dimensions, not one — but the picture is faithful, we just can't draw a million axes.</aside>
+</section>
+
+<!-- 8b ─ extended knowledge: curvature / Newton's method (OPTIONAL) -->
+<section class="slide" id="s8b">
+  <div class="optbadge">OPTIONAL · SAFE TO SKIP</div>
+  <div class="eyebrow">Extended knowledge · a side note, not on the exam</div>
+  <h2 class="slide-title">Slope tells you <em>which way</em> · curvature tells you <em>how sharp</em></h2>
+  <div class="body center">
+    <div class="cols">
+      <figure class="fig">
+        <svg width="480" height="300" viewBox="0 0 480 300">
+          <line x1="30" y1="255" x2="465" y2="255" stroke="#8A9099" stroke-width="1.5"/>
+          <line x1="30" y1="25"  x2="30"  y2="255" stroke="#8A9099" stroke-width="1.5"/>
+          <text x="245" y="288" text-anchor="middle" class="m" font-size="13" fill="#8A9099">weight value</text>
+          <!-- loss bowl -->
+          <path d="M60 55 C 175 55, 195 235, 245 235 C 295 235, 315 55, 430 55" fill="none" stroke="#0E7C7B" stroke-width="3"/>
+          <!-- point on the wall -->
+          <circle cx="120" cy="150" r="7" fill="#E09E2F" stroke="#A9721A" stroke-width="1.5"/>
+          <!-- tangent line (slope / gradient) -->
+          <line x1="72" y1="196" x2="184" y2="86" stroke="#A9721A" stroke-width="2.5" stroke-dasharray="6 4"/>
+          <text x="185" y="86" class="m" font-size="13" fill="#A9721A">slope = gradient</text>
+          <text x="185" y="104" class="m" font-size="12" fill="#A9721A">(1st derivative)</text>
+          <!-- osculating circle hint (curvature) -->
+          <path d="M150 235 A 95 95 0 0 1 340 235" fill="none" stroke="#C4534F" stroke-width="1.5" stroke-dasharray="4 4"/>
+          <text x="300" y="215" text-anchor="middle" class="m" font-size="13" fill="#C4534F">curvature</text>
+          <text x="300" y="232" text-anchor="middle" class="m" font-size="12" fill="#C4534F">(2nd derivative)</text>
+        </svg>
+        <figcaption>the tangent gives direction · how tightly the bowl bends is curvature</figcaption>
+      </figure>
+      <div>
+        <p class="lead"><strong>Gradient</strong> = the slope: which way is downhill and how steep. <strong>Curvature</strong> (the "second derivative") = how fast that slope is <em>itself</em> changing — how sharply the valley bends.</p>
+        <div class="callout" style="margin-top:14px"><strong>Newton's method</strong> uses curvature to pick a smarter step: a tight, narrow valley → take small steps; a broad, flat one → take big steps. Fewer steps to the bottom.</div>
+        <div class="callout" style="margin-top:12px; border-left-color:var(--roi); background:var(--roi-soft)">In deep learning we mostly skip it — curvature is far too expensive across millions of weights. But <strong>Adam</strong> (Lecture 4) cheaply approximates this idea. <em>The main thread continues on the next slide — this one is optional.</em></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Enrichment slide — flagged optional; PhDs will enjoy it, and it can be skipped if time is short. The whole point is the contrast between the two derivatives, both stated as "slopes of slopes," no calculus machinery. The gradient (first derivative) is the tangent line: it points downhill and tells you how steep the ground is right here — that is all plain gradient descent uses. Curvature (the second derivative) measures how the slope itself changes as you move — how tightly the bowl bends; the dashed red arc is a circle hugging the valley, tighter bend = more curvature. Newton's method exploits it: near a sharply curving minimum you should tiptoe, near a gently curving one you can stride, so it effectively chooses the step size for you and often converges in far fewer steps. Why we do not just use it: computing curvature for millions of weights (a giant matrix) is prohibitively expensive, so deep learning sticks with gradients — but the adaptive optimiser Adam, coming in Lecture 4, is a cheap stand-in that scales the step per weight using recent gradient history. Land it as: gradient = direction, curvature = how the direction is changing; today we only need the first.</aside>
+</section>
+
+<!-- 9 ─ learning rate = step size, three modes -->
+<section class="slide" id="s9">
+  <div class="eyebrow">Gradient descent · the learning rate</div>
+  <h2 class="slide-title">Learning rate = <em>step size</em>: too small, too big, just right</h2>
+  <div class="body center">
+    <div class="lrrow">
+      <div class="lrcard">
+        <svg width="250" height="180" viewBox="0 0 250 180">
+          <path d="M20 40 C 45 40, 55 100, 72 100 C 88 100, 92 84, 105 84 C 120 84, 132 142, 150 142 C 172 142, 188 40, 230 40" fill="none" stroke="#0E7C7B" stroke-width="2.5"/>
+          <!-- crawling ball trapped in the shallow local dip -->
+          <circle cx="44" cy="70" r="5" fill="#E09E2F" opacity=".5"/>
+          <circle cx="58" cy="90" r="5" fill="#E09E2F" opacity=".72"/>
+          <circle cx="72" cy="100" r="6.5" fill="#E09E2F" stroke="#C4534F" stroke-width="2"/>
+          <path d="M48 74 L55 86" stroke="#A9721A" stroke-width="1.5"/>
+          <text x="74" y="123" text-anchor="middle" class="m" font-size="10.5" fill="#C4534F">local optimum</text>
+          <circle cx="150" cy="142" r="4" fill="#0E7C7B"/>
+          <text x="150" y="162" text-anchor="middle" class="m" font-size="10.5" fill="#8A9099">true bottom</text>
+        </svg>
+        <div class="lh sm">too small</div>
+        <div class="ls">crawls — and can stall in a local dip, never reaching the true bottom</div>
+      </div>
+      <div class="lrcard">
+        <svg width="250" height="180" viewBox="0 0 250 180">
+          <path d="M20 30 C 90 30, 100 150, 125 150 C 150 150, 160 30, 230 30" fill="none" stroke="#0E7C7B" stroke-width="2.5"/>
+          <circle cx="55" cy="95" r="6" fill="#C4534F"/><circle cx="196" cy="70" r="6" fill="#C4534F" opacity=".8"/>
+          <circle cx="40" cy="55" r="6" fill="#C4534F" opacity=".65"/>
+          <path d="M62 98 C 130 175, 150 120, 190 74" stroke="#C4534F" stroke-width="1.5" fill="none"/>
+          <path d="M190 74 C 120 20, 70 30, 46 52" stroke="#C4534F" stroke-width="1.5" fill="none"/>
+        </svg>
+        <div class="lh bg">too big</div>
+        <div class="ls">overshoots — bounces, can blow up</div>
+      </div>
+      <div class="lrcard">
+        <svg width="250" height="180" viewBox="0 0 250 180">
+          <path d="M20 30 C 90 30, 100 150, 125 150 C 150 150, 160 30, 230 30" fill="none" stroke="#0E7C7B" stroke-width="2.5"/>
+          <circle cx="44" cy="72" r="6" fill="#0E7C7B"/><circle cx="75" cy="120" r="5" fill="#0E7C7B" opacity=".8"/>
+          <circle cx="105" cy="145" r="5" fill="#0E7C7B" opacity=".7"/><circle cx="125" cy="150" r="6" fill="#0E7C7B"/>
+          <path d="M50 78 L70 114" stroke="#0E7C7B" stroke-width="1.5" marker-end="url(#b)"/>
+          <path d="M82 124 L100 142" stroke="#0E7C7B" stroke-width="1.5" marker-end="url(#b)"/>
+          <defs><marker id="b" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 Z" fill="#0E7C7B"/></marker></defs>
+        </svg>
+        <div class="lh ok">just right</div>
+        <div class="ls">steady steps — reaches the bottom fast</div>
+      </div>
+    </div>
+    <div class="callout" style="align-self:center; margin-top:20px">Same downhill rule, three step sizes. The learning rate is the <strong>single most important dial</strong> you will tune all week.</div>
+  </div>
+  <aside class="notes">The learning rate is the multiplier on the slope in the update rule — how big a step we take each time. Walk the three bowls left to right. Too small: the steps are so tiny the ball crawls; training wastes hours, and — because each step can only inch downhill — it can settle into a shallow local dip (a local optimum) and never reach the true bottom. A healthy step size can roll right over such small dips. Too big: each step overshoots the bottom and lands higher up the far wall; the loss bounces around and can even diverge to infinity. Just right: brisk, stable steps that settle into the valley. Tell them plainly this is the first knob they will reach for in every lab and every real project — and that the next slide shows how to read the loss curve to tell which case you are in. Set up the pair prompt.</aside>
+</section>
+
+<!-- 10 ─ pair prompt: which LR is too big -->
+<section class="slide" id="s10">
+  <div class="eyebrow">Gradient descent · your turn</div>
+  <h2 class="slide-title">Three training runs — <em>match each to its learning rate</em></h2>
+  <div class="body center">
+    <div class="abcurve">
+      <figure class="fig">
+        <svg width="340" height="230" viewBox="0 0 380 240">
+          <line x1="45" y1="200" x2="360" y2="200" stroke="#8A9099" stroke-width="1.5"/>
+          <line x1="45" y1="20"  x2="45"  y2="200" stroke="#8A9099" stroke-width="1.5"/>
+          <text x="200" y="230" text-anchor="middle" class="m" font-size="12" fill="#8A9099">epoch →</text>
+          <text x="28" y="110" class="m" font-size="12" fill="#8A9099" transform="rotate(-90 28 110)">loss</text>
+          <!-- run A: oscillating / rising -->
+          <polyline points="55,150 90,70 125,175 160,55 195,185 230,45 265,190 300,40 340,195"
+                    fill="none" stroke="#C4534F" stroke-width="2.5"/>
+        </svg>
+        <figcaption style="color:var(--neg)">Run A</figcaption>
+      </figure>
+      <figure class="fig">
+        <svg width="340" height="230" viewBox="0 0 380 240">
+          <line x1="45" y1="200" x2="360" y2="200" stroke="#8A9099" stroke-width="1.5"/>
+          <line x1="45" y1="20"  x2="45"  y2="200" stroke="#8A9099" stroke-width="1.5"/>
+          <text x="200" y="230" text-anchor="middle" class="m" font-size="12" fill="#8A9099">epoch →</text>
+          <text x="28" y="110" class="m" font-size="12" fill="#8A9099" transform="rotate(-90 28 110)">loss</text>
+          <path d="M55 45 C 130 150, 220 185, 340 192" fill="none" stroke="#0E7C7B" stroke-width="2.5"/>
+        </svg>
+        <figcaption style="color:var(--signal)">Run B</figcaption>
+      </figure>
+      <figure class="fig">
+        <svg width="340" height="230" viewBox="0 0 380 240">
+          <line x1="45" y1="200" x2="360" y2="200" stroke="#8A9099" stroke-width="1.5"/>
+          <line x1="45" y1="20"  x2="45"  y2="200" stroke="#8A9099" stroke-width="1.5"/>
+          <text x="200" y="230" text-anchor="middle" class="m" font-size="12" fill="#8A9099">epoch →</text>
+          <text x="28" y="110" class="m" font-size="12" fill="#8A9099" transform="rotate(-90 28 110)">loss</text>
+          <!-- run C: barely decreasing, still high -->
+          <path d="M55 60 C 150 80, 250 96, 340 108" fill="none" stroke="#E09E2F" stroke-width="2.5"/>
+        </svg>
+        <figcaption style="color:#A9721A">Run C</figcaption>
+      </figure>
+    </div>
+    <div class="callout pair" style="align-self:center; max-width:48em">Turn to a neighbour — <strong>2 minutes.</strong> One rate is <strong>too big</strong>, one <strong>too small</strong>, one <strong>just right</strong>. Which run is which — and what in each curve gives it away?</div>
+  </div>
+  <aside class="notes">This is the assessed think-pair-share for Lecture 2 (the 💬 in the spec). Give them two minutes, then harvest. Answers: Run A's rate is too big — the loss zig-zags violently and trends upward instead of settling, the tell-tale of overshooting the valley (the "too big" bowl from the last slide, seen over time). Run C's rate is too small — the loss inches down so gently it is still high and still falling at the end; it would get there eventually but wastes a lot of compute. Run B is just right — a smooth drop that flattens low as it nears the bottom. Draw the explicit link back to the three bowls: a good run's loss curve looks like the ball rolling calmly to the valley floor, a too-small rate like it barely creeping, a too-big rate like it ricocheting off the walls. This exact skill — reading a learning rate off a loss curve — is questioned again at the end of the hour and on the quiz.</aside>
+</section>
+
+<!-- 11 ─ divider: backpropagation -->
+<section class="slide divider" id="s11">
+  <svg class="peak" viewBox="0 0 1280 380" preserveAspectRatio="none">
+    <line x1="0" y1="342" x2="1280" y2="342" stroke="#D9D9D2" stroke-width="1"/>
+    <g stroke="#C4534F" stroke-width="2" fill="none" marker-end="url(#bk)">
+      <line x1="900" y1="230" x2="640" y2="230"/>
+      <line x1="640" y1="230" x2="380" y2="230"/>
+    </g>
+    <circle cx="900" cy="230" r="12" fill="#0E7C7B"/>
+    <circle cx="640" cy="230" r="12" fill="#fff" stroke="#0E7C7B" stroke-width="3"/>
+    <circle cx="380" cy="230" r="12" fill="#0E7C7B"/>
+    <defs><marker id="bk" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 Z" fill="#C4534F"/></marker></defs>
+  </svg>
+  <div class="divider-inner">
+    <div class="eyebrow">Lecture 2 · part three · the heart of the hour</div>
+    <h1>Backpropagation</h1>
+    <div class="sub">how each weight learns its share of the blame — worked by hand</div>
+  </div>
+  <aside class="notes">The centre of the lecture. Reassure: gradient descent told us to step downhill, but on a network with many weights we need the slope for EACH weight. Backpropagation is the bookkeeping that gets all of them at once. We will do it on the smallest possible network — one input, one hidden neuron, one output, just two weights — with real numbers, so the whole mechanism fits on a slide and every person can check the arithmetic. Go slow here; this is the payoff.</aside>
+</section>
+
+<!-- 12 ─ backprop setup + forward -->
+<section class="slide" id="s12">
+  <div class="eyebrow">Backprop · the smallest network · forward pass</div>
+  <h2 class="slide-title">One input → one hidden → one output: <em>two weights</em></h2>
+  <div class="body center">
+    <div class="cols">
+      <figure class="fig">
+        <svg width="470" height="240" viewBox="0 0 470 240">
+          <!-- nodes -->
+          <circle cx="55"  cy="120" r="26" fill="#fff" stroke="#3D444C" stroke-width="2"/>
+          <text x="55" y="127" text-anchor="middle" font-size="20">x</text>
+          <text x="55" y="175" text-anchor="middle" class="m" font-size="15" fill="#0E7C7B">2</text>
+          <circle cx="235" cy="120" r="28" fill="#E3F0EF" stroke="#0E7C7B" stroke-width="2.5"/>
+          <text x="235" y="120" text-anchor="middle" font-size="15" fill="#0E7C7B">ReLU</text>
+          <text x="235" y="138" text-anchor="middle" class="m" font-size="14" fill="#0E7C7B">h</text>
+          <circle cx="415" cy="120" r="26" fill="#0E7C7B"/>
+          <text x="415" y="127" text-anchor="middle" font-size="20" fill="#fff">ŷ</text>
+          <!-- edges -->
+          <line x1="81" y1="120" x2="207" y2="120" stroke="#0E7C7B" stroke-width="2.5" marker-end="url(#f)"/>
+          <line x1="263" y1="120" x2="389" y2="120" stroke="#0E7C7B" stroke-width="2.5" marker-end="url(#f)"/>
+          <text x="145" y="105" text-anchor="middle" class="m" font-size="16" fill="#0E7C7B">w₁ = 0.5</text>
+          <text x="330" y="105" text-anchor="middle" class="m" font-size="16" fill="#0E7C7B">w₂ = 1.5</text>
+          <text x="145" y="150" text-anchor="middle" class="m" font-size="13" fill="#8A9099">multiply</text>
+          <text x="330" y="150" text-anchor="middle" class="m" font-size="13" fill="#8A9099">multiply</text>
+          <defs><marker id="f" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#0E7C7B"/></marker></defs>
+        </svg>
+        <figcaption>no biases, one neuron per layer — just to keep the arithmetic tiny</figcaption>
+      </figure>
+      <div class="eqcard">
+        <span class="keq" data-display style="font-size:1.02em"
+          data-tex="\begin{aligned}
+          h &= \operatorname{ReLU}(w_1\cdot x)=\operatorname{ReLU}(0.5\times 2)=\mathbf{1}\\[4pt]
+          \hat y &= w_2\cdot h = 1.5\times 1 = \mathbf{1.5}\\[6pt]
+          \text{target } y &= 1\\[2pt]
+          \text{error} &= \hat y - y = 1.5-1 = \mathbf{0.5}\\[4pt]
+          \text{loss} &= (\text{error})^2 = 0.5^2 = \mathbf{0.25}
+          \end{aligned}"></span>
+      </div>
+    </div>
+    <div class="callout" style="align-self:center; margin-top:14px">Forward pass done: we guessed <strong>1.5</strong>, the truth was <strong>1</strong>, so we are off by <strong>0.5</strong> and the loss is <strong>0.25</strong>. Now: how much is each weight to blame?</div>
+  </div>
+  <aside class="notes">Set the stage carefully — every number here is reused for three slides and on the quiz. Input x = 2. First weight w1 = 0.5, so the hidden pre-activation is 0.5×2 = 1, positive, so ReLU passes it: h = 1. Second weight w2 = 1.5, so the guess is 1.5×1 = 1.5. The truth is 1, so we overshot by 0.5, and squaring gives loss 0.25. Say it out loud: this is just Lecture 1's forward pass with a loss bolted on the end. No biases and one neuron per layer purely so the math stays checkable by hand. Pose the driving question of the next two slides: the guess was too high — which weight do we blame, and by how much? Have them predict: both weights are positive and the guess is too high, so both should come DOWN.</aside>
+</section>
+
+<!-- 13 ─ backprop idea: multiply local effects -->
+<section class="slide" id="s13">
+  <div class="eyebrow">Backprop · the one idea</div>
+  <h2 class="slide-title">Blame flows backward: <em>multiply the local effects along the path</em></h2>
+  <div class="body center">
+    <p class="lead" style="max-width:40em; align-self:center; text-align:center">Each weight's gradient answers: <strong>"if I nudge this weight up a little, how much does the loss change?"</strong> Follow the path from the loss back to the weight, and <strong>multiply the local effect at every arrow.</strong></p>
+    <div class="chain" style="margin-top:20px">
+      <div class="lt res">
+        <div class="pd"><span class="keq" data-tex="\dfrac{\partial\,\text{loss}}{\partial\,\text{error}}"></span></div>
+        <div class="cap">loss reacts to<br>the error</div>
+        <div class="val">2 × error</div>
+      </div>
+      <div class="x">×</div>
+      <div class="lt">
+        <div class="pd"><span class="keq" data-tex="\dfrac{\partial\,\text{error}}{\partial \hat y}"></span></div>
+        <div class="cap">error reacts to<br>the guess ŷ</div>
+        <div class="val">1</div>
+      </div>
+      <div class="x">×</div>
+      <div class="lt">
+        <div class="pd"><span class="keq" data-tex="\dfrac{\partial \hat y}{\partial w}"></span></div>
+        <div class="cap">guess reacts to<br>this weight …</div>
+        <div class="val">?</div>
+      </div>
+      <div class="x">×</div>
+      <div class="lt">
+        <div class="pd"><span class="keq" data-tex="\dfrac{\partial(\cdots)}{\partial w}"></span></div>
+        <div class="cap">… and back to<br>earlier weights</div>
+        <div class="val">?</div>
+      </div>
+      <div class="x">=</div>
+      <div class="lt res">
+        <div class="pd"><span class="keq" data-tex="\dfrac{\partial\,\text{loss}}{\partial w}"></span></div>
+        <div class="cap">gradient<br>for that weight</div>
+        <div class="val">slope</div>
+      </div>
+    </div>
+    <div class="matline" style="font-size:14px; color:var(--muted); margin-top:10px">the little <span class="keq" data-tex="\partial"></span> symbols above are just the formal name for each arrow's slope — shown for reference; we only ever multiply the numbers</div>
+    <div class="callout" style="align-self:center; margin-top:22px"><strong>"Local effect" = the slope at one arrow:</strong> how much its output moves when its input moves. Chain them together and you get the loss's slope for a weight — its <strong>gradient</strong>. <em>Multiplying slopes along a path is exactly the <strong>chain rule</strong> from calculus — no symbols needed, just multiply.</em></div>
+  </div>
+  <aside class="notes">This is the conceptual key; do not rush it. Backpropagation sounds fearsome but it is one move repeated: to find how much the loss cares about a given weight, walk the path from the loss back to that weight and multiply one small "local slope" at each arrow. Two starting slopes are the same for every weight: the loss's slope with respect to the error is 2×error (the slope of a squared-error bowl is twice the error — that is our only "derivative = slope" fact today), and the error tracks the guess one-for-one, slope 1. What differs per weight is the rest of the path — that is what the next two slides fill in. Emphasise: no calculus, just "how much does the output move if the input moves" at each step, all multiplied together. Name it once so they recognise the term later — multiplying local slopes along a path is precisely the chain rule; we just never write the symbols. This chain-of-boxes picture is the mental image to keep.</aside>
+</section>
+
+<!-- 14 ─ gradient for w2 (short path) -->
+<section class="slide" id="s14">
+  <div class="eyebrow">Backprop · gradient for w₂ · the short path</div>
+  <h2 class="slide-title">w₂ sits right next to the output</h2>
+  <div class="body center">
+    <figure class="fig">
+      <svg width="620" height="150" viewBox="0 0 620 150">
+        <circle cx="60"  cy="80" r="24" fill="#fff" stroke="#3D444C" stroke-width="2"/><text x="60" y="87" text-anchor="middle" font-size="18">x</text>
+        <circle cx="240" cy="80" r="26" fill="#E3F0EF" stroke="#0E7C7B" stroke-width="2.5"/><text x="240" y="86" text-anchor="middle" font-size="13" fill="#0E7C7B">h=1</text>
+        <circle cx="440" cy="80" r="24" fill="#0E7C7B"/><text x="440" y="87" text-anchor="middle" font-size="16" fill="#fff">ŷ</text>
+        <text x="560" y="86" font-size="16" fill="#C4534F">loss</text>
+        <line x1="84" y1="80" x2="214" y2="80" stroke="#D9D9D2" stroke-width="2.5"/>
+        <line x1="266" y1="80" x2="416" y2="80" stroke="#C4534F" stroke-width="3" marker-end="url(#g)"/>
+        <line x1="464" y1="80" x2="540" y2="80" stroke="#C4534F" stroke-width="3" marker-end="url(#g)"/>
+        <text x="345" y="62" text-anchor="middle" class="m" font-size="15" fill="#C4534F">w₂</text>
+        <defs><marker id="g" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#C4534F"/></marker></defs>
+      </svg>
+      <figcaption>only two arrows between w₂ and the loss</figcaption>
+    </figure>
+    <div class="chain" style="margin-top:8px">
+      <div class="lt res"><div class="pd"><span class="keq" data-tex="\dfrac{\partial\,\text{loss}}{\partial \hat y}"></span></div><div class="cap">2 × error</div><div class="val">1.0</div></div>
+      <div class="x">×</div>
+      <div class="lt"><div class="pd"><span class="keq" data-tex="\dfrac{\partial \hat y}{\partial w_2}"></span></div><div class="cap">guess reacts<br>to w₂ = h</div><div class="val">1.0</div></div>
+      <div class="x">=</div>
+      <div class="lt res"><div class="pd"><span class="keq" data-tex="\dfrac{\partial\,\text{loss}}{\partial w_2}"></span></div><div class="cap">gradient of w₂</div><div class="val">1.0</div></div>
+    </div>
+    <div class="matline" style="margin-top:16px">2 × error = 2 × 0.5 = <b>1.0</b> &nbsp;&nbsp;·&nbsp;&nbsp; guess = w₂ × h, so its slope in w₂ is <b>h = 1</b> &nbsp;&nbsp;→&nbsp;&nbsp; gradient of w₂ = 1.0 × 1 = <b>1.0</b></div>
+    <div class="callout check" style="align-self:center; margin-top:16px"><strong>Your turn — before the next slide: w₁ sits one step deeper in the network. Which extra local effects will its path pick up on the way back?</strong></div>
+  </div>
+  <aside class="notes">Do the easy weight first to build confidence. w2 is the last weight, so its path to the loss is short: guess → error → loss. Start with the shared signal, 2×error = 2×0.5 = 1.0. Then the only weight-specific piece: the guess is w2 times h, so if we nudge w2, the guess moves by h = 1 (this is the "slope 1 line" idea — the multiplier IS the other factor, h). Multiply: gradient of w2 = 1.0 × 1 = 1.0. Say what the sign means: it is positive, so increasing w2 would increase the loss — therefore we will decrease w2. Have them note the number 1.0; we use it on the step slide. Everyone can check this in their head.</aside>
+</section>
+
+<!-- 15 ─ gradient for w1 (long path) -->
+<section class="slide" id="s15">
+  <div class="eyebrow">Backprop · gradient for w₁ · the longer path</div>
+  <h2 class="slide-title">w₁ is deeper in — <em>so the chain is longer</em></h2>
+  <div class="body center">
+    <figure class="fig">
+      <svg width="620" height="150" viewBox="0 0 620 150">
+        <circle cx="60"  cy="80" r="24" fill="#fff" stroke="#3D444C" stroke-width="2"/><text x="60" y="87" text-anchor="middle" font-size="16">x=2</text>
+        <circle cx="240" cy="80" r="26" fill="#E3F0EF" stroke="#0E7C7B" stroke-width="2.5"/><text x="240" y="86" text-anchor="middle" font-size="12" fill="#0E7C7B">ReLU</text>
+        <circle cx="440" cy="80" r="24" fill="#0E7C7B"/><text x="440" y="87" text-anchor="middle" font-size="16" fill="#fff">ŷ</text>
+        <text x="560" y="86" font-size="16" fill="#C4534F">loss</text>
+        <line x1="84" y1="80" x2="214" y2="80" stroke="#C4534F" stroke-width="3" marker-end="url(#h)"/>
+        <line x1="266" y1="80" x2="416" y2="80" stroke="#C4534F" stroke-width="3" marker-end="url(#h)"/>
+        <line x1="464" y1="80" x2="540" y2="80" stroke="#C4534F" stroke-width="3" marker-end="url(#h)"/>
+        <text x="150" y="62" text-anchor="middle" class="m" font-size="15" fill="#C4534F">w₁</text>
+        <text x="345" y="62" text-anchor="middle" class="m" font-size="15" fill="#8A9099">w₂=1.5</text>
+        <defs><marker id="h" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#C4534F"/></marker></defs>
+      </svg>
+      <figcaption>same start, but now the blame passes back through w₂ and the ReLU too</figcaption>
+    </figure>
+    <div class="chain" style="margin-top:6px">
+      <div class="lt res"><div class="pd"><span class="keq" data-tex="\dfrac{\partial\,\text{loss}}{\partial \hat y}"></span></div><div class="cap">2 × error</div><div class="val">1.0</div></div>
+      <div class="x">×</div>
+      <div class="lt"><div class="pd"><span class="keq" data-tex="\dfrac{\partial \hat y}{\partial h}"></span></div><div class="cap">guess reacts<br>to h = w₂</div><div class="val">1.5</div></div>
+      <div class="x">×</div>
+      <div class="lt"><div class="pd"><span class="keq" data-tex="\dfrac{\partial h}{\partial z}"></span></div><div class="cap">ReLU slope<br>(h &gt; 0)</div><div class="val">1</div></div>
+      <div class="x">×</div>
+      <div class="lt"><div class="pd"><span class="keq" data-tex="\dfrac{\partial z}{\partial w_1}"></span></div><div class="cap">hidden reacts<br>to w₁ = x</div><div class="val">2</div></div>
+      <div class="x">=</div>
+      <div class="lt res"><div class="pd"><span class="keq" data-tex="\dfrac{\partial\,\text{loss}}{\partial w_1}"></span></div><div class="cap">gradient of w₁</div><div class="val">3.0</div></div>
+    </div>
+    <div class="matline" style="margin-top:14px">1.0 × 1.5 × 1 × 2 = <b>3.0</b> &nbsp;&nbsp;<span style="font-size:14px; color:var(--muted)">(z = w₁·x, the hidden value before ReLU)</span></div>
+  </div>
+  <aside class="notes">Now the deeper weight, using the exact same recipe — just more arrows. Start identically with 2×error = 1.0. Then walk backward: the guess is w2 times h, so the guess reacts to h by the factor w2 = 1.5; the hidden unit went through ReLU and h was positive, so the ReLU slope is 1 (it passed the signal through unchanged — if h had been clamped to 0, this factor would be 0 and w1 would get no blame at all); finally the hidden pre-activation is w1 times x, so it reacts to w1 by the factor x = 2. Multiply the whole chain: 1.0 × 1.5 × 1 × 2 = 3.0. That is the gradient of w1. Point out the pattern they can now see: a deeper weight's gradient is the shallower signal times the extra local slopes on the way in. This is literally what loss.backward() automates — reusing the shared front part (the 1.0) for every weight.</aside>
+</section>
+
+<!-- 16 ─ one gradient-descent step by hand -->
+<section class="slide" id="s16">
+  <div class="eyebrow">Backprop → step · one full update by hand</div>
+  <h2 class="slide-title">Take the step: <em>weight − lr × gradient</em></h2>
+  <div class="body center">
+    <div class="cols">
+      <div class="eqcard">
+        <div class="eqnote" style="margin:0 0 8px">learning rate lr = 0.1</div>
+        <span class="keq" data-display style="font-size:1.05em"
+          data-tex="\begin{aligned}
+          w_2 &\leftarrow 1.5 - 0.1\times 1.0 = \mathbf{1.4}\\[6pt]
+          w_1 &\leftarrow 0.5 - 0.1\times 3.0 = \mathbf{0.2}
+          \end{aligned}"></span>
+        <div class="eqnote" style="margin-top:10px">both weights came <strong>down</strong> — the guess was too high</div>
+      </div>
+      <div>
+        <div class="callout check" style="margin-top:0">Did the loss actually drop? Re-run the forward pass with the new weights:</div>
+        <div class="eqcard" style="margin-top:12px">
+          <span class="keq" data-display style="font-size:0.98em"
+            data-tex="\begin{aligned}
+            h &= \operatorname{ReLU}(0.2\times 2)=0.4\\[3pt]
+            \hat y &= 1.4\times 0.4 = 0.56\\[3pt]
+            \text{loss} &= (0.56-1)^2 = \mathbf{0.19}
+            \end{aligned}"></span>
+        </div>
+        <div class="callout" style="margin-top:12px">Loss fell <strong>0.25 → 0.19</strong> in one step. Repeat thousands of times and the guess closes in on the truth.</div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">The payoff — one complete learning step, start to finish, by hand. Recall the update rule: new weight = old weight − lr × gradient. With a learning rate of 0.1: w2 goes 1.5 − 0.1×1.0 = 1.4; w1 goes 0.5 − 0.1×3.0 = 0.2. Both dropped, which is exactly right — the guess was too high and both weights were positive, so lowering them lowers the guess. Now the satisfying check on the right: plug the new weights back through the network and the loss falls from 0.25 to 0.19 after a single step. That is the entire mechanism of deep learning: forward, loss, backward, step — and the loss ticks down. Do a hundred thousand of these and you have a trained network. Note the learning rate's role live: too big a value here would overshoot and the loss could rise instead — connect back to the three bowls. This slide and the quiz share these numbers exactly.</aside>
+</section>
+
+<!-- 16b ─ the same example in PyTorch -->
+<section class="slide" id="s16b">
+  <div class="eyebrow">Backprop · autograd checks our work</div>
+  <h2 class="slide-title">The <em>exact same example</em>, in PyTorch</h2>
+  <div class="body center">
+    <div class="cols" style="align-items:stretch">
+      <pre class="code" style="flex:1.55; font-size:15px; align-self:center">
+<span class="k">import</span> torch
+
+x, y = torch.tensor(<span class="n">2.0</span>), torch.tensor(<span class="n">1.0</span>)   <span class="c"># input, target</span>
+w1 = torch.tensor(<span class="n">0.5</span>, requires_grad=<span class="k">True</span>)
+w2 = torch.tensor(<span class="n">1.5</span>, requires_grad=<span class="k">True</span>)
+
+h    = torch.relu(w1 * x)     <span class="c"># hidden neuron</span>
+pred = w2 * h                 <span class="c"># the guess</span>
+loss = (pred - y) ** <span class="n">2</span>        <span class="c"># squared error</span>
+loss.backward()               <span class="c"># backprop → fills .grad</span>
+
+<span class="k">print</span>(pred.item(), loss.item())
+<span class="k">print</span>(w1.grad.item(), w2.grad.item())
+</pre>
+      <div style="flex:1; display:flex; flex-direction:column; justify-content:center">
+        <div class="eqcard" style="text-align:left; background:#22272D; border-color:#22272D">
+          <div class="eqnote" style="color:#8A9099; margin:0 0 10px">console output</div>
+          <div style="font-family:var(--mono); font-size:20px; color:#E8EAED; line-height:1.9">
+            pred = <b style="color:#7FD1CF">1.5</b> &nbsp; loss = <b style="color:#7FD1CF">0.25</b><br>
+            w1.grad = <b style="color:#F0C674">3.0</b> &nbsp; w2.grad = <b style="color:#F0C674">1.0</b>
+          </div>
+        </div>
+        <div class="callout check" style="margin-top:16px">Autograd's numbers are <strong>exactly</strong> the ones you found by hand: gradients <strong>3.0</strong> (w₁) and <strong>1.0</strong> (w₂). <code>loss.backward()</code> ran the whole backward chain for you.</div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">The reveal that the by-hand walk was not a toy — it is literally what the computer does. Read the script top to bottom: it builds the same tiny net (x = 2, w1 = 0.5, w2 = 1.5, target 1), and the two weights are flagged requires_grad=True, which tells PyTorch to track them for gradients. The forward three lines mirror our slides exactly: hidden via relu, the guess, the squared-error loss. Then the single line loss.backward() runs the entire backward chain and deposits each weight's gradient into its .grad. The printout is the punchline: pred = 1.5 and loss = 0.25 (our forward numbers), and w1.grad = 3.0, w2.grad = 1.0 — the very gradients we multiplied out by hand, to the decimal. Say it plainly: you now understand what autograd computes, so it is never a black box to you. In Lab 1 you will not write this from scratch; you will fill blanks in exactly this shape. (Note the squared error with no one-half is why the start signal was 2×error — PyTorch uses the same convention.)</aside>
+</section>
+
+<!-- 17 ─ generalize by picture -->
+<section class="slide" id="s17">
+  <div class="eyebrow">Backprop · at scale</div>
+  <h2 class="slide-title">The same arrows on a <em>whole network</em> = <code>loss.backward()</code></h2>
+  <div class="body center">
+    <div class="cols">
+      <figure class="fig">
+        <svg width="470" height="290" viewBox="0 0 470 290">
+          <text x="55" y="26" text-anchor="middle" class="m" font-size="12" fill="#8A9099">forward →</text>
+          <text x="415" y="26" text-anchor="middle" class="m" font-size="12" fill="#C4534F">← backward</text>
+          <!-- forward edges (teal) -->
+          <g stroke="#0E7C7B" stroke-width="1.5" opacity="0.4">
+            <line x1="55" y1="90" x2="180" y2="70"/><line x1="55" y1="90" x2="180" y2="150"/><line x1="55" y1="90" x2="180" y2="230"/>
+            <line x1="55" y1="200" x2="180" y2="70"/><line x1="55" y1="200" x2="180" y2="150"/><line x1="55" y1="200" x2="180" y2="230"/>
+            <line x1="180" y1="70" x2="305" y2="110"/><line x1="180" y1="70" x2="305" y2="190"/>
+            <line x1="180" y1="150" x2="305" y2="110"/><line x1="180" y1="150" x2="305" y2="190"/>
+            <line x1="180" y1="230" x2="305" y2="110"/><line x1="180" y1="230" x2="305" y2="190"/>
+            <line x1="305" y1="110" x2="415" y2="150"/><line x1="305" y1="190" x2="415" y2="150"/>
+          </g>
+          <!-- one highlighted backward path (red) -->
+          <g stroke="#C4534F" stroke-width="2.5" fill="none" marker-end="url(#k)">
+            <line x1="410" y1="150" x2="312" y2="112"/>
+            <line x1="300" y1="108" x2="186" y2="72"/>
+            <line x1="176" y1="70" x2="60" y2="92"/>
+          </g>
+          <!-- nodes -->
+          <circle cx="55" cy="90" r="16" fill="#fff" stroke="#3D444C" stroke-width="2"/>
+          <circle cx="55" cy="200" r="16" fill="#fff" stroke="#3D444C" stroke-width="2"/>
+          <circle cx="180" cy="70" r="16" fill="#E3F0EF" stroke="#0E7C7B" stroke-width="2"/>
+          <circle cx="180" cy="150" r="16" fill="#E3F0EF" stroke="#0E7C7B" stroke-width="2"/>
+          <circle cx="180" cy="230" r="16" fill="#E3F0EF" stroke="#0E7C7B" stroke-width="2"/>
+          <circle cx="305" cy="110" r="16" fill="#E3F0EF" stroke="#0E7C7B" stroke-width="2"/>
+          <circle cx="305" cy="190" r="16" fill="#E3F0EF" stroke="#0E7C7B" stroke-width="2"/>
+          <circle cx="415" cy="150" r="18" fill="#0E7C7B"/><text x="415" y="156" text-anchor="middle" font-size="14" fill="#fff">ŷ</text>
+          <defs><marker id="k" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#C4534F"/></marker></defs>
+        </svg>
+        <figcaption>one red path = the chain we just did · every weight gets its own</figcaption>
+      </figure>
+      <div>
+        <p class="lead">A real network has thousands of weights. Backprop finds <strong>every</strong> gradient in one backward sweep — reusing the shared parts of each path, exactly as our <strong>1.0</strong> was reused for both weights.</p>
+        <div class="callout" style="margin-top:14px">You will <strong>never</strong> compute these by hand again. One call — <code>loss.backward()</code> — does the whole sweep for you. But now you know <em>what it is doing.</em></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Zoom out and relieve the anxiety. Our two-weight chain was the hard part conceptually; a real network is just many such chains sharing their front sections. The red path is exactly the calculation we just did, now one thread among thousands. Backprop is efficient because it reuses shared pieces — just as our 2×error = 1.0 was reused for both w1 and w2, the algorithm computes each shared slope once and fans it out. The liberating punchline: you will never do this by hand again — PyTorch's loss.backward() runs the entire backward sweep automatically. But unlike most people who type that line, you now know precisely what it computes: the loss's slope for every single weight, so the optimiser knows which way is downhill. Bridge to the code slide.</aside>
+</section>
+
+<!-- 18 ─ divider: the training loop -->
+<section class="slide divider" id="s18">
+  <svg class="peak" viewBox="0 0 1280 380" preserveAspectRatio="none">
+    <line x1="0" y1="342" x2="1280" y2="342" stroke="#D9D9D2" stroke-width="1"/>
+    <path d="M120 300 C 360 300, 400 120, 640 120 C 880 120, 920 300, 1160 300" fill="none" stroke="#0E7C7B" stroke-width="2.5" opacity="0.45"/>
+  </svg>
+  <div class="divider-inner">
+    <div class="eyebrow">Lecture 2 · part four</div>
+    <h1>The PyTorch training loop</h1>
+    <div class="sub">everything you just did, in five lines you will recognise</div>
+  </div>
+  <aside class="notes">Bring it home. All the intuition now collapses into a tiny, readable block of code — the loop they will fill in blanks on in Lab 1. Set the expectation: you will not memorise syntax, you will recognise the four boxes from slide 3.</aside>
+</section>
+
+<!-- 19 ─ training loop annotated -->
+<section class="slide" id="s19">
+  <div class="eyebrow">Training loop · five steps, line by line</div>
+  <h2 class="slide-title">The whole thing, <em>annotated</em></h2>
+  <div class="body center">
+    <pre class="code" style="align-self:center; max-width:60em; width:100%">
+<span class="k">for</span> epoch <span class="k">in</span> <span class="k">range</span>(<span class="n">20</span>):              <span class="c"># repeat the loop many times</span>
+
+    pred = model(x)                 <span class="c"># 1 · FORWARD   — make a guess</span>
+    loss = loss_fn(pred, y)         <span class="c"># 2 · LOSS      — how wrong?</span>
+
+    optimizer.zero_grad()           <span class="c"># 3 · ZERO      — clear old gradients</span>
+    loss.backward()                 <span class="c"># 4 · BACKWARD  — backprop the blame</span>
+    optimizer.step()                <span class="c"># 5 · STEP      — nudge every weight</span>
+</pre>
+    <div class="callout" style="align-self:center; margin-top:16px">Same four boxes from slide 3. The one new habit: <strong>zero_grad</strong> — PyTorch <em>adds up</em> gradients, so you must wipe last step's before backprop, or they pile up.</div>
+  </div>
+  <aside class="notes">Read it top to bottom in plain English, mapping each line to what we built. The for-loop just repeats everything. Line 1, forward: model(x) pushes the input through and returns the guess — Lecture 1's forward pass. Line 2, loss: compare guess to truth, get the one "how wrong" number. Line 3, zero_grad: the only line without an obvious counterpart in our hand-calc — PyTorch accumulates gradients by default, so before each backward we must reset last iteration's to zero, or they add up and corrupt the step; forgetting it is the single most common beginner bug. Line 4, backward: the whole backward sweep from the last section, computing every gradient. Line 5, step: apply weight − lr × gradient to every weight, using the learning rate set on the optimizer. Tell them: in Lab 1 these five lines are exactly the blanks you fill in. The spec's canonical order is forward → loss → zero → backward → step; that is what the quiz asks them to reproduce.</aside>
+</section>
+
+<!-- 20 ─ live demo: watch the loss fall -->
+<section class="slide" id="s20">
+  <div class="eyebrow">Training loop · live demo</div>
+  <h2 class="slide-title">Run those five lines for 20 epochs — <em>watch the loss fall</em></h2>
+  <div class="body center">
+    <div class="cols">
+      <figure class="fig">
+        <svg width="470" height="290" viewBox="0 0 470 290">
+          <line x1="50" y1="250" x2="450" y2="250" stroke="#8A9099" stroke-width="1.5"/>
+          <line x1="50" y1="20"  x2="50"  y2="250" stroke="#8A9099" stroke-width="1.5"/>
+          <text x="250" y="282" text-anchor="middle" class="m" font-size="13" fill="#8A9099">epoch</text>
+          <text x="30" y="135" class="m" font-size="13" fill="#8A9099" transform="rotate(-90 30 135)">loss</text>
+          <path d="M55 40 C 120 150, 200 220, 300 238 C 360 246, 410 247, 445 248"
+                fill="none" stroke="#0E7C7B" stroke-width="3"/>
+          <circle cx="55" cy="40" r="5" fill="#E09E2F"/>
+          <circle cx="445" cy="248" r="5" fill="#0E7C7B"/>
+          <text x="80" y="35" class="m" font-size="12" fill="#A9721A">random start</text>
+          <text x="360" y="238" class="m" font-size="12" fill="#0E7C7B">trained</text>
+        </svg>
+        <figcaption>the healthy shape: steep drop, then a gentle flattening</figcaption>
+      </figure>
+      <div>
+        <p class="lead">A tiny classifier, random weights, 20 passes over the data. Each pass runs the five lines on every batch.</p>
+        <div class="callout" style="margin-top:14px">The <strong>loss curve</strong> is your dashboard: a smooth drop that levels off means training is working. We read the unhealthy shapes next.</div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">If the live demo runs, narrate it against this curve; if not, this static figure carries the point. Start: random weights, high loss, useless predictions. Press run. Each epoch is one sweep of the five lines over all the data; the printed loss ticks down and the curve traces this shape — a steep early drop as the big, easy errors get fixed, then a flattening as the model fine-tunes and approaches the valley floor from slide 8. This is the healthy signature. Tell them the loss curve is the single most useful diagnostic they will watch in every lab this week — and the very next slide teaches them to read a sick one. Keep it concrete and short; the goal is to connect "five lines of code" to "a number that goes down."</aside>
+</section>
+
+<!-- 21 ─ diagnosing LR from loss curves -->
+<section class="slide" id="s21">
+  <div class="eyebrow">Reading the dashboard · learning-rate diagnosis</div>
+  <h2 class="slide-title">Read the loss curve, <em>read the learning rate</em></h2>
+  <div class="body center">
+    <div class="gallery">
+      <div class="gcard">
+        <svg width="260" height="170" viewBox="0 0 260 170">
+          <line x1="30" y1="140" x2="245" y2="140" stroke="#8A9099" stroke-width="1.5"/>
+          <line x1="30" y1="12"  x2="30"  y2="140" stroke="#8A9099" stroke-width="1.5"/>
+          <path d="M38 30 C 90 50, 160 78, 240 100" fill="none" stroke="#E09E2F" stroke-width="2.5"/>
+        </svg>
+        <div class="gt lo">too low</div>
+        <div class="gd">barely drops — still high, still falling at the end. Wasting time.</div>
+      </div>
+      <div class="gcard">
+        <svg width="260" height="170" viewBox="0 0 260 170">
+          <line x1="30" y1="140" x2="245" y2="140" stroke="#8A9099" stroke-width="1.5"/>
+          <line x1="30" y1="12"  x2="30"  y2="140" stroke="#8A9099" stroke-width="1.5"/>
+          <polyline points="38,90 70,35 102,110 134,28 166,120 198,22 230,128"
+                    fill="none" stroke="#C4534F" stroke-width="2.5"/>
+        </svg>
+        <div class="gt hi">too high</div>
+        <div class="gd">spikes and climbs — overshoots the valley. Lower the rate.</div>
+      </div>
+      <div class="gcard">
+        <svg width="260" height="170" viewBox="0 0 260 170">
+          <line x1="30" y1="140" x2="245" y2="140" stroke="#8A9099" stroke-width="1.5"/>
+          <line x1="30" y1="12"  x2="30"  y2="140" stroke="#8A9099" stroke-width="1.5"/>
+          <path d="M38 22 C 90 105, 150 132, 240 136" fill="none" stroke="#0E7C7B" stroke-width="2.5"/>
+        </svg>
+        <div class="gt ok">just right</div>
+        <div class="gd">steep drop, then flattens low. This is the one you want.</div>
+      </div>
+    </div>
+    <div class="callout" style="align-self:center; margin-top:20px">Three shapes, three diagnoses. First move when training misbehaves: <strong>change the learning rate</strong> and look again.</div>
+  </div>
+  <aside class="notes">This is the outcome "diagnose too-high/too-low learning rate from a loss curve," and it maps straight onto quiz question 3. Walk the three. Too low (amber): the curve slopes down so gently it is still high and still descending when time runs out — the model would get there eventually but you are burning compute; nudge the rate up. Too high (red): the curve is jagged and trends upward, the loss spiking as steps overshoot the valley — exactly Run A from the pair prompt; cut the rate. Just right (teal): a sharp initial drop that flattens out low and stays there — the target shape from the demo. Give them the rule of thumb: when training looks wrong, the learning rate is the first dial to move, then re-read this same picture. They will do exactly this on the quiz in two minutes.</aside>
+</section>
+
+<!-- 22 ─ closing discussion -->
+<section class="slide" id="s22">
+  <div class="eyebrow">Lecture 2 · discussion</div>
+  <h2 class="slide-title">Full circle: <em>how does a network learn?</em></h2>
+  <div class="body center">
+    <p class="lead" style="max-width:38em; align-self:center; text-align:center">You can now answer it: <strong>guess</strong> (forward) → <strong>measure</strong> (loss) → <strong>assign blame</strong> (backprop) → <strong>nudge</strong> (step), repeated until the loss stops falling.</p>
+    <div class="callout pair" style="align-self:center; max-width:44em">
+      <strong>To train a network on your own data, you need labelled examples.</strong> For a prediction you would want in your lab — what is the "truth" the loss would measure against, and how many labelled samples could you actually get?
+    </div>
+    <div class="callout" style="align-self:center; max-width:44em; margin-top:14px">Hold that number in mind — in Lab 1 you run this exact loop on real clinical data, and in Lecture 4 we tackle what goes wrong when labels are few.</div>
+  </div>
+  <aside class="notes">Close the hour by tying the mechanism back to their reality. Two to three minutes with a neighbour, then harvest a few aloud. The hidden lesson: every bit of today's machinery needs labelled truth to compute the loss — so the practical bottleneck in their lab is rarely the network, it is getting trustworthy labels and enough of them. Push both halves: what plays the role of "truth" (a confirmed AST result, a reference-method concentration, an expert-adjudicated call?) and realistically how many such labelled samples exist. Their numbers seed Lab 1's discussion and set up Lecture 4 (small-data problems) and Lecture 8 (transfer learning, where a pretrained model rescues you when labels are scarce). Bridge: next you will run this loop for real in Colab.</aside>
+</section>
+
+<!-- 23 ─ quiz 2 hand-out -->
+<section class="slide" id="s23">
+  <div class="eyebrow">Lecture 2 · check your understanding</div>
+  <h2 class="slide-title">Quiz 2 — <em>then we walk it together</em></h2>
+  <div class="body" style="justify-content:flex-start">
+    <div class="cols" style="align-items:flex-start; margin-top:6px">
+      <div>
+        <p class="lead" style="margin-bottom:4px">Five items, mostly mirroring what we did by hand:</p>
+        <ul style="max-width:26em; margin-top:6px">
+          <li style="font-size:22px; margin-bottom:9px">One-step <strong>backprop</strong> on a two-weight net</li>
+          <li style="font-size:22px; margin-bottom:9px">One <strong>gradient-descent update</strong> (weight − lr × gradient)</li>
+          <li style="font-size:22px; margin-bottom:9px">Diagnose four <strong>loss curves</strong> — and name the fix</li>
+          <li style="font-size:22px; margin-bottom:9px">Put the <strong>five training-loop lines</strong> in order</li>
+          <li style="font-size:22px; margin-bottom:0"><strong>Discuss — does a lower <em>training</em> loss always mean a better model?</strong> <span style="color:var(--muted)">(a peek at Lecture 4: overfitting)</span></li>
+        </ul>
+      </div>
+      <div class="eqcard">
+        <div class="eqnote" style="margin:0 0 10px">the move you now own</div>
+        <span class="keq big" data-display
+          data-tex="\text{new weight}=\text{weight}-\text{lr}\times\text{gradient}"></span>
+        <div class="callout" style="margin-top:16px; text-align:left">Same numbers as the worked slides — if you followed the two-weight walk, you already know how to do every item.</div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Hand out Quiz 2 and give them a few quiet minutes, then walk the answers on the board. Reassure: nothing on it is new — the backprop item uses the same tiny network and the same recipe (multiply the local effects along the path), the update item is the one-line rule they just applied to get w1 = 0.2 and w2 = 1.4, the curve-matching is the gallery they just read (now with a fourth, trickier curve and a "what would you change?" follow-up), and the ordering item is the annotated five lines. The final item is an open discussion question — a model that nails its training data yet flops on new samples — planted here purely to foreshadow overfitting in Lecture 4; do not resolve it now, just let them wonder. This closes the "if we teach it, we assess it" loop for the lecture. Then a ten-minute break before Lab 1.</aside>
+</section>
+
+</body>
+</html>

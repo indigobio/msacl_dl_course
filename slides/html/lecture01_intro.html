@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 1 · What Is Deep Learning?</title>
+<link rel="stylesheet" href="../assets/theme.css">
+<link rel="stylesheet" href="../assets/katex/katex.min.css">
+<script src="../assets/slides.js"></script>
+<script defer src="../assets/katex/katex.min.js"></script>
+<script>
+/* Typeset any .keq element from its data-tex (KaTeX, bundled locally so the
+   deck renders offline / headless). display mode when data-display is present. */
+window.addEventListener("load", function () {
+  if (!window.katex) return;
+  document.querySelectorAll(".keq").forEach(function (el) {
+    try {
+      katex.render(el.getAttribute("data-tex"), el, {
+        displayMode: el.hasAttribute("data-display"),
+        throwOnError: false
+      });
+    } catch (e) { /* leave raw text on failure */ }
+  });
+});
+</script>
+<style>
+/* ---- Lecture 1 local helpers (kept tiny; palette from theme.css) ---- */
+.hookcard { flex:1; background:#fff; border:1px solid var(--hairline); border-radius:12px;
+  padding:16px 16px 14px; display:flex; flex-direction:column; align-items:center; text-align:center; min-width:0; }
+.hookcard .cimg { height:150px; display:flex; align-items:center; justify-content:center; }
+.hookcard .cimg img { max-height:150px; max-width:100%; border-radius:8px; display:block; }
+.hookcard .ctitle { font-size:19px; font-weight:600; color:var(--ink); margin-top:12px; line-height:1.2; }
+.hookcard .csub { font-size:15px; color:var(--muted); margin-top:6px; line-height:1.35; }
+.credit { font-family:var(--mono); font-size:13px; color:var(--muted); text-align:center; margin-top:14px; letter-spacing:.04em; }
+
+/* five-part ML definition */
+.defsentence { font-size:33px; line-height:1.5; color:var(--ink-soft); max-width:24em; margin:0 auto; text-align:center; }
+.defsentence .p { color:var(--signal); font-weight:600; white-space:nowrap; }
+.defsentence .p .num { display:inline-block; font-family:var(--mono); font-size:16px; color:#fff;
+  background:var(--signal); border-radius:50%; width:22px; height:22px; line-height:22px; text-align:center;
+  margin-right:5px; vertical-align:2px; }
+.defcards { display:flex; gap:14px; margin-top:34px; }
+.defcards .dc { flex:1; background:var(--signal-soft); border-radius:10px; padding:14px 12px; text-align:center; min-width:0; }
+.defcards .dc .dn { font-family:var(--mono); font-size:15px; color:var(--signal); font-weight:700; }
+.defcards .dc .dl { font-size:18px; font-weight:600; color:var(--ink); margin:6px 0 6px; line-height:1.2; }
+.defcards .dc .dg { font-size:14px; color:var(--muted); line-height:1.35; }
+
+/* matrix / vector grids reuse table.ngrid; row highlight helpers */
+table.ngrid td.rowA { background:var(--signal-soft); }
+table.ngrid td.rowB { background:var(--roi-soft); }
+.matline { font-family:var(--mono); font-size:22px; color:var(--ink-soft); text-align:center; line-height:1.7; }
+.matline b { color:var(--signal); }
+.matline .neg { color:var(--neg); }
+.brace { font-size:60px; color:var(--muted); font-weight:200; align-self:center; }
+.mateq { display:flex; gap:26px; align-items:center; justify-content:center; }
+.mateq .lbl { font-family:var(--mono); font-size:15px; letter-spacing:.1em; color:var(--muted);
+  text-transform:uppercase; text-align:center; margin-bottom:8px; }
+.mateq .sym { font-family:var(--mono); font-size:30px; color:var(--muted); align-self:center; padding-top:22px; }
+
+/* nested circles legend */
+.nest-legend { display:flex; flex-direction:column; gap:14px; }
+.nest-legend .row { display:flex; align-items:flex-start; gap:12px; }
+.nest-legend .dot { width:16px; height:16px; border-radius:50%; margin-top:6px; flex:0 0 auto; }
+.nest-legend .t { font-size:22px; color:var(--ink-soft); line-height:1.4; }
+.nest-legend .t b { color:var(--ink); }
+
+/* two-pipe compare */
+.pipecol { display:flex; flex-direction:column; align-items:center; gap:10px; }
+.pipecol .stage { border:2px solid var(--ink-soft); border-radius:10px; padding:11px 16px; font-size:18px;
+  font-weight:600; background:#fff; text-align:center; line-height:1.25; min-width:190px; }
+.pipecol .stage small { display:block; font-family:var(--mono); font-weight:400; font-size:13px; color:var(--muted); margin-top:3px; }
+.pipecol .stage.learn { border-color:var(--signal); color:var(--signal); }
+.pipecol .stage.hand { border-color:var(--roi); color:#A9721A; }
+.pipecol .down { font-size:20px; color:var(--muted); }
+
+/* ---- Lecture 1 revision helpers ---- */
+/* per-lecture question roadmap (now slide 3) */
+.roadmap { display:flex; gap:46px; align-items:flex-start; width:100%; }
+.roadmap .col { flex:1; display:flex; flex-direction:column; gap:14px; min-width:0; }
+.seg .seghd { font-family:var(--mono); font-size:13px; letter-spacing:.08em; text-transform:uppercase; color:var(--signal); font-weight:700; border-bottom:1px solid var(--hairline); padding-bottom:4px; margin-bottom:8px; }
+.seg .qr { display:flex; gap:12px; align-items:baseline; margin:5px 0; }
+.seg .qr .tag { font-family:var(--mono); font-size:12.5px; font-weight:700; color:var(--muted); flex:0 0 74px; white-space:nowrap; }
+.seg .qr .q { font-size:16.5px; line-height:1.3; color:var(--ink-soft); }
+.seg .qr.today .tag { color:var(--signal); }
+.seg .qr.today .q { color:var(--ink); font-weight:600; }
+.seg .qr.lab .q { color:var(--muted); font-style:italic; }
+.seg .qr.lab .tag { color:#A9721A; }
+
+/* scope will/won't icons (now slide 2) */
+#s2 li { font-size:21px; line-height:1.4; margin-bottom:8px; }
+#s2 .callout { margin-top:12px; font-size:21px; }
+.scopehead { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+.scopehead .ic { flex:0 0 auto; }
+.scopehead .glabel { font-family:var(--mono); font-size:15px; letter-spacing:.1em; text-transform:uppercase; font-weight:700; }
+
+/* KaTeX equation blocks */
+.keq { color:var(--ink); }
+.keq.big { font-size:1.35em; }
+.eqcard { background:#fff; border:1px solid var(--hairline); border-radius:12px; padding:22px 26px; text-align:center; }
+.eqnote { font-family:var(--mono); font-size:15px; color:var(--muted); margin-top:12px; letter-spacing:.04em; }
+
+/* universal approximation (slide 8) */
+.uax { display:flex; gap:12px; align-items:center; justify-content:center; }
+
+/* hierarchy pipeline with real thumbnails (now slide 20) */
+.hpipe { display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:nowrap; }
+.hstage { display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center; width:150px; }
+.hstage img { width:120px; height:120px; object-fit:cover; border-radius:10px; border:1px solid var(--hairline); display:block; }
+.hstage .thumb { width:120px; height:120px; border-radius:10px; border:1px solid var(--hairline); background:#fff; display:flex; align-items:center; justify-content:center; }
+.hstage .hlabel { font-size:16px; font-weight:600; color:var(--ink); line-height:1.2; }
+.hstage .hsub { font-family:var(--mono); font-size:12px; color:var(--muted); line-height:1.3; }
+.hstage.call .hlabel { color:var(--signal); }
+.hpipe .harrow { font-size:22px; color:var(--muted); flex:0 0 auto; }
+
+/* engineered-feature chips (slide 9) */
+.chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+.chips .chip { font-family:var(--mono); font-size:14px; color:#A9721A; background:var(--roi-soft); border:1px solid var(--roi); border-radius:16px; padding:4px 12px; }
+</style>
+</head>
+<body>
+
+<!-- 1 ─ title -->
+<section class="slide title-slide" id="s1">
+  <div class="eyebrow"><b>MSACL</b> · DS301 Deep Learning · Segment 1 · Lecture 1</div>
+  <h1>What is <em>deep learning</em>?</h1>
+  <div class="sub">A quick introduction to DL and this course</div>
+  <aside class="notes">Sunday morning, hour one — the very first hour of the course. Welcome them. Set the contract for the whole 15 hours: intuition first, mass spec always, and a little arithmetic by hand because most of you are PhDs and numbers make it click. Promise of THIS hour: by the end you will know exactly what a neuron computes, you will multiply a weight matrix by an input vector by hand, and you will be able to say in one sentence how deep learning differs from the machine learning you may already use. Nothing today needs math beyond multiply-and-add.</aside>
+</section>
+
+<!-- 2 ─ scope / what you'll get -->
+<section class="slide" id="s2">
+  <div class="eyebrow">Why this matters · the contract</div>
+  <h2 class="slide-title">What you <em>will</em> get from these 15 hours</h2>
+  <div class="body" style="justify-content:flex-start; gap:4px">
+    <div class="scopehead" style="margin-top:2px">
+      <svg class="ic" width="30" height="30" viewBox="0 0 30 30" aria-hidden="true">
+        <circle cx="15" cy="15" r="14" fill="var(--signal)"/>
+        <path d="M8.5 15.5 L13 20 L21.5 10" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="glabel" style="color:var(--signal)">by the end, you will&hellip;</div>
+    </div>
+    <ul style="max-width:52em">
+      <li><strong>Understand the fundamental math</strong> behind neural networks</li>
+      <li><strong>Get familiar with popular architectures</strong> — MLP, CNN, RNN, Transformer</li>
+      <li><strong>Learn different learning paradigms</strong> — supervised and self-supervised</li>
+      <li><strong>Train real networks on real data</strong> by filling in the blanks in Colab</li>
+      <li><strong>Build practical skills</strong> for applying deep learning in the real world</li>
+      <li>See the <strong>good, the bad, and the ugly</strong> of deep learning</li>
+    </ul>
+    <div class="callout" style="align-self:center">Goal: leave able to <strong>apply</strong> deep learning to your own assay or product — and to <strong>judge</strong> when a simpler tool wins.</div>
+  </div>
+  <aside class="notes">The contract for the whole course. Set expectations explicitly; it lowers anxiety for the least code-comfortable people in the room. Emphasize "fundamental math" means intuition and arithmetic — no calculus, no proofs. "Popular architectures" is the tour ahead (Lectures 5–8). "The good, the bad, and the ugly" is the honesty promise — we will show where deep learning fails and when a simpler tool wins (Lecture 10). Read the goal line slowly: apply, and judge — the two verbs the whole course serves. You never write a network from scratch; you fill in blanks and read code.</aside>
+</section>
+
+<!-- 3 ─ per-lecture question roadmap -->
+<section class="slide" id="s3">
+  <div class="eyebrow">Lecture 1 · the roadmap</div>
+  <h2 class="slide-title">The course, <em>one question per lecture</em></h2>
+  <div class="body center">
+    <div class="roadmap">
+      <div class="col">
+        <div class="seg">
+          <div class="seghd">Segment 1 · Foundations</div>
+          <div class="qr today"><span class="tag">Lecture 1</span><span class="q">What does a neuron compute — and why go deep? <span style="color:var(--signal)">(now)</span></span></div>
+          <div class="qr"><span class="tag">Lecture 2</span><span class="q">How does a network learn from its mistakes?</span></div>
+          <div class="qr lab"><span class="tag">Lab 1</span><span class="q">Train your first network on real clinical data</span></div>
+        </div>
+        <div class="seg">
+          <div class="seghd">Segment 2 · Training &amp; CNNs</div>
+          <div class="qr"><span class="tag">Lecture 4</span><span class="q">What makes training work — loss, tuning, and overfitting?</span></div>
+          <div class="qr"><span class="tag">Lecture 5</span><span class="q">How do networks find patterns in images &amp; spectra?</span></div>
+          <div class="qr lab"><span class="tag">Lab 2</span><span class="q">A 1D CNN on real MALDI-TOF spectra</span></div>
+        </div>
+        <div class="seg">
+          <div class="seghd">Segment 3 · Sequences &amp; Transformers</div>
+          <div class="qr"><span class="tag">Lecture 7</span><span class="q">Why does order matter — and what is attention?</span></div>
+          <div class="qr"><span class="tag">Lecture 8</span><span class="q">How is a transformer built — and why fine-tune?</span></div>
+          <div class="qr lab"><span class="tag">Lab 3</span><span class="q">Fine-tune a pretrained transformer</span></div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="seg">
+          <div class="seghd">Segment 4 · Learning without ground truth</div>
+          <div class="qr"><span class="tag">Lecture 10</span><span class="q">Which representation &amp; metrics — and when <em>not</em> to use DL?</span></div>
+          <div class="qr"><span class="tag">Lecture 11</span><span class="q">Can a model learn with few or no labels?</span></div>
+          <div class="qr lab"><span class="tag">Lab 4</span><span class="q">A VAE to flag abnormal spectra</span></div>
+        </div>
+        <div class="seg">
+          <div class="seghd">Segment 5 · Frontier &amp; Capstone</div>
+          <div class="qr"><span class="tag">Lecture 13</span><span class="q">How are LLMs trained — where does DL win in MS?</span></div>
+          <div class="qr"><span class="tag">Lecture 14</span><span class="q">What is an AI agent — where could it help my lab?</span></div>
+          <div class="qr lab"><span class="tag">Lab 5</span><span class="q">Capstone: build &amp; defend an end-to-end project</span></div>
+        </div>
+        <div class="callout" style="margin-top:6px; border-left-color:var(--roi); background:var(--roi-soft); font-size:15px; padding:12px 16px"><strong style="color:#A9721A">Labs</strong> (amber, italic) run in Colab and are <strong>fill-in-the-blank</strong> — you complete a few marked blanks with instant checks, never build a network from scratch.</div>
+        <div class="callout" style="margin-top:10px">You are here: <strong>Lecture 1</strong> — the very first question.</div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">This is the course roadmap, framed as the single driving question each lecture answers — problem-driven, so every hour has a clear "why." Read down the five segments: foundations (what a neuron is, how it learns), training and CNNs, sequences and transformers, making it real (evaluation and few-label learning), then the frontier and the capstone. Labs (italic) turn each block hands-on. Tell them: you do not need to memorise this — just notice that every lecture is one question, and today we answer the first. Keep the list in the back of your mind as a map of where we are heading.</aside>
+</section>
+
+<!-- 4 ─ divider: hook -->
+<section class="slide divider" id="s4">
+  <svg class="peak" viewBox="0 0 1280 380" preserveAspectRatio="xMidYMid meet">
+    <g stroke="#0E7C7B" stroke-width="1" opacity="0.22">
+      <line x1="210" y1="95" x2="470" y2="55"/>
+      <line x1="210" y1="95" x2="470" y2="125"/>
+      <line x1="210" y1="95" x2="470" y2="195"/>
+      <line x1="210" y1="95" x2="470" y2="265"/>
+      <line x1="210" y1="95" x2="470" y2="335"/>
+      <line x1="210" y1="190" x2="470" y2="55"/>
+      <line x1="210" y1="190" x2="470" y2="125"/>
+      <line x1="210" y1="190" x2="470" y2="195"/>
+      <line x1="210" y1="190" x2="470" y2="265"/>
+      <line x1="210" y1="190" x2="470" y2="335"/>
+      <line x1="210" y1="285" x2="470" y2="55"/>
+      <line x1="210" y1="285" x2="470" y2="125"/>
+      <line x1="210" y1="285" x2="470" y2="195"/>
+      <line x1="210" y1="285" x2="470" y2="265"/>
+      <line x1="210" y1="285" x2="470" y2="335"/>
+      <line x1="470" y1="55" x2="730" y2="55"/>
+      <line x1="470" y1="55" x2="730" y2="125"/>
+      <line x1="470" y1="55" x2="730" y2="195"/>
+      <line x1="470" y1="55" x2="730" y2="265"/>
+      <line x1="470" y1="55" x2="730" y2="335"/>
+      <line x1="470" y1="125" x2="730" y2="55"/>
+      <line x1="470" y1="125" x2="730" y2="125"/>
+      <line x1="470" y1="125" x2="730" y2="195"/>
+      <line x1="470" y1="125" x2="730" y2="265"/>
+      <line x1="470" y1="125" x2="730" y2="335"/>
+      <line x1="470" y1="195" x2="730" y2="55"/>
+      <line x1="470" y1="195" x2="730" y2="125"/>
+      <line x1="470" y1="195" x2="730" y2="195"/>
+      <line x1="470" y1="195" x2="730" y2="265"/>
+      <line x1="470" y1="195" x2="730" y2="335"/>
+      <line x1="470" y1="265" x2="730" y2="55"/>
+      <line x1="470" y1="265" x2="730" y2="125"/>
+      <line x1="470" y1="265" x2="730" y2="195"/>
+      <line x1="470" y1="265" x2="730" y2="265"/>
+      <line x1="470" y1="265" x2="730" y2="335"/>
+      <line x1="470" y1="335" x2="730" y2="55"/>
+      <line x1="470" y1="335" x2="730" y2="125"/>
+      <line x1="470" y1="335" x2="730" y2="195"/>
+      <line x1="470" y1="335" x2="730" y2="265"/>
+      <line x1="470" y1="335" x2="730" y2="335"/>
+      <line x1="730" y1="55" x2="990" y2="125"/>
+      <line x1="730" y1="55" x2="990" y2="195"/>
+      <line x1="730" y1="55" x2="990" y2="265"/>
+      <line x1="730" y1="125" x2="990" y2="125"/>
+      <line x1="730" y1="125" x2="990" y2="195"/>
+      <line x1="730" y1="125" x2="990" y2="265"/>
+      <line x1="730" y1="195" x2="990" y2="125"/>
+      <line x1="730" y1="195" x2="990" y2="195"/>
+      <line x1="730" y1="195" x2="990" y2="265"/>
+      <line x1="730" y1="265" x2="990" y2="125"/>
+      <line x1="730" y1="265" x2="990" y2="195"/>
+      <line x1="730" y1="265" x2="990" y2="265"/>
+      <line x1="730" y1="335" x2="990" y2="125"/>
+      <line x1="730" y1="335" x2="990" y2="195"/>
+      <line x1="730" y1="335" x2="990" y2="265"/>
+      <line x1="990" y1="125" x2="1180" y2="160"/>
+      <line x1="990" y1="125" x2="1180" y2="230"/>
+      <line x1="990" y1="195" x2="1180" y2="160"/>
+      <line x1="990" y1="195" x2="1180" y2="230"/>
+      <line x1="990" y1="265" x2="1180" y2="160"/>
+      <line x1="990" y1="265" x2="1180" y2="230"/>
+    </g>
+    <circle cx="210" cy="95" r="12" fill="#0E7C7B" opacity="0.85"/>
+    <circle cx="210" cy="190" r="12" fill="#0E7C7B" opacity="0.85"/>
+    <circle cx="210" cy="285" r="12" fill="#0E7C7B" opacity="0.85"/>
+    <circle cx="470" cy="55" r="12" fill="#FBFBF8" stroke="#0E7C7B" stroke-width="2.5"/>
+    <circle cx="470" cy="125" r="12" fill="#FBFBF8" stroke="#0E7C7B" stroke-width="2.5"/>
+    <circle cx="470" cy="195" r="12" fill="#FBFBF8" stroke="#0E7C7B" stroke-width="2.5"/>
+    <circle cx="470" cy="265" r="12" fill="#FBFBF8" stroke="#0E7C7B" stroke-width="2.5"/>
+    <circle cx="470" cy="335" r="12" fill="#FBFBF8" stroke="#0E7C7B" stroke-width="2.5"/>
+    <circle cx="730" cy="55" r="12" fill="#FBFBF8" stroke="#0E7C7B" stroke-width="2.5"/>
+    <circle cx="730" cy="125" r="12" fill="#FBFBF8" stroke="#0E7C7B" stroke-width="2.5"/>
+    <circle cx="730" cy="195" r="12" fill="#FBFBF8" stroke="#0E7C7B" stroke-width="2.5"/>
+    <circle cx="730" cy="265" r="12" fill="#FBFBF8" stroke="#0E7C7B" stroke-width="2.5"/>
+    <circle cx="730" cy="335" r="12" fill="#FBFBF8" stroke="#0E7C7B" stroke-width="2.5"/>
+    <circle cx="990" cy="125" r="12" fill="#FBFBF8" stroke="#0E7C7B" stroke-width="2.5"/>
+    <circle cx="990" cy="195" r="12" fill="#FBFBF8" stroke="#0E7C7B" stroke-width="2.5"/>
+    <circle cx="990" cy="265" r="12" fill="#FBFBF8" stroke="#0E7C7B" stroke-width="2.5"/>
+    <circle cx="1180" cy="160" r="13" fill="#0E7C7B"/>
+    <circle cx="1180" cy="230" r="13" fill="#0E7C7B"/>
+  </svg>
+  <div class="divider-inner">
+    <div class="eyebrow">Lecture 1 · part one</div>
+    <h1>Simple Math, Deep Mystery</h1>
+    <div class="sub">a handful of multiply-and-add, stacked deep — and something remarkable happens</div>
+  </div>
+  <aside class="notes">Set energy high. The motif behind the title is a real neural network — nodes and connections, the same object we build up all hour. The paradox to plant: every arrow is nothing but "multiply and add," yet stack enough of them and you get AlphaFold, ChatGPT, self-driving cars. Simple parts, astonishing wholes. We spend the next 15 hours earning that mystery — starting today with a single neuron.</aside>
+</section>
+
+<!-- 5 ─ hook montage -->
+<section class="slide" id="s5">
+  <div class="eyebrow">Why this matters · four you already know</div>
+  <h2 class="slide-title">Deep learning is <em>already</em> in your world</h2>
+  <div class="body center">
+    <div style="display:flex; gap:18px; align-items:stretch">
+      <div class="hookcard">
+        <div class="cimg"><img src="../assets/img/alphafold_protein.png" alt="AlphaFold-predicted protein ribbon structure"></div>
+        <div class="ctitle">AlphaFold</div>
+        <div class="csub">protein 3-D structure straight from sequence · 2024 Chemistry Nobel</div>
+      </div>
+      <div class="hookcard">
+        <div class="cimg">
+          <svg width="200" height="150" viewBox="0 0 200 150">
+            <rect x="18" y="26" width="150" height="70" rx="14" fill="#E3F0EF" stroke="#0E7C7B" stroke-width="2"/>
+            <path d="M52 96 L52 120 L78 96 Z" fill="#E3F0EF" stroke="#0E7C7B" stroke-width="2"/>
+            <line x1="40" y1="50" x2="146" y2="50" stroke="#0E7C7B" stroke-width="3" stroke-linecap="round"/>
+            <line x1="40" y1="66" x2="146" y2="66" stroke="#0E7C7B" stroke-width="3" stroke-linecap="round"/>
+            <line x1="40" y1="82" x2="110" y2="82" stroke="#0E7C7B" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="ctitle">ChatGPT &amp; LLMs</div>
+        <div class="csub">the same core idea — neurons stacked deep — scaled to the whole internet</div>
+      </div>
+      <div class="hookcard">
+        <div class="cimg"><img src="../assets/img/alphago_go_board.jpg" alt="A game of Go in progress on a wooden board with black and white stones"></div>
+        <div class="ctitle">AlphaGo</div>
+        <div class="csub">beat the world's best Go player — a game once thought a decade away</div>
+      </div>
+      <div class="hookcard">
+        <div class="cimg"><img src="../assets/img/selfdriving_waymo.jpg" alt="A self-driving car on a public road"></div>
+        <div class="ctitle">Self-driving cars<br>(Tesla FSD)</div>
+        <div class="csub">reading the road from cameras in real time — perception is deep learning</div>
+      </div>
+    </div>
+    <div class="credit">AlphaFold structure: AlphaFold&nbsp;DB, CC0 · Go board: Xchen27, CC&nbsp;BY-SA&nbsp;3.0 · self-driving car: Grendelkhan, CC&nbsp;BY-SA&nbsp;4.0</div>
+  </div>
+  <aside class="notes">One line each, no more — the point is breadth, not depth. AlphaFold: the flagship — a decades-old protein-folding problem cracked by a deep network; Nobel in Chemistry 2024. ChatGPT and the LLMs: same Lego bricks — neurons stacked deep — just enormous. AlphaGo: beat the world champion at Go, a game with more board positions than atoms in the universe, thought to be a decade off. Self-driving cars (Tesla FSD, Waymo): the perception system — "what's around me right now" from raw camera pixels — is deep learning. Deliberately kept general and famous so nobody feels this is niche. Punchline: every one of these is the same handful of ideas we start assembling right now. Tell the room what we will and won't cover — we WILL give you the mechanism and the judgment to apply it; we WON'T turn you into a research ML engineer or ask you to write networks from scratch.</aside>
+</section>
+
+<!-- 6 ─ what is ML (5-part definition) -->
+<section class="slide" id="s6">
+  <div class="eyebrow">What ML is · the working definition</div>
+  <h2 class="slide-title">First — what is <em>machine learning</em>?</h2>
+  <div class="body center">
+    <p class="defsentence">
+      Machine learning is an approach to
+      <span class="p"><span class="num">1</span>learn</span>
+      <span class="p"><span class="num">2</span>complex patterns</span> from
+      <span class="p"><span class="num">3</span>existing data</span>,
+      and use those patterns to make
+      <span class="p"><span class="num">4</span>predictions</span> on
+      <span class="p"><span class="num">5</span>unseen data</span>.
+    </p>
+    <div class="defcards">
+      <div class="dc"><div class="dn">①</div><div class="dl">Learn</div><div class="dg">not programmed by rules — figured out from examples</div></div>
+      <div class="dc"><div class="dn">②</div><div class="dl">Complex patterns</div><div class="dg">relationships too tangled to write by hand</div></div>
+      <div class="dc"><div class="dn">③</div><div class="dl">Existing data</div><div class="dg">labelled spectra, panels, chromatograms you already have</div></div>
+      <div class="dc"><div class="dn">④</div><div class="dl">Predictions</div><div class="dg">a call: resistant? which pathogen? what concentration?</div></div>
+      <div class="dc"><div class="dn">⑤</div><div class="dl">Unseen data</div><div class="dg">tomorrow's sample it was never shown</div></div>
+    </div>
+  </div>
+  <aside class="notes">This is the spine of the whole field — read the sentence aloud, pausing on each numbered part, then walk the five cards. Contrast with ordinary software: normally YOU write the rules (if peak-area > threshold, flag it). In ML, you show the machine examples and it writes the rule itself — part ①. Part ⑤ is the one clinicians must never forget: performance is only real on data the model has NOT seen; we hammer this in Lecture 10 with external validation. Deep learning, coming up, is one particular — very powerful — way to do exactly this.</aside>
+</section>
+
+<!-- 7 ─ stats / ML / AI meme -->
+<section class="slide" id="s7">
+  <div class="eyebrow">What ML is · statistics → ML → AI</div>
+  <h2 class="slide-title">A running joke — with a real idea inside</h2>
+  <div class="body center">
+    <div class="cols">
+      <figure class="fig">
+        <img src="../assets/img/ai_statistics_meme.png" alt="Four-panel meme: the same scribble relabelled statistics, then framed, then Machine Learning, then Artificial Intelligence presented to a crowd"
+             style="width:390px; border-radius:10px; display:block; margin:0 auto; border:1px solid var(--hairline)">
+        <figcaption>same maths, fancier label · popular internet meme</figcaption>
+      </figure>
+      <div>
+        <p class="lead">The punchline: <strong>statistics, machine learning, and AI overlap a lot</strong> — much of ML is statistics wearing a newer name.</p>
+        <p class="lead" style="margin-top:16px">But the labels do track something real: <strong>bigger models, less hand-holding, harder problems</strong> as you move right.</p>
+        <div class="callout" style="margin-top:20px">And <strong>deep learning</strong> is one specific kind of machine learning — the next slide places it exactly.</div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Icebreaker — let them laugh; the room relaxes. The joke is fair: a linear regression IS a fitted statistical model, and calling it "AI" changes nothing about the maths. But don't leave them cynical — there's a real gradient here: as you move statistics → ML → deep learning → the loose umbrella "AI," you tend toward larger models that engineer fewer of their own features and tackle messier data. Use the callout to hand off to the nesting diagram: deep learning is not a rival to ML, it's a subset — that's the single relationship to fix in their heads.</aside>
+</section>
+
+<!-- 8 ─ universal approximation -->
+<section class="slide" id="s8">
+  <div class="eyebrow">Why neural networks · the big promise</div>
+  <h2 class="slide-title">Enough neurons can trace <em>almost any shape</em></h2>
+  <div class="body center">
+    <div class="cols">
+      <figure class="fig">
+        <svg width="520" height="300" viewBox="0 0 520 300">
+          <!-- axes -->
+          <line x1="46" y1="258" x2="512" y2="258" stroke="#8A9099" stroke-width="1.5"/>
+          <line x1="46" y1="30" x2="46" y2="258" stroke="#8A9099" stroke-width="1.5"/>
+          <!-- target curve -->
+          <path d="M50 180 C 120 60, 170 70, 230 150 C 290 230, 340 220, 400 140 C 450 80, 480 100, 512 132"
+                fill="none" stroke="#0E7C7B" stroke-width="3.5"/>
+          <!-- piecewise (summed-neuron) approximation -->
+          <polyline points="50,182 95,120 140,92 185,112 230,150 275,196 320,208 365,178 400,140 450,96 512,130"
+                    fill="none" stroke="#E09E2F" stroke-width="2.5" stroke-dasharray="6 5"/>
+          <circle cx="95" cy="120" r="3.5" fill="#E09E2F"/><circle cx="140" cy="92" r="3.5" fill="#E09E2F"/>
+          <circle cx="230" cy="150" r="3.5" fill="#E09E2F"/><circle cx="320" cy="208" r="3.5" fill="#E09E2F"/>
+          <circle cx="450" cy="96" r="3.5" fill="#E09E2F"/>
+          <text x="300" y="52" font-size="16" fill="#0E7C7B" font-weight="600">the shape you want</text>
+          <text x="150" y="248" font-size="15" fill="#A9721A">sum of simple pieces</text>
+        </svg>
+        <figcaption>teal = target · amber = a network's approximation, one bend per neuron</figcaption>
+      </figure>
+      <div>
+        <p class="lead">Give a network <strong>enough neurons</strong> and it can approximate essentially <strong>any function</strong> — any curve, any decision boundary — as closely as you like.</p>
+        <p class="lead" style="font-size:20px; margin-top:14px; color:var(--muted)">A <em>function</em> is just a rule from input to output; <em>approximate</em> means "get as close as you want."</p>
+        <div class="callout" style="margin-top:18px">More neurons → finer pieces → a closer trace. This is the <strong>Universal Approximation</strong> idea — the reason networks are so flexible.</div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">The single most important reason to care about neural networks. State it plainly: with enough neurons, a network can get arbitrarily close to any input-output rule — every bump of a spectrum, any boundary between "resistant" and "susceptible." The amber trace is built from many simple bends (each a neuron with its activation from the last section) added together; add more neurons and the pieces get finer and hug the teal target more tightly. Define the two jargon words on the slide. The honest caveat to say aloud but not put on the slide: "can" is not "will" — the theorem promises such a network EXISTS, it does not hand you the weights. Finding them is learning (Lecture 2), and stacking layers deep is what makes that search practical (next section). No proof, no formula — intuition only.</aside>
+</section>
+
+<!-- 9 ─ traditional ML: you engineer features -->
+<section class="slide" id="s9">
+  <div class="eyebrow">Engineered vs. learned · classic ML</div>
+  <h2 class="slide-title">Classic ML: <em>you</em> hand-build the features</h2>
+  <div class="body center">
+    <div class="cols">
+      <div class="pipecol">
+        <div class="stage">raw photo<small>a grid of pixels</small></div>
+        <div class="down">↓</div>
+        <div class="stage hand">you compute features<small>edges · ear shape · whisker length</small></div>
+        <div class="down">↓</div>
+        <div class="stage">simple model<small>e.g. logistic regression</small></div>
+        <div class="down">↓</div>
+        <div class="stage">call<small>cat / dog</small></div>
+      </div>
+      <div>
+        <figure class="fig" style="margin-bottom:14px">
+          <img src="../assets/img/cat.jpg" alt="Photograph of a tabby cat" style="width:190px; height:190px; object-fit:cover; border-radius:12px; border:1px solid var(--hairline)">
+          <figcaption>cat · Alvesgaspar, CC BY-SA 3.0</figcaption>
+        </figure>
+        <p class="lead" style="font-size:23px">A <strong>feature</strong> is a number you distil from raw data — here, things a person decides to measure:</p>
+        <div class="chips">
+          <span class="chip">pointy-ear score</span><span class="chip">whisker length</span>
+          <span class="chip">edge count</span><span class="chip">fur texture</span>
+        </div>
+        <div class="callout" style="margin-top:16px">The insight lives in <strong>your</strong> choice of features — the model is only as good as the ones you thought to compute.</div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Define "feature" carefully — it is the vocabulary word of the section and recurs all week. Use the everyday cat-vs-dog task so nobody needs domain knowledge. Classic, and still often excellent: a human expert decides what to measure (ear shape, whisker length, edges), computes those handful of numbers, and feeds them to a lightweight model. The strength: interpretable, data-thrifty. The ceiling: the model can only be as good as the features YOU thought to compute — miss a discriminating cue and it is invisible to the model. That ceiling is exactly what deep learning lifts — next slide. (Your lab already does this: peak areas, ratios, retention times are hand-engineered features too — we make that link on the closing discussion.)</aside>
+</section>
+
+<!-- 10 ─ deep learning: learned features + pair prompt -->
+<section class="slide" id="s10">
+  <div class="eyebrow">Engineered vs. learned · deep learning</div>
+  <h2 class="slide-title">Deep learning: the network <em>learns</em> the features</h2>
+  <div class="body center">
+    <div class="cols">
+      <div class="pipecol">
+        <div class="stage">raw photo<small>a grid of pixels</small></div>
+        <div class="down">↓</div>
+        <div class="stage learn">network learns features<small>&amp; the model, together</small></div>
+        <div class="down">↓</div>
+        <div class="stage">call<small>cat / dog</small></div>
+      </div>
+      <div>
+        <p class="big-claim">You hand it <em>raw pixels</em>. It discovers the useful edges, ears, and textures <em>by itself</em>.</p>
+        <div class="callout pair" style="margin-top:18px">Name <strong>one feature you would measure by hand</strong> to tell a cat from a dog. Turn to a neighbour — 2 minutes.</div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">The pivot of the lecture. Same task, one box fewer: the feature-engineering step disappears INTO the network — it learns what to measure and how to decide, jointly, from raw pixels. That is the whole meaning of "learned features vs. hand-engineered features," the one-sentence outcome for this lecture. Trade-off, stated honestly: DL removes your feature-guessing but demands far more data and compute, and gives up some interpretability — the theme of Lecture 10. Run the pair prompt on the everyday cat-vs-dog task so everyone can play; harvest 2–3 answers aloud (ear shape, snout length, tail, size). The deeper, lab-specific version of this question returns as the closing discussion. This is the assessed think-pair-share for Lecture 1.</aside>
+</section>
+
+<!-- 11 ─ divider: the neuron -->
+<section class="slide divider" id="s11">
+  <svg class="peak" viewBox="0 0 1280 380" preserveAspectRatio="none">
+    <path d="M0 342 L1280 342" stroke="#D9D9D2" stroke-width="1"/>
+    <circle cx="250" cy="250" r="9" fill="#0E7C7B"/><circle cx="250" cy="330" r="9" fill="#0E7C7B"/>
+    <circle cx="640" cy="290" r="16" fill="#fff" stroke="#0E7C7B" stroke-width="3"/>
+    <circle cx="1030" cy="290" r="9" fill="#0E7C7B"/>
+    <line x1="259" y1="252" x2="626" y2="286" stroke="#8A9099" stroke-width="2"/>
+    <line x1="259" y1="328" x2="626" y2="294" stroke="#8A9099" stroke-width="2"/>
+    <line x1="656" y1="290" x2="1021" y2="290" stroke="#8A9099" stroke-width="2"/>
+  </svg>
+  <div class="divider-inner">
+    <div class="eyebrow">Lecture 1 · part two</div>
+    <h1>The neuron</h1>
+    <div class="sub">the whole of deep learning is millions of copies of this one tiny thing</div>
+  </div>
+  <aside class="notes">Reassure the room: this is the single most important idea of the hour, and it is nothing but multiply, add, and one bend. Once they own one neuron, a network is just many of them wired together — which is literally the next section.</aside>
+</section>
+
+<!-- 12 ─ neuron anatomy -->
+<section class="slide" id="s12">
+  <div class="eyebrow">The neuron · anatomy</div>
+  <h2 class="slide-title">A neuron: <em>weighted sum → bias → activation</em></h2>
+  <div class="body center">
+    <figure class="fig">
+      <svg width="960" height="330" viewBox="0 0 960 330">
+        <!-- inputs -->
+        <circle cx="70" cy="95" r="26" fill="#fff" stroke="#3D444C" stroke-width="2"/>
+        <text x="70" y="102" text-anchor="middle" font-size="22">x₁</text>
+        <circle cx="70" cy="235" r="26" fill="#fff" stroke="#3D444C" stroke-width="2"/>
+        <text x="70" y="242" text-anchor="middle" font-size="22">x₂</text>
+        <!-- weight arrows -->
+        <line x1="96" y1="103" x2="360" y2="158" stroke="#0E7C7B" stroke-width="2.5"/>
+        <line x1="96" y1="227" x2="360" y2="182" stroke="#0E7C7B" stroke-width="2.5"/>
+        <text x="215" y="118" text-anchor="middle" class="m" font-size="19" fill="#0E7C7B">× w₁</text>
+        <text x="215" y="228" text-anchor="middle" class="m" font-size="19" fill="#0E7C7B">× w₂</text>
+        <!-- summation node -->
+        <circle cx="405" cy="170" r="46" fill="#E3F0EF" stroke="#0E7C7B" stroke-width="2.5"/>
+        <text x="405" y="180" text-anchor="middle" font-size="34" fill="#0E7C7B">Σ</text>
+        <!-- bias -->
+        <line x1="405" y1="70" x2="405" y2="122" stroke="#E09E2F" stroke-width="2.5"/>
+        <text x="405" y="56" text-anchor="middle" class="m" font-size="19" fill="#A9721A">+ b (bias)</text>
+        <!-- to activation -->
+        <line x1="451" y1="170" x2="560" y2="170" stroke="#3D444C" stroke-width="2.5"/>
+        <text x="505" y="156" text-anchor="middle" class="m" font-size="17" fill="#8A9099">z</text>
+        <rect x="560" y="130" width="150" height="80" rx="10" fill="#fff" stroke="#3D444C" stroke-width="2"/>
+        <text x="635" y="166" text-anchor="middle" font-size="20">activation</text>
+        <text x="635" y="192" text-anchor="middle" font-size="20">f( z )</text>
+        <!-- output -->
+        <line x1="710" y1="170" x2="820" y2="170" stroke="#3D444C" stroke-width="2.5"/>
+        <circle cx="858" cy="170" r="30" fill="#0E7C7B"/>
+        <text x="858" y="178" text-anchor="middle" font-size="20" fill="#fff">y</text>
+      </svg>
+      <figcaption>inputs → multiply by weights → add them up (+ bias) → bend through an activation → output</figcaption>
+    </figure>
+    <div class="matline" style="margin-top:14px">z = w₁·x₁ + w₂·x₂ + b &nbsp;&nbsp;&nbsp;then&nbsp;&nbsp;&nbsp; y = f(z)</div>
+  </div>
+  <aside class="notes">Walk left to right. Inputs are numbers (two peak intensities, say). Each input is multiplied by its own weight — the weight is how much this neuron cares about that input; weights are what training will learn (Lecture 2). Add the results, plus a bias — a constant nudge that shifts the whole sum up or down. That gives z. Then the activation f bends z into the output — without that bend, stacking neurons would collapse back to one big weighted sum (a single line); the bend is what lets networks model curves. Keep saying it: multiply, add, bend. Two slides from now we put real numbers through this exact picture.</aside>
+</section>
+
+<!-- 13 ─ activation functions -->
+<section class="slide" id="s13">
+  <div class="eyebrow">The neuron · the "bend"</div>
+  <h2 class="slide-title">Two activations you'll meet all week</h2>
+  <div class="body center">
+    <div class="cols">
+      <figure class="fig">
+        <svg width="380" height="250" viewBox="0 0 380 250">
+          <line x1="30" y1="200" x2="360" y2="200" stroke="#8A9099" stroke-width="1.5"/>
+          <line x1="150" y1="30" x2="150" y2="215" stroke="#8A9099" stroke-width="1.5"/>
+          <path d="M40 200 L150 200 L330 50" fill="none" stroke="#0E7C7B" stroke-width="3.5"/>
+          <text x="150" y="232" text-anchor="middle" class="m" font-size="15" fill="#8A9099">z</text>
+          <text x="255" y="128" text-anchor="middle" class="m" font-size="15" fill="#0E7C7B">slope&nbsp;1</text>
+          <text x="88" y="190" text-anchor="middle" class="m" font-size="15" fill="#8A9099">flat&nbsp;0</text>
+        </svg>
+        <figcaption><strong>ReLU</strong> · negatives → 0, positives pass through</figcaption>
+      </figure>
+      <figure class="fig">
+        <svg width="380" height="250" viewBox="0 0 380 250">
+          <line x1="30" y1="160" x2="360" y2="160" stroke="#8A9099" stroke-width="1.5"/>
+          <line x1="195" y1="30" x2="195" y2="200" stroke="#8A9099" stroke-width="1.5"/>
+          <line x1="40" y1="55" x2="350" y2="55" stroke="#D9D9D2" stroke-width="1" stroke-dasharray="4 4"/>
+          <text x="360" y="52" class="m" font-size="13" fill="#8A9099">1</text>
+          <path d="M40 158 C 150 156, 150 60, 195 58 C 240 56, 240 58, 350 57" fill="none" stroke="#0E7C7B" stroke-width="3.5"/>
+          <text x="195" y="192" text-anchor="middle" class="m" font-size="15" fill="#8A9099">z</text>
+        </svg>
+        <figcaption><strong>sigmoid</strong> · squashes anything into 0–1 (a probability)</figcaption>
+      </figure>
+    </div>
+    <div class="callout" style="align-self:center">The activation is the <strong>bend</strong> — the only non-straight step. No bend, and a deep stack collapses into one straight line.</div>
+  </div>
+  <aside class="notes">Two workhorses. ReLU — "rectified linear unit," but just say: negatives become zero, positives pass unchanged. It is the default hidden-layer activation because it is trivial to compute and trains well (why, in Lecture 2/4). Sigmoid — the S-curve that squashes any number into 0–1, so we read the output as a probability; it typically sits at the very end of a yes/no classifier. The callout is the conceptual payload: activations are the source of non-linearity — remove them and the whole network, however deep, algebraically flattens to a single linear map. Foreshadow: in the worked example next, ReLU turns one neuron's negative sum into a clean 0.</aside>
+</section>
+
+<!-- 14 ─ worked two-input neuron (KaTeX) -->
+<section class="slide" id="s14">
+  <div class="eyebrow">The neuron · worked by hand</div>
+  <h2 class="slide-title">One neuron, real numbers</h2>
+  <div class="body center">
+    <div class="cols">
+      <div>
+        <div class="eqcard">
+          <span class="keq big" data-display
+            data-tex="\mathbf{x}=\begin{bmatrix}3\\[2pt]2\end{bmatrix}\qquad \mathbf{w}=\begin{bmatrix}2\\[2pt]-1\end{bmatrix}\qquad b=1"></span>
+          <div class="eqnote">inputs · weights · bias</div>
+        </div>
+        <div class="callout" style="margin-top:18px">Read it as two measurements (3 and 2); this neuron <strong>likes</strong> input&nbsp;1 (weight&nbsp;+2) and <strong>distrusts</strong> input&nbsp;2 (weight&nbsp;−1).</div>
+      </div>
+      <div class="eqcard">
+        <span class="keq big" data-display
+          data-tex="\begin{aligned} z &= \mathbf{w}\cdot\mathbf{x} + b \\[4pt] &= (2)(3) + (-1)(2) + 1 \\[4pt] &= 6 - 2 + 1 = \mathbf{5} \end{aligned}"></span>
+        <div style="height:1px; background:var(--hairline); margin:16px 0"></div>
+        <span class="keq" data-display style="font-size:1.15em"
+          data-tex="\operatorname{ReLU}(5)=5 \qquad \sigma(5)\approx 0.99"></span>
+        <div class="eqnote">positive → passes through · sigmoid → a confident "yes"</div>
+      </div>
+    </div>
+    <div class="callout check" style="align-self:center">Flip one weight: if <span class="keq" data-tex="w_1=-1"></span>, then <span class="keq" data-tex="z=-3-2+1=-4"></span> and <span class="keq" data-tex="\operatorname{ReLU}(-4)=0"></span> — the neuron goes silent.</div>
+  </div>
+  <aside class="notes">Do this out loud, slowly — it is the first hand-computation of the course and Quiz 1 mirrors it exactly. The math is now typeset cleanly: z is the dot product of the weight vector and the input vector, plus the bias. Multiply each input by its weight (2×3=6, −1×2=−2), add the bias (+1), get z=5. Then bend: ReLU leaves 5 alone because it is positive; sigmoid maps 5 to about 0.99, i.e. "yes, very confident." The ✏️ check makes the activation matter viscerally: flip one weight negative and the pre-activation goes to −4, and ReLU clamps it to 0 — the neuron contributes nothing. That on/off behaviour, times millions of neurons, is how networks route information. Have them predict the sign before you reveal it.</aside>
+</section>
+
+<!-- 15 ─ divider: stacking -->
+<section class="slide divider" id="s15">
+  <svg class="peak" viewBox="0 0 1280 380" preserveAspectRatio="none">
+    <line x1="0" y1="342" x2="1280" y2="342" stroke="#D9D9D2" stroke-width="1"/>
+    <g stroke="#8A9099" stroke-width="1.5">
+      <line x1="330" y1="230" x2="560" y2="200"/><line x1="330" y1="230" x2="560" y2="300"/>
+      <line x1="330" y1="320" x2="560" y2="200"/><line x1="330" y1="320" x2="560" y2="300"/>
+    </g>
+    <circle cx="330" cy="230" r="11" fill="#0E7C7B"/><circle cx="330" cy="320" r="11" fill="#0E7C7B"/>
+    <circle cx="560" cy="200" r="15" fill="#fff" stroke="#0E7C7B" stroke-width="3"/>
+    <circle cx="560" cy="300" r="15" fill="#fff" stroke="#0E7C7B" stroke-width="3"/>
+  </svg>
+  <div class="divider-inner">
+    <div class="eyebrow">Lecture 1 · part three</div>
+    <h1>Stack the neurons</h1>
+    <div class="sub">a whole layer at once — which is just a matrix multiply</div>
+  </div>
+  <aside class="notes">Transition. One neuron is a dot product. A layer is several neurons reading the same inputs — and stacking their weight rows turns "several dot products" into one matrix-times-vector. That's the only linear-algebra idea in the course, and we do it with numbers you can check on your fingers.</aside>
+</section>
+
+<!-- 16 ─ a layer = matrix (setup) -->
+<section class="slide" id="s16">
+  <div class="eyebrow">Stacking · a layer is a matrix</div>
+  <h2 class="slide-title">Two neurons reading three inputs = a <em>2×3 matrix</em></h2>
+  <div class="body center">
+    <div class="mateq">
+      <div>
+        <div class="lbl">weights W · 2×3</div>
+        <table class="ngrid">
+          <tr><td class="rowA">1</td><td class="rowA">−1</td><td class="rowA">0</td></tr>
+          <tr><td class="rowB">0</td><td class="rowB">1</td><td class="rowB">−1</td></tr>
+        </table>
+        <div class="matline" style="font-size:15px; margin-top:8px; color:var(--muted)">row = one neuron's weights</div>
+      </div>
+      <div class="sym">×</div>
+      <div>
+        <div class="lbl">input x · 3×1</div>
+        <table class="ngrid">
+          <tr><td>2</td></tr><tr><td>1</td></tr><tr><td>3</td></tr>
+        </table>
+      </div>
+      <div class="sym">+</div>
+      <div>
+        <div class="lbl">bias b · 2×1</div>
+        <table class="ngrid">
+          <tr><td>1</td></tr><tr><td>0</td></tr>
+        </table>
+      </div>
+      <div class="sym">=</div>
+      <div>
+        <div class="lbl">output · 2×1</div>
+        <table class="ngrid">
+          <tr><td class="blank">?</td></tr><tr><td class="blank">?</td></tr>
+        </table>
+      </div>
+    </div>
+    <div style="text-align:center; margin-top:22px">
+      <span class="keq" data-display style="font-size:1.2em"
+        data-tex="\mathbf{W}\mathbf{x}+\mathbf{b}=\begin{bmatrix}1&-1&0\\0&1&-1\end{bmatrix}\begin{bmatrix}2\\1\\3\end{bmatrix}+\begin{bmatrix}1\\0\end{bmatrix}=\begin{bmatrix}?\\?\end{bmatrix}"></span>
+    </div>
+    <div class="callout" style="align-self:center; margin-top:18px"><strong>Shapes must click:</strong> 3 inputs → the matrix has 3 columns · 2 neurons → 2 rows → 2 outputs. Columns-in must equal inputs-in.</div>
+  </div>
+  <aside class="notes">Frame before computing. Each ROW of W is one neuron's weight list from the last section — neuron 1 is (1, −1, 0); neuron 2 is (0, 1, −1). The input x is the same three numbers for both neurons (three peak intensities: 2, 1, 3). Stacking two neurons' rows makes a 2×3 matrix; running the layer is W·x + b. The shape rule is the only "gotcha": the matrix's column count (3) must match the number of inputs (3); the row count (2) sets how many outputs come out. This is exactly the shape reasoning Lab 1 asks them to get right when they size layers. Next two reveals compute the two ? cells.</aside>
+</section>
+
+<!-- 17 ─ compute neuron 1 -->
+<section class="slide" id="s17">
+  <div class="eyebrow">Stacking · row 1 · neuron 1</div>
+  <h2 class="slide-title">Row 1 · <em>slide across, multiply, add</em></h2>
+  <div class="body center">
+    <div class="mateq">
+      <div>
+        <div class="lbl">weights W · 2×3</div>
+        <table class="ngrid">
+          <tr><td class="now">1</td><td class="now">−1</td><td class="now">0</td></tr>
+          <tr><td>0</td><td>1</td><td>−1</td></tr>
+        </table>
+      </div>
+      <div class="sym">×</div>
+      <div>
+        <div class="lbl">input x</div>
+        <table class="ngrid">
+          <tr><td class="rowA">2</td></tr><tr><td class="rowA">1</td></tr><tr><td class="rowA">3</td></tr>
+        </table>
+      </div>
+      <div class="sym">+ b =</div>
+      <div>
+        <div class="lbl">output</div>
+        <table class="ngrid">
+          <tr><td class="now">2</td></tr><tr><td class="blank">?</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="matline" style="margin-top:26px">
+      (<b>1</b>×2) + (<span class="neg">−1</span>×1) + (0×3) + bias <b>1</b>
+      &nbsp;=&nbsp; 2 − 1 + 0 + 1 &nbsp;=&nbsp; <b>2</b>
+    </div>
+  </div>
+  <aside class="notes">First output cell. Take row 1 of W, pair it term-by-term with the input column, multiply each pair, add them, then add this neuron's bias. 1×2=2, −1×1=−1, 0×3=0; sum 1; plus bias 1 gives 2. Say the word "dot product" once — this is literally the neuron from slide 14, just written as a row times a column. Point out it's the same "multiply-and-add" from the convolution they'll do in Lecture 5. One cell left — they can try it before the reveal.</aside>
+</section>
+
+<!-- 18 ─ compute neuron 2 + activation -->
+<section class="slide" id="s18">
+  <div class="eyebrow">Stacking · row 2 · neuron 2</div>
+  <h2 class="slide-title">Row 2 — then bend the whole layer</h2>
+  <div class="body center">
+    <div class="mateq">
+      <div>
+        <div class="lbl">weights W · 2×3</div>
+        <table class="ngrid">
+          <tr><td>1</td><td>−1</td><td>0</td></tr>
+          <tr><td class="now">0</td><td class="now">1</td><td class="now">−1</td></tr>
+        </table>
+      </div>
+      <div class="sym">× x + b =</div>
+      <div>
+        <div class="lbl">z (raw)</div>
+        <table class="ngrid">
+          <tr><td class="done">2</td></tr><tr><td class="now">−2</td></tr>
+        </table>
+      </div>
+      <div class="sym">→ ReLU →</div>
+      <div>
+        <div class="lbl">layer output</div>
+        <table class="ngrid">
+          <tr><td class="done">2</td></tr><tr><td class="now">0</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="matline" style="margin-top:24px">
+      row 2:&nbsp; (0×2) + (<b>1</b>×1) + (<span class="neg">−1</span>×3) + bias 0 = 1 − 3 = <span class="neg">−2</span>
+      &nbsp;&nbsp;⟶&nbsp;&nbsp; ReLU(<span class="neg">−2</span>) = <b>0</b>
+    </div>
+    <div class="callout ms" style="align-self:center; margin-top:20px">Two numbers <b>[2, 0]</b> — this layer's read of the spectrum. Neuron 2's pattern was absent, so it stays silent. These become the <em>inputs to the next layer</em>.</div>
+  </div>
+  <aside class="notes">Second cell, then the payoff. Row 2 (0,1,−1) dotted with (2,1,3) is 0+1−3 = −2, bias 0. Raw layer output z = [2, −2]. Now apply the activation to the whole layer at once: ReLU([2,−2]) = [2, 0]. There's the callback — the negative neuron goes silent, exactly like the ✏️ check on slide 14. Land the big idea in the callout: the layer turned three raw inputs into two new numbers [2,0] — a fresh, learned representation — and those two numbers are simply the inputs to the next layer. Stack that move and you have a deep network. Everyone has now run a full layer's forward pass by hand.</aside>
+</section>
+
+<!-- 19 ─ quick two-layer network, worked forward pass -->
+<section class="slide" id="s19">
+  <div class="eyebrow">Stacking · input → hidden → output</div>
+  <h2 class="slide-title">A two-layer network: <em>one forward pass</em></h2>
+  <div class="body center">
+    <div class="cols">
+      <figure class="fig">
+        <svg width="470" height="300" viewBox="0 0 470 300">
+          <!-- layer labels -->
+          <text x="55" y="30" text-anchor="middle" class="m" font-size="13" fill="#8A9099">INPUT</text>
+          <text x="235" y="30" text-anchor="middle" class="m" font-size="13" fill="#0E7C7B">HIDDEN · ReLU</text>
+          <text x="420" y="30" text-anchor="middle" class="m" font-size="13" fill="#8A9099">OUTPUT</text>
+          <!-- edges input -> hidden -->
+          <line x1="55" y1="110" x2="235" y2="100" stroke="#0E7C7B" stroke-width="2"/>
+          <line x1="55" y1="110" x2="235" y2="220" stroke="#0E7C7B" stroke-width="2"/>
+          <line x1="55" y1="210" x2="235" y2="100" stroke="#0E7C7B" stroke-width="2"/>
+          <line x1="55" y1="210" x2="235" y2="220" stroke="#C4534F" stroke-width="2"/>
+          <!-- edges hidden -> output -->
+          <line x1="235" y1="100" x2="420" y2="160" stroke="#0E7C7B" stroke-width="2"/>
+          <line x1="235" y1="220" x2="420" y2="160" stroke="#C4534F" stroke-width="2"/>
+          <!-- weight labels -->
+          <text x="150" y="92"  class="m" font-size="13" fill="#0E7C7B">1</text>
+          <text x="132" y="175" class="m" font-size="13" fill="#0E7C7B">1</text>
+          <text x="150" y="150" class="m" font-size="13" fill="#0E7C7B">1</text>
+          <text x="150" y="210" class="m" font-size="13" fill="#C4534F">−1</text>
+          <text x="330" y="118" class="m" font-size="13" fill="#0E7C7B">2</text>
+          <text x="330" y="205" class="m" font-size="13" fill="#C4534F">−1</text>
+          <!-- input nodes -->
+          <circle cx="55" cy="110" r="24" fill="#fff" stroke="#3D444C" stroke-width="2"/>
+          <text x="55" y="117" text-anchor="middle" font-size="20">1</text>
+          <circle cx="55" cy="210" r="24" fill="#fff" stroke="#3D444C" stroke-width="2"/>
+          <text x="55" y="217" text-anchor="middle" font-size="20">2</text>
+          <!-- hidden nodes -->
+          <circle cx="235" cy="100" r="24" fill="#E3F0EF" stroke="#0E7C7B" stroke-width="2.5"/>
+          <text x="235" y="107" text-anchor="middle" font-size="20" fill="#0E7C7B">3</text>
+          <circle cx="235" cy="220" r="24" fill="#fff" stroke="#0E7C7B" stroke-width="2.5"/>
+          <text x="235" y="227" text-anchor="middle" font-size="20" fill="#8A9099">0</text>
+          <!-- output node -->
+          <circle cx="420" cy="160" r="27" fill="#0E7C7B"/>
+          <text x="420" y="168" text-anchor="middle" font-size="22" fill="#fff">7</text>
+        </svg>
+        <figcaption>2 inputs → 2 hidden neurons (ReLU) → 1 output · teal = +weight, red = −weight</figcaption>
+      </figure>
+      <div>
+        <div class="eqcard">
+          <span class="keq" data-display style="font-size:1.05em"
+            data-tex="\mathbf{h}=\operatorname{ReLU}\!\left(\begin{bmatrix}1&1\\1&-1\end{bmatrix}\!\begin{bmatrix}1\\2\end{bmatrix}\right)=\operatorname{ReLU}\!\begin{bmatrix}3\\-1\end{bmatrix}=\begin{bmatrix}3\\0\end{bmatrix}"></span>
+          <div class="eqnote">layer 1 · two hidden neurons · ReLU silences the negative one</div>
+        </div>
+        <div class="eqcard" style="margin-top:14px">
+          <span class="keq" data-display style="font-size:1.05em"
+            data-tex="y=\begin{bmatrix}2&-1\end{bmatrix}\!\begin{bmatrix}3\\0\end{bmatrix}+1=6-0+1=\mathbf{7}"></span>
+          <div class="eqnote">layer 2 · one output neuron (bias +1)</div>
+        </div>
+      </div>
+    </div>
+    <div class="callout" style="align-self:center; margin-top:16px">The hidden layer's output <strong>[3, 0]</strong> becomes the <strong>input to the next layer</strong>. Stack this same move — multiply, add, bend — and you have <em>depth</em>.</div>
+  </div>
+  <aside class="notes">The concrete stepping-stone from one layer into depth. Same arithmetic as the last three slides, now wired into a real two-layer net. Read the diagram left to right: two inputs (1, 2), a hidden layer of two neurons, one output. Layer 1 is a matrix–vector multiply then ReLU: neuron 1 gives 1·1+1·2 = 3 (passes), neuron 2 gives 1·1+(−1)·2 = −1 → ReLU clamps it to 0 — the same "goes silent" behaviour they saw with one neuron. The hidden vector is [3, 0]. Layer 2 reads THAT as its input: 2·3 + (−1)·0 + 1 = 7. Say the punchline in the callout: a layer's output is just the next layer's input, so "deep" is nothing more than repeating this move. Sets up exactly why depth builds a hierarchy — the next slide.</aside>
+</section>
+
+<!-- 20 ─ depth = hierarchy -->
+<section class="slide" id="s20">
+  <div class="eyebrow">Stacking · why go deep</div>
+  <h2 class="slide-title">Depth = a <em>hierarchy</em> of features</h2>
+  <div class="body center">
+    <div class="hpipe">
+      <div class="hstage">
+        <img src="../assets/img/cat.jpg" alt="Raw color photo of a cat">
+        <div class="hlabel">raw pixels</div><div class="hsub">the input image</div>
+      </div>
+      <div class="harrow">→</div>
+      <div class="hstage">
+        <img src="../assets/img/cat_l1_edges.png" alt="Edge outline of the cat">
+        <div class="hlabel">layer 1</div><div class="hsub">edges</div>
+      </div>
+      <div class="harrow">→</div>
+      <div class="hstage">
+        <img src="../assets/img/cat_l2_parts.png" alt="Grouped regions of the cat: ears, face, body">
+        <div class="hlabel">layer 2</div><div class="hsub">parts</div>
+      </div>
+      <div class="harrow">→</div>
+      <div class="hstage">
+        <img src="../assets/img/cat_l3_whole.png" alt="Coarse holistic view of the whole cat">
+        <div class="hlabel">layer 3</div><div class="hsub">the whole object</div>
+      </div>
+      <div class="harrow">→</div>
+      <div class="hstage call">
+        <div class="thumb" style="flex-direction:column">
+          <div style="font-size:22px; font-weight:700; color:var(--signal)">cat</div>
+          <div class="hsub">/ dog</div>
+        </div>
+        <div class="hlabel">output</div><div class="hsub">the label</div>
+      </div>
+    </div>
+    <div class="credit">one photo, abstracted further at each successive layer · cat: Alvesgaspar, CC BY-SA 3.0</div>
+    <div class="callout" style="align-self:center; margin-top:20px"><strong>Each layer feeds the next</strong>, and sees something more abstract than the one before: edges → parts → whole object. Early layers see fragments; deep layers see meaning. <strong>That</strong> is why "deep."</div>
+    <div class="callout" style="align-self:center; margin-top:12px; border-left-color:var(--roi); background:var(--roi-soft)">No one told it to look at edges first — it <strong>learned</strong> that edges build into parts, and parts into objects.</div>
+  </div>
+  <aside class="notes">Close the loop opened at the very start. This is DEPTH, not parallel filters: read it strictly left to right, each layer taking the previous layer's output and building something more abstract — raw pixels → edges → parts (ears, face, body) → the whole object → the label. The single photo, abstracted further at each step, makes the sequence concrete: early layers see fragments, deep layers see the whole. That progression from parts to wholes is what "deep" buys you, and it is why deep nets shine on rich data like images and spectra. Crucial honesty in the amber callout: this hierarchy is LEARNED, not designed — it echoes the engineered-vs-learned pivot and previews Lecture 5, where we watch a network's first layer literally become edge and peak detectors. Depth is powerful but hungry: more layers means more data and care — the bridge to Lecture 2. Say it: your spectra work the same way — raw intensities → peak-shaped bumps → clusters → a signature → the call.</aside>
+</section>
+
+<!-- 21 ─ closing discussion -->
+<section class="slide" id="s21">
+  <div class="eyebrow">Lecture 1 · discussion</div>
+  <h2 class="slide-title">Full circle: <em>what does a neuron compute — and why go deep?</em></h2>
+  <div class="body center">
+    <p class="lead" style="max-width:34em; align-self:center; text-align:center">We opened with those two questions. You can now answer both: a neuron <strong>multiplies, adds, and bends</strong>; stacking layers builds a <strong>hierarchy of learned features</strong>.</p>
+    <div class="callout pair" style="align-self:center; max-width:42em">
+      <strong>What data in your lab could you use to train a neural network?</strong> And would it likely <strong>beat the traditional machine-learning methods</strong> you rely on today?
+    </div>
+    <div class="callout" style="align-self:center; max-width:42em; margin-top:14px">Hold onto your answer — the next 14 hours build exactly the machinery to try it.</div>
+  </div>
+  <aside class="notes">Close the hour with the problem-driven discussion that ties the general cat-vs-dog examples back to this room's work. Give them 2–3 minutes with a neighbour, then harvest a few aloud: peak area, isotope ratio, retention time, S/N, adduct pattern, a QC pass/fail rule — every one of these is a hand-engineered feature a network could, in principle, learn from the raw spectrum or chromatogram. Push the second half too: what would you gain (catching patterns you never thought to measure) and what would you risk (more data needed, less interpretability, validation burden — Lecture 10). Their answers seed Lab 1's discussion. Bridge to Lecture 2: today we assumed the weights; next hour we learn where they come from.</aside>
+</section>
+
+</body>
+</html>

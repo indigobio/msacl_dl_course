@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 4 · Making Training Actually Work</title>
+<link rel="stylesheet" href="../assets/theme.css">
+<link rel="stylesheet" href="../assets/katex/katex.min.css">
+<script src="../assets/slides.js"></script>
+<script defer src="../assets/katex/katex.min.js"></script>
+<script>
+/* Typeset any .keq element from its data-tex (KaTeX, bundled locally so the
+   deck renders offline / headless). display mode when data-display is present. */
+window.addEventListener("load", function () {
+  if (!window.katex) return;
+  document.querySelectorAll(".keq").forEach(function (el) {
+    try {
+      katex.render(el.getAttribute("data-tex"), el, {
+        displayMode: el.hasAttribute("data-display"),
+        throwOnError: false
+      });
+    } catch (e) { /* leave raw text on failure */ }
+  });
+});
+</script>
+<style>
+/* ---- Lecture 4 local helpers (kept tiny; palette from theme.css) ---- */
+.keq { color:var(--ink); }
+.keq.big { font-size:1.3em; }
+.eqcard { background:#fff; border:1px solid var(--hairline); border-radius:12px; padding:20px 24px; text-align:center; }
+.eqnote { font-family:var(--mono); font-size:14px; color:var(--muted); margin-top:10px; letter-spacing:.04em; }
+.matline { font-family:var(--mono); font-size:20px; color:var(--ink-soft); text-align:center; line-height:1.7; }
+.matline b { color:var(--signal); } .matline .neg { color:var(--neg); }
+
+/* softmax probability bars */
+.probbars { display:flex; flex-direction:column; gap:12px; width:100%; }
+.pbrow { display:flex; align-items:center; gap:12px; }
+.pbrow .plab { font-family:var(--mono); font-size:16px; width:74px; color:var(--ink-soft); text-align:right; }
+.pbrow .ptrack { flex:1; height:26px; background:#F1F1EC; border:1px solid var(--hairline); border-radius:6px; overflow:hidden; }
+.pbrow .pfill { height:100%; background:var(--signal); border-radius:6px 0 0 6px; }
+.pbrow .pfill.amber { background:var(--roi); }
+.pbrow .pfill.red { background:var(--neg); }
+.pbrow .pval { font-family:var(--mono); font-size:16px; width:52px; color:var(--ink-soft); }
+
+/* small comparison cards (batch, generic) */
+.cardrow { display:flex; gap:20px; justify-content:center; align-items:stretch; }
+.tcard { flex:1; background:#fff; border:1px solid var(--hairline); border-radius:12px; padding:16px 18px; min-width:0; }
+.tcard .th { font-size:19px; font-weight:600; margin-bottom:8px; }
+.tcard .th.a { color:var(--signal); } .tcard .th.b { color:#A9721A; } .tcard .th.c { color:var(--neg); }
+.tcard ul { margin:0; } .tcard li { font-size:16.5px; line-height:1.4; margin:0 0 6px 1.1em; }
+
+/* outline section cards (slide 2) */
+.seccard { background:#fff; border:1px solid var(--hairline); border-left:4px solid var(--signal); border-radius:0 10px 10px 0; padding:12px 16px; }
+.seccard .sn { font-family:var(--mono); font-size:12.5px; letter-spacing:.1em; color:var(--signal); font-weight:700; }
+.seccard .st { font-size:19px; font-weight:600; color:var(--ink); margin:3px 0 2px; }
+.seccard .sd { font-size:15px; color:var(--muted); line-height:1.35; }
+
+/* overfitting curve gallery */
+.gallery { display:flex; gap:20px; justify-content:center; align-items:stretch; }
+.gcard { flex:1; background:#fff; border:1px solid var(--hairline); border-radius:12px; padding:14px 14px 12px; text-align:center; min-width:0; }
+.gcard .gt { font-size:19px; font-weight:600; margin-top:6px; }
+.gcard .gt.hi { color:var(--neg); } .gcard .gt.lo { color:#A9721A; } .gcard .gt.ok { color:var(--signal); }
+.gcard .gd { font-size:14.5px; color:var(--muted); line-height:1.35; margin-top:4px; }
+.leg { font-family:var(--mono); font-size:13px; letter-spacing:.03em; }
+
+/* dropout two-panel */
+.droprow { display:flex; gap:34px; justify-content:center; }
+.droprow figcaption { font-family:var(--mono); font-size:14px; color:var(--muted); margin-top:8px; }
+</style>
+</head>
+<body>
+
+<!-- 1 ─ title -->
+<section class="slide title-slide" id="s1">
+  <div class="eyebrow"><b>MSACL</b> · DS301 Deep Learning · Segment 2 · Lecture 4</div>
+  <h1>Making training <em>actually work</em></h1>
+  <div class="sub">Three parts: the right loss · tuning the knobs · beating overfitting</div>
+  <aside class="notes">Sunday afternoon, opening the second segment. In Segment 1 they built a neuron (Lecture 1) and learned how a network learns — loss, gradient descent, backprop, the training loop — then ran it once in Lab 1. Today is the reality check: the plain loop works on a toy, but real training breaks in predictable ways, and there are standard fixes for each. The hour is organized in three clear parts: (1) LOSS — we only did regression loss, so what loss do we use to CLASSIFY? (2) TUNING — the knobs you turn: the optimizer (Adam), the learning-rate schedule, and the hyperparameters like batch size, plus how to search them; (3) OVERFITTING vs. UNDERFITTING — reading train-vs-validation curves and the fixes (dropout, weight decay, early stopping, more data). Still intuition-first, only light arithmetic, no calculus beyond "slope."</aside>
+</section>
+
+<!-- 2 ─ outline: three parts -->
+<section class="slide" id="s2">
+  <div class="eyebrow">Recap · picking up a thread from Lecture 2</div>
+  <h2 class="slide-title">The loop runs — now make it work, <em>in three parts</em></h2>
+  <div class="body center">
+    <div class="cols">
+      <div>
+        <p class="lead">Lecture 2 measured loss with <strong>MSE</strong> — great for predicting a <em>number</em>. But we deferred one question: how do you score a <strong>classification</strong> — "resistant vs. susceptible"?</p>
+        <div class="callout" style="margin-top:16px">We open that thread first, then walk the knobs you turn, then how to stop a model from memorizing.</div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px">
+        <div class="seccard">
+          <div class="sn">PART 1</div>
+          <div class="st">Loss function choice</div>
+          <div class="sd">cross-entropy for classification (a touch of focal loss)</div>
+        </div>
+        <div class="seccard">
+          <div class="sn">PART 2</div>
+          <div class="st">Tuning the knobs</div>
+          <div class="sd">optimizer (Adam) · learning-rate schedule · batch size &amp; other hyperparameters · search</div>
+        </div>
+        <div class="seccard">
+          <div class="sn">PART 3</div>
+          <div class="st">Overfitting vs. underfitting</div>
+          <div class="sd">read the curves · dropout · L2 = weight decay · early stopping · more data</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Two minutes to rebuild the bridge and set the map. The continuity point: Lecture 2 explicitly said "classification loss is deferred to Lecture 4" — we cash that cheque now. MSE answers "how far is my number from the truth," right for a concentration or retention time, wrong for a category, where the output is a probability and being confidently wrong should hurt much more than being unsure. Then read the three-part outline on the right slowly — these are the three signposted sections of the hour, and each maps to an item on Quiz 4. One categorization to get right up front (we correct a common confusion later): the OPTIMIZER — Adam — is a Part-2 "tuning" choice, NOT a data-feeding detail; how we feed data in mini-batches is separate from which optimizer updates the weights. Keep energy high — this is the most immediately useful hour of the course for their day job.</aside>
+</section>
+
+<!-- ============================ PART 1 ============================ -->
+<!-- 3 ─ divider: Part 1 · loss -->
+<section class="slide divider" id="s3">
+  <svg class="peak" viewBox="0 0 1280 380" preserveAspectRatio="none">
+    <line x1="0" y1="342" x2="1280" y2="342" stroke="#D9D9D2" stroke-width="1"/>
+    <path d="M120 300 C 420 300, 460 90, 700 90 C 940 90, 980 300, 1160 300" fill="none" stroke="#0E7C7B" stroke-width="2.5" opacity="0.5"/>
+    <circle cx="700" cy="90" r="10" fill="#0E7C7B"/>
+  </svg>
+  <div class="divider-inner">
+    <div class="eyebrow">Lecture 4 · Part 1 of 3</div>
+    <h1>Loss function choice</h1>
+    <div class="sub">cross-entropy for classification — it punishes confident wrong answers</div>
+  </div>
+  <aside class="notes">Part one of three: which loss. One idea to hold: for a yes/no or a category, the network outputs a probability, and the right loss should barely shrug at an unsure guess but come down hard on a confident mistake. That loss is cross-entropy. We build it in three steps — turn scores into probabilities, look at the penalty shape, read one worked number on a real MS call — then name its cousin, focal loss, in one breath before moving to tuning.</aside>
+</section>
+
+<!-- 4 ─ softmax: scores -> probabilities -->
+<section class="slide" id="s4">
+  <div class="eyebrow">Part 1 · loss · step 1 · probabilities</div>
+  <h2 class="slide-title">A classifier outputs <em>probabilities</em> that sum to 1</h2>
+  <div class="body center">
+    <div class="cols">
+      <figure class="fig">
+        <svg width="300" height="250" viewBox="0 0 300 250">
+          <text x="150" y="22" text-anchor="middle" class="m" font-size="13" fill="#8A9099">raw scores from the net</text>
+          <rect x="60" y="40" width="180" height="34" rx="6" fill="#fff" stroke="#3D444C" stroke-width="1.5"/>
+          <text x="150" y="63" text-anchor="middle" class="m" font-size="16">R: 2.0   S: 0.5</text>
+          <path d="M150 84 L150 116" stroke="#8A9099" stroke-width="2" marker-end="url(#sm)"/>
+          <text x="196" y="106" class="m" font-size="13" fill="#0E7C7B">softmax</text>
+          <rect x="26" y="124" width="248" height="30" rx="6" fill="var(--signal-soft)" stroke="#0E7C7B" stroke-width="1.5"/>
+          <text x="150" y="144" text-anchor="middle" class="m" font-size="12" fill="#0E7C7B">squash &amp; normalize → sums to 1</text>
+          <text x="150" y="192" text-anchor="middle" class="m" font-size="15">R: 0.82&nbsp;&nbsp;&nbsp;S: 0.18</text>
+          <text x="150" y="216" text-anchor="middle" class="m" font-size="12.5" fill="#8A9099">"82% sure it's resistant"</text>
+          <defs><marker id="sm" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#8A9099"/></marker></defs>
+        </svg>
+        <figcaption>softmax turns any scores into a probability for each class</figcaption>
+      </figure>
+      <div>
+        <p class="lead">The final layer gives a raw score per class. <strong>Softmax</strong> squashes them into <strong>probabilities</strong> — all positive, adding to 1:</p>
+        <div class="eqcard" style="margin-top:8px; padding:12px 20px">
+          <span class="keq" data-display style="font-size:0.9em"
+            data-tex="p_i=\dfrac{e^{\,z_i}}{\sum_{j} e^{\,z_j}}"></span>
+        </div>
+        <div class="callout" style="margin-top:10px">Now "the answer" is a <strong>confidence in each class</strong>, not a single number. <strong>Any number of classes</strong> works the same way — 2 here, or 30 for species ID from a spectrum; just more terms in the sum.</div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Keep this light — softmax is a mechanism, not the star, but now we DO show the formula since the instructor asked for it: numerator e^z_i exponentiates one class's raw score (guarantees positive); denominator sums that same exponential over every class (the normalizer that forces the total to 1). Walk it once on the R/S example: exponentiate 2.0 and 0.5, add them, divide each by that sum, land near 0.82/0.18. Then the multi-class touch: nothing about softmax is binary-only — the same sum-and-divide works whether there are 2 classes or 200; a species-ID model just has a longer sum in the denominator. That confidence is exactly what the next slide's loss will grade: a good loss should reward high probability on the TRUE class and punish high probability on a WRONG class. Anchor it in their world — this is precisely the output of a MALDI-TOF resistance classifier like the DRIAMS models in Lab 2.</aside>
+</section>
+
+<!-- 5 ─ cross-entropy penalty curve -->
+<section class="slide" id="s5">
+  <div class="eyebrow">Part 1 · loss · step 2 · the penalty shape</div>
+  <h2 class="slide-title">Penalty = "how surprised were you by the <em>truth</em>?"</h2>
+  <div class="body center">
+    <div class="cols">
+      <figure class="fig">
+        <svg width="470" height="290" viewBox="0 0 470 290">
+          <line x1="60" y1="250" x2="440" y2="250" stroke="#8A9099" stroke-width="1.5"/>
+          <line x1="60" y1="30"  x2="60"  y2="250" stroke="#8A9099" stroke-width="1.5"/>
+          <text x="250" y="282" text-anchor="middle" class="m" font-size="13" fill="#8A9099">probability you gave the TRUE class →</text>
+          <text x="38" y="150" class="m" font-size="13" fill="#8A9099" transform="rotate(-90 38 150)">penalty (loss)</text>
+          <!-- -log(p) curve -->
+          <path d="M84 34 C 120 120, 170 175, 245 205 C 320 232, 393 245, 430 249" fill="none" stroke="#0E7C7B" stroke-width="3"/>
+          <!-- markers -->
+          <circle cx="430" cy="249" r="5" fill="#0E7C7B"/><text x="410" y="240" class="m" font-size="12" fill="#0E7C7B">p≈1 → 0</text>
+          <circle cx="245" cy="205" r="5" fill="#E09E2F"/><text x="250" y="198" class="m" font-size="12" fill="#A9721A">p=0.5</text>
+          <circle cx="97"  cy="81"  r="5" fill="#C4534F"/><text x="104" y="78" class="m" font-size="12" fill="#C4534F">confident &amp; wrong → huge</text>
+        </svg>
+        <figcaption>gave the truth high probability → tiny penalty · gave it near-zero → penalty explodes</figcaption>
+      </figure>
+      <div>
+        <p class="lead">Cross-entropy looks only at the probability you assigned to the <strong>correct</strong> class:</p>
+        <ul style="margin-top:8px">
+          <li>said <strong>0.9</strong> and right → barely any penalty</li>
+          <li>said <strong>0.5</strong> — a shrug → moderate penalty</li>
+          <li>said <strong>0.02</strong> — <strong>confidently wrong</strong> → penalty rockets</li>
+        </ul>
+        <div class="callout" style="margin-top:12px">That steep left wall is the whole idea: <strong>being sure and wrong is the worst thing a classifier can do.</strong></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">This is the intuition to land, and it is the "penalize confident wrong answers" outcome verbatim. Read the curve from right to left: if you gave the true class a probability near 1, you were right and sure, so the penalty is essentially zero; at 0.5 you were on the fence, so a moderate penalty; as your probability for the truth heads toward zero — meaning you were confidently backing the WRONG class — the penalty shoots up toward infinity. That asymmetry is deliberate and clinically sensible: a lab test that hedges is tolerable, a test that is loudly, confidently wrong is dangerous, and the loss reflects that. Do not write "−log p" on the board as math; just call it "the surprise penalty" and let the shape carry it. Contrast with MSE in one line: MSE would treat 0.9-vs-1 and 0.1-vs-0 as similar-sized misses; cross-entropy blows the confident miss up enormously.</aside>
+</section>
+
+<!-- 6 ─ worked numeric CE on an MS call -->
+<section class="slide" id="s6">
+  <div class="eyebrow">Part 1 · loss · step 3 · a number on a real call</div>
+  <h2 class="slide-title">Two models, same call — <em>confidence changes the loss</em></h2>
+  <div class="body center">
+    <p class="lead" style="max-width:44em; align-self:center; text-align:center">A MALDI-TOF isolate is truly <strong>resistant (R)</strong>. Both models call R correctly — but with different confidence. Cross-entropy = the penalty at the probability each gave to <strong>R</strong>.</p>
+    <div class="cardrow" style="margin-top:16px; max-width:60em; align-self:center">
+      <div class="tcard">
+        <div class="th a">Model A — sure and right</div>
+        <div class="probbars" style="margin-top:6px">
+          <div class="pbrow"><span class="plab">R (true)</span><div class="ptrack"><div class="pfill" style="width:90%"></div></div><span class="pval">0.90</span></div>
+          <div class="pbrow"><span class="plab">S</span><div class="ptrack"><div class="pfill amber" style="width:10%"></div></div><span class="pval">0.10</span></div>
+        </div>
+        <div class="matline" style="margin-top:12px; font-size:18px">penalty at 0.90 = <b>0.11</b></div>
+      </div>
+      <div class="tcard">
+        <div class="th c">Model B — barely committed</div>
+        <div class="probbars" style="margin-top:6px">
+          <div class="pbrow"><span class="plab">R (true)</span><div class="ptrack"><div class="pfill red" style="width:30%"></div></div><span class="pval">0.30</span></div>
+          <div class="pbrow"><span class="plab">S</span><div class="ptrack"><div class="pfill amber" style="width:70%"></div></div><span class="pval">0.70</span></div>
+        </div>
+        <div class="matline" style="margin-top:12px; font-size:18px">penalty at 0.30 = <b class="neg">1.20</b></div>
+      </div>
+    </div>
+    <div class="callout" style="align-self:center; margin-top:16px"><strong>Same prediction, 10× the loss.</strong> Training on cross-entropy pushes the net not just to be right, but to be <em>calibrated and confident</em> when it should be.</div>
+  </div>
+  <aside class="notes">The light worked example — concrete numbers, no derivation. The truth is R. Model A puts 0.90 on R; the surprise penalty at 0.90 is about 0.11 — tiny. Model B technically also "picks" R only if you argmax, but it put just 0.30 on R and 0.70 on S — it is nearly betting the wrong way; the penalty at 0.30 is about 1.20, more than ten times larger. Read the takeaway aloud: accuracy alone cannot see this difference — both might count as "correct" — but cross-entropy does, and that is why we train on it. The numbers (0.11 and 1.20) come from the same surprise curve on the previous slide; you can note in passing they are natural-log values, but the audience only needs "small vs. big." This exact "which model does the loss prefer / why" reasoning shows up on the quiz via the focal-loss curve item.</aside>
+</section>
+
+<!-- 7 ─ cross-entropy formula, walked through intuitively -->
+<section class="slide" id="s7">
+  <div class="eyebrow">Part 1 · loss · the formula, in plain words</div>
+  <h2 class="slide-title">Cross-entropy is just <em>&minus;log(the probability you gave the truth)</em></h2>
+  <div class="body center">
+    <div class="cols">
+      <div>
+        <div class="eqcard">
+          <span class="keq" data-display style="font-size:1.02em"
+            data-tex="L=-\sum_i \underbrace{y_i}_{\text{one-hot}}\,\log p_i \;=\; -\log p_{\text{true}}"></span>
+          <div class="eqnote">the label <span class="keq" data-tex="y"></span> is 1 for the correct class, 0 for the rest — so the sum keeps <strong>only the true class's term</strong></div>
+        </div>
+        <p class="lead" style="font-size:20px; margin-top:12px">Read it right to left: take the probability you gave the <strong>correct</strong> class, take its log, flip the sign.</p>
+      </div>
+      <div>
+        <div class="tcard">
+          <div class="th a" style="color:var(--ink)">Walk the numbers</div>
+          <div class="matline" style="text-align:left; font-size:16px; line-height:2.0">
+            p<sub>true</sub> = 1.0 → &minus;log(1.0) = <b>0</b> &nbsp;<span style="color:var(--muted)">no penalty</span><br>
+            p<sub>true</sub> = 0.5 → &minus;log(0.5) = <b>0.69</b><br>
+            p<sub>true</sub> = 0.1 → &minus;log(0.1) = <b class="neg">2.30</b> &nbsp;<span style="color:var(--muted)">confident &amp; wrong</span>
+          </div>
+        </div>
+        <div class="callout" style="margin-top:12px">Exactly the <strong>surprise curve</strong> from two slides ago — now as a formula: high probability on the truth → tiny penalty; near-zero → it explodes.</div>
+      </div>
+    </div>
+    <div class="callout" style="align-self:center; margin-top:12px">Rule of thumb: predict a <strong>number</strong> → MSE; choose a <strong>class</strong> → cross-entropy. In PyTorch, one line: <code>nn.MSELoss</code> → <code>nn.CrossEntropyLoss</code>. <span style="color:var(--muted)">(A relative, <em>focal loss</em>, tilts this toward rare/hard cases — more when we discuss class imbalance.)</span></div>
+  </div>
+  <aside class="notes">Touch the actual formula, but stay intuition-first — no derivation. Put it up and translate every symbol into plain words. The sum runs over the classes; y is the one-hot label — a 1 on the correct class and 0 everywhere else — so every term except the true class's is multiplied by zero and vanishes. What survives is a single term: minus the log of the probability the model assigned to the TRUE class. That's the whole formula: −log(p_true). Now walk the three numbers so the shape is concrete: give the truth probability 1.0 and −log(1.0) = 0, no penalty, you were right and sure; give it 0.5 and the penalty is about 0.69; give it 0.1 — you were confidently backing the wrong class — and the penalty is about 2.30 and still climbing toward infinity as p_true → 0. Point back explicitly: this IS the "surprise" penalty curve from the earlier slide, and 0.11 and 1.20 from the worked MALDI example were just this formula at p = 0.90 and 0.30. Close with the one-line rule of thumb (number → MSE, class → cross-entropy; one-line swap in PyTorch, which even applies softmax internally) and a half-sentence pointer to focal loss, which the quiz explores as a discussion. Bridge to Part 2: right loss in hand — now the knobs that make training converge.</aside>
+</section>
+
+<!-- ============================ PART 2 ============================ -->
+<!-- 8 ─ divider: Part 2 · tuning -->
+<section class="slide divider" id="s8">
+  <svg class="peak" viewBox="0 0 1280 380" preserveAspectRatio="none">
+    <line x1="0" y1="342" x2="1280" y2="342" stroke="#D9D9D2" stroke-width="1"/>
+    <g fill="#0E7C7B" opacity="0.5">
+      <circle cx="360" cy="180" r="7"/><circle cx="520" cy="250" r="7"/><circle cx="680" cy="150" r="7"/><circle cx="840" cy="230" r="7"/><circle cx="1000" cy="190" r="7"/>
+    </g>
+  </svg>
+  <div class="divider-inner">
+    <div class="eyebrow">Lecture 4 · Part 2 of 3</div>
+    <h1>Tuning the knobs</h1>
+    <div class="sub">optimizer (Adam) · learning-rate schedule · batch size &amp; the other hyperparameters</div>
+  </div>
+  <aside class="notes">Part two of three: the settings you choose to make training converge well. We go in order — how we feed the data (mini-batches), which optimizer updates the weights (Adam), how we shrink the step over time (the schedule), why very deep nets are still hard (vanishing/exploding — a short beat that sets up Lecture 5's ResNet), then the hyperparameters you actually dial: batch size — with its effect on the loss curve — plus learning rate and epochs, and how to search them.</aside>
+</section>
+
+<!-- 9 ─ full-batch vs mini-batch (how data is fed) -->
+<section class="slide" id="s9">
+  <div class="eyebrow">Part 2 · tuning · how the data is fed</div>
+  <h2 class="slide-title">Mini-batches: <em>step often, on a handful at a time</em></h2>
+  <div class="body center">
+    <div class="cols">
+      <figure class="fig">
+        <svg width="470" height="270" viewBox="0 0 470 270">
+          <!-- full batch: one big smooth arrow to bottom -->
+          <text x="118" y="24" text-anchor="middle" class="m" font-size="13" fill="#8A9099">FULL BATCH</text>
+          <ellipse cx="118" cy="150" rx="86" ry="96" fill="none" stroke="#D9D9D2" stroke-width="1.5"/>
+          <circle cx="118" cy="60" r="8" fill="#0E7C7B"/>
+          <path d="M118 70 C 108 110, 128 170, 118 214" stroke="#0E7C7B" stroke-width="2.5" fill="none" marker-end="url(#o1)"/>
+          <circle cx="118" cy="220" r="7" fill="#0E7C7B"/>
+          <text x="118" y="252" text-anchor="middle" class="m" font-size="12" fill="#8A9099">smooth, but 1 step / pass</text>
+          <!-- mini batch: jittery path -->
+          <text x="352" y="24" text-anchor="middle" class="m" font-size="13" fill="#A9721A">MINI-BATCH</text>
+          <ellipse cx="352" cy="150" rx="86" ry="96" fill="none" stroke="#D9D9D2" stroke-width="1.5"/>
+          <circle cx="352" cy="60" r="8" fill="#E09E2F"/>
+          <path d="M352 68 L332 96 L372 118 L338 142 L374 166 L346 190 L352 214" stroke="#E09E2F" stroke-width="2.5" fill="none" marker-end="url(#o2)"/>
+          <circle cx="352" cy="220" r="7" fill="#0E7C7B"/>
+          <text x="352" y="252" text-anchor="middle" class="m" font-size="12" fill="#A9721A">noisier, but many steps / pass</text>
+          <defs>
+            <marker id="o1" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#0E7C7B"/></marker>
+            <marker id="o2" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#E09E2F"/></marker>
+          </defs>
+        </svg>
+        <figcaption>same valley — full batch takes one careful step per pass; mini-batch takes many quick, jittery ones</figcaption>
+      </figure>
+      <div>
+        <p class="lead">Split the data into <strong>mini-batches</strong> (say 32), and after <em>each</em> batch take one step — don't wait to see all the data.</p>
+        <div class="matline" style="text-align:left; font-size:15.5px; line-height:1.7; margin-top:8px; background:#fff; border:1px solid var(--hairline); border-radius:10px; padding:10px 14px">
+          pick batch 1 → update once<br>
+          pick batch 2 → update once<br>
+          … until all batches used = <b>1 epoch</b> → repeat
+        </div>
+        <div class="callout" style="margin-top:12px">This is <strong>mini-batch SGD</strong> — a <em>data-feeding</em> choice, not an optimizer. 20 batches = <strong>20 updates per epoch</strong> (vs. 1 for full-batch): <strong>faster</strong>, and the noise finds flatter, <strong>better-generalizing</strong> solutions. <em>The optimizer that acts on each step is next.</em></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">This treatment follows the reference deck (Hung-yi Lee, "Deep Learning in one day," mini-batch section). Keep the categorization clean: a "batch" is how many samples you look at before ONE weight step — HOW THE DATA IS FED, not which optimizer you use. Full-batch = use the entire dataset per step: gradient exact, path smooth, but ONE step per pass and everything must fit in memory. Mini-batch = chop into small groups (32, 64, …) and, crucially, UPDATE AFTER EACH GROUP — pick batch 1, take a step; pick batch 2, take a step; when every batch has been used that's one epoch, then repeat (shuffling between epochs). An honest aside from the source: because the loss on each little batch differs, we are not literally minimizing the one total loss each step — the target wobbles — yet it works. Two payoffs the source demonstrates: FASTER — with 20 batches you update 20 times per epoch instead of once; and BETTER — in their experiment mini-batch reached ~0.84 test accuracy vs ~0.12 for no-batch, because the gradient noise nudges the model toward flatter, better-generalizing minima (callback to Lecture 2's local-dip slide). "Stochastic" just means "a bit random." Say explicitly: this is separate from the OPTIMIZER (next slide, Adam), which decides how each step actually updates the weights.</aside>
+</section>
+
+<!-- 10 ─ optimizer: Adam -->
+<section class="slide" id="s10">
+  <div class="eyebrow">Part 2 · tuning · the optimizer</div>
+  <h2 class="slide-title">Adam: a <em>per-weight, adaptive</em> step size</h2>
+  <div class="body center">
+    <div class="cols">
+      <div>
+        <p class="lead">Plain SGD uses <strong>one</strong> learning rate for every weight. <strong>Adam</strong> combines two classic ideas:</p>
+        <div class="matline" style="font-size:17px; margin:8px 0 2px"><b>Adam = adaptive learning rate + momentum</b></div>
+        <ul style="margin-top:8px">
+          <li><strong>Adaptive rate</strong> (per weight): <em>smaller</em> past gradients → <em>bigger</em> steps, <em>larger</em> → smaller — tuned automatically from each weight's own gradient history</li>
+          <li><strong>Momentum:</strong> like a ball with inertia, keep rolling in a consistent direction — glide through small bumps and past flat spots</li>
+        </ul>
+        <div class="callout" style="margin-top:12px">A cheap stand-in for the "curvature" idea from Lecture 2 — Adam is the sensible <strong>default optimizer</strong> and usually "just works."</div>
+      </div>
+      <figure class="fig">
+        <svg width="440" height="270" viewBox="0 0 440 270">
+          <!-- hillside profile: a slope, a small bump/plateau, then the valley floor -->
+          <path d="M30 45 C 80 85, 110 125, 140 145 C 160 155, 175 128, 195 118 C 215 108, 235 138, 250 153 C 300 175, 350 196, 405 215"
+                fill="none" stroke="#8A9099" stroke-width="1.5"/>
+          <line x1="30" y1="225" x2="405" y2="225" stroke="#EDEDE7" stroke-width="1"/>
+          <text x="405" y="240" text-anchor="end" class="m" font-size="12" fill="#0E7C7B">valley floor = low loss</text>
+          <!-- plain ball: stuck at the bump -->
+          <circle cx="178" cy="129" r="9" fill="#fff" stroke="#C4534F" stroke-width="2"/>
+          <text x="178" y="103" text-anchor="middle" class="m" font-size="11.5" fill="#C4534F">plain step: <tspan font-weight="700">stuck</tspan> on the bump</text>
+          <!-- momentum monkey: mid-slide, trail behind it, carried over the bump -->
+          <circle cx="70" cy="93" r="5" fill="#0E7C7B" opacity=".25"/>
+          <circle cx="95" cy="112" r="6" fill="#0E7C7B" opacity=".45"/>
+          <g transform="translate(238,146)">
+            <!-- simple monkey face: ears, head, eyes, smile, small tail -->
+            <path d="M-4 18 C -16 16, -18 4, -10 -2" fill="none" stroke="#0E7C7B" stroke-width="2"/>
+            <circle cx="-9" cy="-9" r="4.5" fill="#0E7C7B"/>
+            <circle cx="9"  cy="-9" r="4.5" fill="#0E7C7B"/>
+            <circle cx="0" cy="0" r="13" fill="#0E7C7B"/>
+            <circle cx="-4.5" cy="-2" r="1.6" fill="#fff"/>
+            <circle cx="4.5"  cy="-2" r="1.6" fill="#fff"/>
+            <path d="M-5 5 Q0 9 5 5" fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/>
+          </g>
+          <path d="M198 138 C 212 142, 222 145, 232 148" fill="none" stroke="#0E7C7B" stroke-width="2" marker-end="url(#mo)"/>
+          <text x="255" y="128" text-anchor="middle" class="m" font-size="11.5" fill="#0E7C7B">momentum carries it <tspan font-weight="700">through</tspan></text>
+          <defs><marker id="mo" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#0E7C7B"/></marker></defs>
+        </svg>
+        <figcaption>a small plateau/bump can stall a plain step — inertia from momentum rolls right over it</figcaption>
+      </figure>
+    </div>
+  </div>
+  <aside class="notes">Follows the reference deck's optimizer section (Hung-yi Lee): the "Recipe of Deep Learning" lists Adaptive Learning Rate and Momentum as two separate tricks, and Adam is literally their combination — "Adam = RMSProp (advanced Adagrad) + Momentum." Give each in plain words. Adaptive rate (the Adagrad/RMSProp idea): each weight gets its OWN learning rate scaled by its recent gradient sizes — where gradients have been small the effective rate grows, where they've been large it shrinks, so flat directions get bigger steps and steep ones smaller steps automatically. Momentum (the physics idea, now drawn literally): picture a monkey sliding down a hillside toward the valley floor (low loss). A PLAIN step only looks at the slope right under its feet — hit a small bump or a flat plateau (gradient ≈ 0) and it just stops there, stuck, even though the true valley is further down. A monkey with MOMENTUM keeps some of its downhill velocity from the steps before, so it carries straight over that same bump without even noticing it, and keeps sliding toward the real bottom. That is exactly what momentum adds to gradient descent: this step's move = mostly the accumulated velocity, nudged a little by the current gradient — it glides through small bumps, coasts across flat spots, and doesn't overreact to the mini-batch noise from the last slide. Tie back to the OPTIONAL curvature slide in Lecture 2: momentum is a cheap, physical stand-in for using the shape of the valley to pick the step. Practice: use Adam (adaptive rate + momentum together) as your default optimizer; it removes most of the pain of hand-tuning the learning rate — though the rate still matters, which is why we schedule it next.</aside>
+</section>
+
+<!-- 11 ─ learning-rate scheduler (warmup-stable-decay) -->
+<section class="slide" id="s11">
+  <div class="eyebrow">Part 2 · tuning · the learning-rate schedule</div>
+  <h2 class="slide-title">Schedule the rate: <em>warmup → hold → decay</em></h2>
+  <div class="body center">
+    <div class="cols">
+      <div>
+        <p class="lead">Even with Adam, one fixed step size is rarely ideal. A popular modern shape is <strong>warmup–stable–decay</strong>:</p>
+        <ul style="margin-top:8px">
+          <li><strong>Warmup</strong> — ramp up gently so early noisy steps don't blow up</li>
+          <li><strong>Stable</strong> — hold a high rate to travel fast</li>
+          <li><strong>Decay</strong> — drop to tiny steps to settle in</li>
+        </ul>
+        <div class="callout" style="margin-top:12px">Why hold, then decay? Picture the loss landscape as a <strong>river valley</strong>: steep <strong>mountain</strong> walls on both sides, a flat <strong>river</strong> of real progress along the bottom.</div>
+      </div>
+      <figure class="fig">
+        <svg width="460" height="300" viewBox="0 0 460 300">
+          <!-- Panel A: the river-valley cross-section -->
+          <text x="95" y="18" text-anchor="middle" class="m" font-size="11.5" fill="#8A9099">cross-section</text>
+          <path d="M20 30 L95 175 L170 30" fill="none" stroke="#8A9099" stroke-width="1.5"/>
+          <line x1="70" y1="175" x2="120" y2="175" stroke="#0E7C7B" stroke-width="3"/>
+          <text x="24"  y="55" class="m" font-size="10.5" fill="#8A9099">mountain</text>
+          <text x="166" y="55" text-anchor="end" class="m" font-size="10.5" fill="#8A9099">mountain</text>
+          <text x="95" y="195" text-anchor="middle" class="m" font-size="10.5" fill="#0E7C7B">river</text>
+          <!-- ball bouncing wall to wall (large amplitude = "stable" phase) -->
+          <circle cx="62" cy="95" r="6" fill="#C4534F"/>
+          <path d="M62 95 L128 130" stroke="#C4534F" stroke-width="1.5" stroke-dasharray="3 3" marker-end="url(#rv)"/>
+          <circle cx="128" cy="130" r="5" fill="#C4534F" opacity=".6"/>
+          <text x="95" y="105" text-anchor="middle" class="m" font-size="9.5" fill="#C4534F">bounces</text>
+          <defs><marker id="rv" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 Z" fill="#C4534F"/></marker></defs>
+
+          <!-- Panel B: amplitude vs. training step, tied to warmup / stable / decay -->
+          <line x1="205" y1="255" x2="450" y2="255" stroke="#8A9099" stroke-width="1.5"/>
+          <text x="327" y="278" text-anchor="middle" class="m" font-size="12" fill="#8A9099">training step →</text>
+          <text x="195" y="150" class="m" font-size="11" fill="#8A9099" transform="rotate(-90 195 150)">distance from the river</text>
+          <line x1="248" y1="30" x2="248" y2="255" stroke="#EDEDE7" stroke-width="1"/>
+          <line x1="390" y1="30" x2="390" y2="255" stroke="#EDEDE7" stroke-width="1"/>
+          <!-- decaying oscillation envelope: grows through warmup, wide & noisy through stable, collapses through decay -->
+          <path d="M210 255 L222 220 L232 245 L248 190 L262 240 L280 175 L296 235 L314 168 L330 232 L348 178 L362 228 L376 190
+                   L386 220 L396 205 L404 220 L411 210 L417 216 L423 213 L428 215 L433 214 L440 255"
+                fill="none" stroke="#0E7C7B" stroke-width="2.2"/>
+          <line x1="210" y1="255" x2="440" y2="255" stroke="#0E7C7B" stroke-width="2.2" opacity=".9"/>
+          <text x="229" y="42" text-anchor="middle" class="m" font-size="11" fill="#0E7C7B">warmup</text>
+          <text x="319" y="42" text-anchor="middle" class="m" font-size="11" fill="#0E7C7B">stable</text>
+          <text x="415" y="42" text-anchor="middle" class="m" font-size="11" fill="#0E7C7B">decay</text>
+        </svg>
+        <figcaption>the "river valley" loss landscape · Wen et al., <em>Understanding Warmup-Stable-Decay Learning Rates</em>, arXiv:2410.05192</figcaption>
+      </figure>
+    </div>
+  </div>
+  <aside class="notes">The learning-rate SCHEDULE, the explicit Lecture 2 callback, reframed with the paper's own "river valley" picture (arXiv:2410.05192), which is the piece the instructor specifically asked to add. Panel A is the valley seen in CROSS-SECTION, cut across the river: two steep mountain walls (sharp-curvature directions) with a flat river channel at the bottom (the direction where real optimization progress happens). Panel B tracks the SAME ball's distance from that river over training steps, and lines it up with the three schedule phases. WARMUP: the rate ramps up, so the ball's swing away from the river grows from nothing. STABLE: a high, constant rate keeps the ball bouncing hard between the two mountain walls — big, noisy swings — but underneath that noise it is still creeping along the river, i.e. still making real progress, which is why the loss curve can look choppy here without anything being wrong. DECAY: dropping the rate sharply stops the bouncing almost immediately, and the ball settles into the river itself — this is the moment the loss visibly falls off a cliff in WSD, because the oscillation that was hiding the true progress finally disappears. Contrast briefly with COSINE (mentioned, not drawn here): a smooth, gradually-shrinking rate the whole time, versus WSD's hold-then-drop, which lets you decide how long to train without fixing the schedule in advance. Clarify vs. Adam: Adam adapts the step PER WEIGHT from recent gradients; the schedule scales the OVERALL rate over TIME — they stack. Bridge: optimizer and schedule set, but very deep nets still fight back — why, next.</aside>
+</section>
+
+<!-- 12 ─ deep nets are harder: vanishing/exploding (beat within tuning) -->
+<section class="slide" id="s12">
+  <div class="eyebrow">Part 2 · tuning · why deep nets are harder</div>
+  <h2 class="slide-title">Whisper down the lane: the gradient <em>fades or blows up</em></h2>
+  <div class="body center">
+    <figure class="fig">
+      <svg width="900" height="200" viewBox="0 0 900 200">
+        <text x="450" y="20" text-anchor="middle" class="m" font-size="13" fill="#C4534F">← gradient travels backward through every layer, multiplied at each one</text>
+        <!-- vanishing row -->
+        <text x="4" y="70" text-anchor="start" class="m" font-size="13" fill="#8A9099">×0.5 each</text>
+        <g font-family="var(--mono)">
+          <text x="120" y="70" text-anchor="middle" font-size="18" fill="#0E7C7B">1.0</text>
+          <text x="240" y="70" text-anchor="middle" font-size="16" fill="#0E7C7B">0.5</text>
+          <text x="360" y="70" text-anchor="middle" font-size="15" fill="#0E7C7B" opacity=".8">0.25</text>
+          <text x="480" y="70" text-anchor="middle" font-size="14" fill="#0E7C7B" opacity=".6">0.12</text>
+          <text x="600" y="70" text-anchor="middle" font-size="13" fill="#0E7C7B" opacity=".45">0.06</text>
+          <text x="720" y="70" text-anchor="middle" font-size="12" fill="#0E7C7B" opacity=".3">0.03</text>
+          <text x="840" y="70" text-anchor="middle" font-size="11" fill="#0E7C7B" opacity=".2">0.02</text>
+        </g>
+        <text x="870" y="94" text-anchor="end" class="m" font-size="13" fill="#C4534F">→ vanishes: early layers barely learn</text>
+        <line x1="80" y1="110" x2="880" y2="110" stroke="#EDEDE7" stroke-width="1"/>
+        <!-- exploding row -->
+        <text x="4" y="160" text-anchor="start" class="m" font-size="13" fill="#8A9099">×2 each</text>
+        <g font-family="var(--mono)">
+          <text x="120" y="160" text-anchor="middle" font-size="12" fill="#C4534F" opacity=".5">1</text>
+          <text x="240" y="160" text-anchor="middle" font-size="13" fill="#C4534F" opacity=".6">2</text>
+          <text x="360" y="160" text-anchor="middle" font-size="14" fill="#C4534F" opacity=".7">4</text>
+          <text x="480" y="160" text-anchor="middle" font-size="15" fill="#C4534F" opacity=".8">8</text>
+          <text x="600" y="160" text-anchor="middle" font-size="16" fill="#C4534F">16</text>
+          <text x="720" y="160" text-anchor="middle" font-size="18" fill="#C4534F">32</text>
+          <text x="840" y="160" text-anchor="middle" font-size="21" fill="#C4534F" font-weight="700">64</text>
+        </g>
+        <text x="870" y="184" text-anchor="end" class="m" font-size="13" fill="#C4534F">→ explodes: updates blow up, loss goes NaN</text>
+      </svg>
+      <figcaption>each layer multiplies the gradient · a bit &lt;1 shrinks it to nothing · a bit &gt;1 blows it up</figcaption>
+    </figure>
+    <div class="matline" style="align-self:center; margin-top:8px; font-size:16px">early-weight gradient = <b>0.5 × 0.5 × 0.5 × 0.5 × 0.5 × 0.5 × 0.5 ≈ 0.02</b> &nbsp;<span style="color:var(--muted)">— Lecture 2's "multiply the local effects along the path," now across <em>many</em> layers</span></div>
+    <div class="callout" style="align-self:center; margin-top:10px">A whispered message down a line: after enough layers it arrives as <strong>silence</strong> (vanishing — the layers <em>nearest the input barely learn</em>) or a <strong>scream</strong> (exploding). No optimizer fully fixes this — <em>the real fix, ResNet skip connections, is next lecture.</em></div>
+  </div>
+  <aside class="notes">A short but required beat inside tuning — it names a limit the optimizer can't cure and sets up Lecture 5's ResNet. Ground it in Lecture 2 and in the reference deck (Hung-yi Lee, "Vanishing Gradient Problem"). Recall backprop from Lecture 2: a weight's gradient is the PRODUCT of the local slopes along the path from the loss back to that weight — "multiply the local effects along the path." For a deep net that path passes through every layer above the weight, so the gradient is a long product of per-layer factors. Show the multiplication explicitly with the numbers on screen: if each factor is about 0.5 (a sigmoid's slope is at most 0.25, so this is optimistic), then seven layers give 0.5×0.5×…×0.5 = 0.5⁷ ≈ 0.02 — the signal has withered to almost nothing by the time it reaches the EARLIEST layers, so those layers get essentially no blame and barely learn while the layers near the output learn fast (the source's exact point: smaller gradients near the input, larger near the output). That is "vanishing gradients." Flip the factor to about 2 and the product 2⁷ = 128 explodes — updates blow up, weights fly off, loss prints NaN. The "whisper down the lane" image nails it. Mention the partial fixes in a breath — ReLU (slope 1 for positive inputs, so it doesn't squash), good initialization, normalization — then plant the hook: the real cure, the ResNet skip connection that lets the gradient bypass layers, is the headline of Lecture 5.</aside>
+</section>
+
+<!-- 13 ─ hyperparameters: what to tune first -->
+<section class="slide" id="s13">
+  <div class="eyebrow">Part 2 · tuning · the hyperparameters</div>
+  <h2 class="slide-title">The knobs you set — <em>tune the learning rate first</em></h2>
+  <div class="body center">
+    <div class="cols">
+      <div>
+        <p class="lead"><strong>Hyperparameters</strong> are the settings you choose <em>before</em> training (the weights are what training learns). There are a <strong>huge</strong> number of them:</p>
+        <div class="matline" style="text-align:left; font-size:14.5px; color:var(--muted); margin:6px 0 4px; line-height:1.6">depth · width · activation · initialization · optimizer · momentum · dropout rate · weight decay · schedule · batch size · epochs · …</div>
+        <p class="lead" style="font-size:20px; margin-top:6px">We only tune the few <strong>basic ones that matter most</strong>:</p>
+        <ul style="margin-top:6px">
+          <li><strong>1. Learning rate</strong> — by far the most impactful</li>
+          <li><strong>2. Batch size</strong> — memory &amp; the trade-off, next slides</li>
+          <li><strong>3. Model size / epochs</strong> — capacity &amp; how long</li>
+        </ul>
+      </div>
+      <div style="display:flex; flex-direction:column; justify-content:center">
+        <div class="callout"><strong>Get the learning rate right and half your problems disappear.</strong> Everything else can start at its library default.</div>
+        <div class="callout" style="margin-top:14px; border-left-color:var(--roi); background:var(--roi-soft)">Order of attack: <strong>learning rate → batch size → model size / epochs.</strong></div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Set expectations honestly first: the list of things you COULD tune is enormous — network depth and width, which activation, how weights are initialized, the optimizer and its momentum, dropout rate, weight-decay strength, the learning-rate schedule, batch size, number of epochs, and more. Nobody sweeps all of them. The skill is knowing the handful that move the needle, and we deliberately cover only those basics. Define hyperparameter cleanly: a setting YOU pick before training, as opposed to the weights the loop LEARNS. Then the ranking: the learning rate dominates everything (callback to Lecture 2's three bowls and loss-curve diagnosis, and to the schedule two slides back) — get it in the right ballpark before touching anything else; then batch size (its trade-off and loss-curve fingerprint are the next two slides); then model size and number of epochs. Give the order-of-attack line as the practical recipe. Note: regularization strength (dropout, weight decay) is also a hyperparameter, but we meet those as OVERFITTING fixes in Part 3, so we leave them off this tuning list. Bridge: batch size next, and you can see it in the loss curve.</aside>
+</section>
+
+<!-- 14 ─ batch-size trade-off + sharp/flat minima illustration -->
+<section class="slide" id="s14">
+  <div class="eyebrow">Part 2 · tuning · batch size · the trade-off</div>
+  <h2 class="slide-title">Batch size shapes <em>which valley</em> you land in</h2>
+  <div class="body center">
+    <figure class="fig">
+      <svg width="920" height="230" viewBox="0 0 920 230">
+        <!-- ===== LEFT: small batch → many small, noisy steps → wide flat basin ===== -->
+        <text x="230" y="20" text-anchor="middle" class="m" font-size="13" fill="#A9721A">SMALL BATCH → many small, noisy steps</text>
+        <ellipse cx="230" cy="140" rx="185" ry="66" fill="none" stroke="#D9D9D2"/>
+        <ellipse cx="230" cy="140" rx="128" ry="45" fill="none" stroke="#D9D9D2"/>
+        <ellipse cx="230" cy="140" rx="72"  ry="25" fill="none" stroke="#D9D9D2"/>
+        <circle cx="230" cy="140" r="5" fill="#0E7C7B"/>
+        <text x="230" y="163" text-anchor="middle" class="m" font-size="10.5" fill="#0E7C7B">flat basin</text>
+        <path d="M55 55 L82 80 L70 98 L100 118 L92 132 L120 142 L150 138 L178 145 L205 141"
+              fill="none" stroke="#C4534F" stroke-width="2"/>
+        <g fill="#C4534F">
+          <circle cx="55" cy="55" r="3.5"/><circle cx="82" cy="80" r="3"/><circle cx="70" cy="98" r="3"/>
+          <circle cx="100" cy="118" r="3"/><circle cx="92" cy="132" r="3"/><circle cx="120" cy="142" r="3"/>
+          <circle cx="150" cy="138" r="3"/><circle cx="178" cy="145" r="3"/><circle cx="205" cy="141" r="3"/>
+        </g>
+        <text x="70" y="45" class="m" font-size="10.5" fill="#C4534F">many short, jittery hops</text>
+
+        <!-- ===== RIGHT: large batch → few big, confident steps → sharp narrow basin ===== -->
+        <text x="690" y="20" text-anchor="middle" class="m" font-size="13" fill="#C4534F">LARGE BATCH → few big, confident steps</text>
+        <ellipse cx="690" cy="140" rx="95" ry="60" fill="none" stroke="#D9D9D2"/>
+        <ellipse cx="690" cy="140" rx="58" ry="36" fill="none" stroke="#D9D9D2"/>
+        <ellipse cx="690" cy="140" rx="26" ry="16" fill="none" stroke="#D9D9D2"/>
+        <circle cx="690" cy="140" r="5" fill="#0E7C7B"/>
+        <text x="690" y="163" text-anchor="middle" class="m" font-size="10.5" fill="#0E7C7B">sharp basin</text>
+        <path d="M540 55 L618 92 L672 128" fill="none" stroke="#0E7C7B" stroke-width="2.5" marker-end="url(#lb)"/>
+        <g fill="#0E7C7B"><circle cx="540" cy="55" r="4"/><circle cx="618" cy="92" r="4"/></g>
+        <text x="600" y="72" class="m" font-size="10.5" fill="#0E7C7B">few long, straight strides</text>
+        <defs><marker id="lb" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#0E7C7B"/></marker></defs>
+      </svg>
+      <figcaption>same loss plane, two batch sizes: small batch takes many small, noisy steps into a wide basin; large batch takes few big, confident steps into a narrow one</figcaption>
+    </figure>
+    <div class="cardrow" style="max-width:64em; align-self:center; margin-top:10px">
+      <div class="tcard">
+        <div class="th b">Small (e.g. 8)</div>
+        <ul>
+          <li>noisy gradient, many updates</li>
+          <li>noise → flat minima, generalizes</li>
+          <li>underuses the GPU → slow</li>
+        </ul>
+      </div>
+      <div class="tcard">
+        <div class="th a">Middle (32–128)</div>
+        <ul>
+          <li>reasonable gradient estimate</li>
+          <li>efficient on the hardware</li>
+          <li>the usual starting point</li>
+        </ul>
+      </div>
+      <div class="tcard">
+        <div class="th c">Too big (whole set)</div>
+        <ul>
+          <li><strong>fewer</strong> updates per epoch</li>
+          <li>may not fit in memory</li>
+          <li>sharp minima → <strong>worse generalization</strong></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">The batch-size trade-off — cover BOTH what a bigger batch buys AND the too-big problem (quiz item). Redesigned per feedback to show the actual STEPS in the loss plane, not just the end basins. Read the figure as one shared landscape viewed from above (contour lines = equal loss, like a topographic map): every gradient step is a hop from one contour ring toward the center. LEFT — small batch: each mini-batch gives a noisy, slightly-wrong estimate of the true gradient, so every step is small and points in a slightly different direction — many short, jittery hops that wander into a wide, FLAT basin (a region where loss stays low over a broad area). RIGHT — large batch: averaging over many more examples gives a clean, accurate gradient estimate, so each step is long, confident, and nearly straight — a few big strides that drive straight into a narrow, SHARP basin (loss is low only in a tiny region). Callback to the sharp/flat-minima idea (Keskar et al.): a flat basin is forgiving — a small shift between training data and new data barely changes the loss there, so it generalizes; a sharp basin is unforgiving — the same tiny shift can send the loss climbing the wall, a "generalization gap." Then the three cards below: what a bigger batch buys (a less noisy gradient, better GPU use) and where it fails when TOO big (fewer weight updates per epoch — 1000 samples in batches of 1000 is one step per epoch vs. ~31 at batch 32 — may not fit in a T4's memory (OOM), and this same sharp-minimum effect). Practical rule: start at 32, grow only if training stays stable and validation doesn't suffer. Next slide shows the same story over training TIME, in the loss curve.</aside>
+</section>
+
+<!-- 15 ─ NEW: batch size impact on the loss curve -->
+<section class="slide" id="s15">
+  <div class="eyebrow">Part 2 · tuning · batch size · on the loss curve</div>
+  <h2 class="slide-title">You can <em>see</em> the batch size in the loss curve</h2>
+  <div class="body center">
+    <div class="cols">
+      <figure class="fig">
+        <svg width="500" height="300" viewBox="0 0 500 300">
+          <line x1="55" y1="255" x2="475" y2="255" stroke="#8A9099" stroke-width="1.5"/>
+          <line x1="55" y1="25"  x2="55"  y2="255" stroke="#8A9099" stroke-width="1.5"/>
+          <text x="265" y="288" text-anchor="middle" class="m" font-size="13" fill="#8A9099">epoch →</text>
+          <text x="34" y="140" class="m" font-size="13" fill="#8A9099" transform="rotate(-90 34 140)">loss</text>
+          <!-- large batch: smooth, plateaus higher -->
+          <path d="M70 55 C 150 150, 240 195, 470 200" fill="none" stroke="#0E7C7B" stroke-width="2.5"/>
+          <!-- small batch: jagged, descends lower -->
+          <polyline points="70,62 100,120 118,98 148,165 168,150 198,205 220,188 250,225 272,210 302,238 326,224 356,244 384,232 414,248 446,238 470,244"
+                    fill="none" stroke="#E09E2F" stroke-width="2"/>
+          <!-- legend -->
+          <line x1="300" y1="55" x2="330" y2="55" stroke="#0E7C7B" stroke-width="2.5"/>
+          <text x="337" y="59" class="m" font-size="12.5" fill="#0E7C7B">large batch</text>
+          <line x1="300" y1="76" x2="330" y2="76" stroke="#E09E2F" stroke-width="2"/>
+          <text x="337" y="80" class="m" font-size="12.5" fill="#A9721A">small batch</text>
+          <!-- plateau gap marker -->
+          <line x1="470" y1="200" x2="470" y2="244" stroke="#C4534F" stroke-width="1.5" stroke-dasharray="3 3"/>
+          <text x="462" y="222" text-anchor="end" class="m" font-size="11.5" fill="#C4534F">gap</text>
+        </svg>
+        <figcaption>large batch: smooth descent, but flattens higher · small batch: jagged, but reaches lower</figcaption>
+      </figure>
+      <div>
+        <p class="lead">Same model, two batch sizes:</p>
+        <ul style="margin-top:6px">
+          <li><strong>Large batch</strong> — a <em>smooth</em> descent (clean gradient), but <em>fewer updates</em> per epoch, so it can <em>plateau higher</em></li>
+          <li><strong>Small batch</strong> — a <em>jagged, noisy</em> descent, but many updates — often reaches a <em>lower, better-generalizing</em> loss</li>
+        </ul>
+        <div class="callout" style="margin-top:12px">Smoothness is <strong>not</strong> the goal — <em>where the curve ends up</em> is. A clean curve that stalls high is the too-big fingerprint.</div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">This is the new figure the feedback asked for — batch size's fingerprint on the loss curve. Walk the two traces. The large-batch curve (teal) is smooth because each gradient is a clean, low-noise estimate, so the descent barely wobbles — but with a big batch you take far fewer weight updates per epoch, and that too-clean gradient tends to settle into a sharp minimum, so for the same number of epochs it often FLATTENS OUT HIGHER (the red "gap"). The small-batch curve (amber) is visibly jagged — each noisy mini-batch yanks the loss around — yet because you take many more updates and the noise nudges you toward flatter, better-generalizing minima, it typically reaches a LOWER loss in the end. The lesson to say out loud, and the trap to avoid: a smooth loss curve is not automatically a good one; do not chase smoothness by cranking the batch size, because a clean curve that plateaus high is exactly the too-big fingerprint. Judge a run by where the curve ENDS UP (and by validation loss), not by how pretty it looks. Reinforces the previous slide and directly supports the quiz batch-size item.</aside>
+</section>
+
+<!-- 16 ─ grid vs random search -->
+<section class="slide" id="s16">
+  <div class="eyebrow">Part 2 · tuning · searching combinations</div>
+  <h2 class="slide-title">Grid vs. random search: <em>random usually wins</em></h2>
+  <div class="body center">
+    <div class="droprow">
+      <figure class="fig">
+        <svg width="300" height="240" viewBox="0 0 300 240">
+          <line x1="45" y1="205" x2="280" y2="205" stroke="#8A9099" stroke-width="1.5"/>
+          <line x1="45" y1="20"  x2="45"  y2="205" stroke="#8A9099" stroke-width="1.5"/>
+          <text x="162" y="232" text-anchor="middle" class="m" font-size="12" fill="#8A9099">learning rate →</text>
+          <text x="28" y="112" class="m" font-size="12" fill="#8A9099" transform="rotate(-90 28 112)">batch size</text>
+          <!-- 4x4 grid points -->
+          <g fill="#0E7C7B">
+            <circle cx="90" cy="55" r="5"/><circle cx="150" cy="55" r="5"/><circle cx="210" cy="55" r="5"/><circle cx="262" cy="55" r="5"/>
+            <circle cx="90" cy="100" r="5"/><circle cx="150" cy="100" r="5"/><circle cx="210" cy="100" r="5"/><circle cx="262" cy="100" r="5"/>
+            <circle cx="90" cy="145" r="5"/><circle cx="150" cy="145" r="5"/><circle cx="210" cy="145" r="5"/><circle cx="262" cy="145" r="5"/>
+            <circle cx="90" cy="185" r="5"/><circle cx="150" cy="185" r="5"/><circle cx="210" cy="185" r="5"/><circle cx="262" cy="185" r="5"/>
+          </g>
+        </svg>
+        <figcaption>grid — 16 runs, only 4 distinct learning rates tried</figcaption>
+      </figure>
+      <figure class="fig">
+        <svg width="300" height="240" viewBox="0 0 300 240">
+          <line x1="45" y1="205" x2="280" y2="205" stroke="#8A9099" stroke-width="1.5"/>
+          <line x1="45" y1="20"  x2="45"  y2="205" stroke="#8A9099" stroke-width="1.5"/>
+          <text x="162" y="232" text-anchor="middle" class="m" font-size="12" fill="#8A9099">learning rate →</text>
+          <text x="28" y="112" class="m" font-size="12" fill="#8A9099" transform="rotate(-90 28 112)">batch size</text>
+          <g fill="#E09E2F">
+            <circle cx="78" cy="62" r="5"/><circle cx="130" cy="182" r="5"/><circle cx="168" cy="48" r="5"/><circle cx="99" cy="128" r="5"/>
+            <circle cx="205" cy="150" r="5"/><circle cx="243" cy="90" r="5"/><circle cx="152" cy="112" r="5"/><circle cx="223" cy="188" r="5"/>
+            <circle cx="115" cy="88" r="5"/><circle cx="188" cy="75" r="5"/><circle cx="262" cy="140" r="5"/><circle cx="140" cy="150" r="5"/>
+            <circle cx="90" cy="170" r="5"/><circle cx="210" cy="40" r="5"/><circle cx="252" cy="185" r="5"/><circle cx="170" cy="165" r="5"/>
+          </g>
+        </svg>
+        <figcaption>random — 16 runs, 16 distinct learning rates tried</figcaption>
+      </figure>
+    </div>
+    <div class="callout" style="align-self:center; margin-top:12px">When one knob matters far more than others, <strong>random search</strong> samples many more values of it for the same budget — so it beats a rigid grid.</div>
+    <div class="callout" style="align-self:center; margin-top:10px; border-left-color:var(--roi); background:var(--roi-soft)"><strong>Smarter still — Bayesian optimization:</strong> not blind sampling. It builds a quick model from your <em>past</em> trials and picks the next settings where a good score looks most likely — <strong>exploiting</strong> promising regions while still <strong>exploring</strong> uncertain ones. (Tools: Optuna, Ray Tune.)</div>
+  </div>
+  <aside class="notes">Explain the ladder: grid → random → Bayesian. Grid search: pick a few values per hyperparameter and try every combination — tidy but 4 learning rates × 4 batch sizes = 16 runs yet only 4 distinct learning rates ever tested. Random search: same 16-run budget, sample each hyperparameter randomly, so you test 16 different learning rates AND 16 batch sizes; since usually one knob (the learning rate) dominates, sampling it densely — which random does for free, because its points don't line up in columns — finds a better model sooner. Then the key correction the instructor asked for: the state of the art is NOT purely random. Bayesian optimization keeps a running model (a "surrogate") of how settings map to validation score, fit to all the trials you've already run, and uses it to choose the next trial intelligently — it exploits regions that have scored well while still exploring regions it's uncertain about, so it spends its budget where improvement is most likely instead of sampling blindly. Name the everyday tools (Optuna, Ray Tune, scikit-optimize) so they know where to look; the math (Gaussian processes, acquisition functions) is beyond today. In Lab 2 they run a small structured search themselves. Bridge to Part 3: even perfectly tuned, a model can still fail the real test — generalizing to new samples.</aside>
+</section>
+
+<!-- ============================ PART 3 ============================ -->
+<!-- 17 ─ divider: Part 3 · overfitting -->
+<section class="slide divider" id="s17">
+  <svg class="peak" viewBox="0 0 1280 380" preserveAspectRatio="none">
+    <line x1="0" y1="342" x2="1280" y2="342" stroke="#D9D9D2" stroke-width="1"/>
+    <path d="M120 300 C 360 300, 400 120, 620 120 C 760 120, 800 170, 1160 300" fill="none" stroke="#0E7C7B" stroke-width="2.5" opacity="0.5"/>
+    <path d="M120 300 C 360 300, 400 150, 620 150 C 840 150, 900 260, 1160 300" fill="none" stroke="#C4534F" stroke-width="2.5" opacity="0.5"/>
+  </svg>
+  <div class="divider-inner">
+    <div class="eyebrow">Lecture 4 · Part 3 of 3</div>
+    <h1>Overfitting vs. underfitting</h1>
+    <div class="sub">reading train-vs-validation curves — and four ways to fix a leak</div>
+  </div>
+  <aside class="notes">Part three of three, and the most practically important skill. The single question: does your model actually generalize to new samples, or has it just memorized the training set? The answer lives in the gap between the training curve and the validation curve — teal and red diverging on the divider art. We diagnose, then fix with dropout, weight decay, early stopping, and more data.</aside>
+</section>
+
+<!-- 17b ─ overfitting by picture: the fit trio -->
+<section class="slide" id="s17b">
+  <div class="eyebrow">Part 3 · overfitting · the picture everyone means</div>
+  <h2 class="slide-title">Fit the <em>trend</em>, not the <em>noise</em></h2>
+  <div class="body center">
+    <div class="gallery">
+      <div class="gcard">
+        <svg width="260" height="168" viewBox="0 0 260 168">
+          <line x1="28" y1="140" x2="245" y2="140" stroke="#8A9099" stroke-width="1.3"/>
+          <line x1="28" y1="14"  x2="28"  y2="140" stroke="#8A9099" stroke-width="1.3"/>
+          <!-- straight line misses the curve -->
+          <line x1="34" y1="112" x2="238" y2="70" stroke="#E09E2F" stroke-width="2.5"/>
+          <g fill="#3D444C"><circle cx="45" cy="120" r="4"/><circle cx="75" cy="95" r="4"/><circle cx="105" cy="108" r="4"/><circle cx="132" cy="72" r="4"/><circle cx="162" cy="83" r="4"/><circle cx="192" cy="56" r="4"/><circle cx="222" cy="63" r="4"/></g>
+        </svg>
+        <div class="gt lo">underfitting</div>
+        <div class="gd">too simple — the line <strong>misses the trend</strong> (high bias)</div>
+      </div>
+      <div class="gcard">
+        <svg width="260" height="168" viewBox="0 0 260 168">
+          <line x1="28" y1="140" x2="245" y2="140" stroke="#8A9099" stroke-width="1.3"/>
+          <line x1="28" y1="14"  x2="28"  y2="140" stroke="#8A9099" stroke-width="1.3"/>
+          <!-- smooth trend curve -->
+          <path d="M34 118 C 95 96, 150 70, 238 62" fill="none" stroke="#0E7C7B" stroke-width="2.5"/>
+          <g fill="#3D444C"><circle cx="45" cy="120" r="4"/><circle cx="75" cy="95" r="4"/><circle cx="105" cy="108" r="4"/><circle cx="132" cy="72" r="4"/><circle cx="162" cy="83" r="4"/><circle cx="192" cy="56" r="4"/><circle cx="222" cy="63" r="4"/></g>
+        </svg>
+        <div class="gt ok">just right</div>
+        <div class="gd">captures the <strong>underlying trend</strong> — ignores the wiggle</div>
+      </div>
+      <div class="gcard">
+        <svg width="260" height="168" viewBox="0 0 260 168">
+          <line x1="28" y1="140" x2="245" y2="140" stroke="#8A9099" stroke-width="1.3"/>
+          <line x1="28" y1="14"  x2="28"  y2="140" stroke="#8A9099" stroke-width="1.3"/>
+          <!-- wiggly curve through every point -->
+          <path d="M45 120 Q 60 82, 75 95 Q 90 122, 105 108 Q 118 58, 132 72 Q 147 96, 162 83 Q 177 40, 192 56 Q 207 74, 222 63" fill="none" stroke="#C4534F" stroke-width="2.5"/>
+          <g fill="#3D444C"><circle cx="45" cy="120" r="4"/><circle cx="75" cy="95" r="4"/><circle cx="105" cy="108" r="4"/><circle cx="132" cy="72" r="4"/><circle cx="162" cy="83" r="4"/><circle cx="192" cy="56" r="4"/><circle cx="222" cy="63" r="4"/></g>
+        </svg>
+        <div class="gt hi">overfitting</div>
+        <div class="gd">threads <strong>every noisy point</strong> — memorizes, won't generalize</div>
+      </div>
+    </div>
+    <div class="callout" style="align-self:center; margin-top:16px">Same seven data points, three models. The overfit curve is "perfect" on these points — and useless on the <strong>next</strong> one. <strong>The goal is the trend, not a perfect score on the training dots.</strong></div>
+  </div>
+  <aside class="notes">Lead Part 3 with the picture everyone pictures for over/underfitting — more intuitive than loss curves, so it comes first. Same seven noisy data points in all three panels; only the model differs. Left, underfitting: a straight line — too simple to bend with the data, so it misses the obvious downward trend and is wrong almost everywhere; this is "high bias." Middle, just right: a smooth curve that follows the underlying trend while deliberately ignoring the little up-and-down jitter — that jitter is noise, not signal. Right, overfitting: a wiggly curve contorted to pass exactly through every single point, including the noise; it scores perfectly on these seven points yet lurches wildly between them, so on the very next measurement it will be badly wrong. Say the lesson plainly: a perfect score on the training points is not the goal — capturing the trend that transfers to new data is. This is exactly the spectra story from two slides ago (memorizing one instrument's quirks) and it's what the loss curves on the next slide detect. Keep pointing at the pictures; the whole of Part 3 is "use pictures."</aside>
+</section>
+
+<!-- 18 ─ curve gallery: under / just right / over -->
+<section class="slide" id="s18">
+  <div class="eyebrow">Part 3 · overfitting · read the two curves</div>
+  <h2 class="slide-title">Watch <em>training</em> and <em>validation</em> loss together</h2>
+  <div class="body center">
+    <div class="gallery">
+      <div class="gcard">
+        <svg width="260" height="165" viewBox="0 0 260 165">
+          <line x1="30" y1="135" x2="245" y2="135" stroke="#8A9099" stroke-width="1.5"/>
+          <line x1="30" y1="12"  x2="30"  y2="135" stroke="#8A9099" stroke-width="1.5"/>
+          <path d="M34 40 C 90 55, 160 68, 240 72" fill="none" stroke="#0E7C7B" stroke-width="2.5"/>
+          <path d="M34 48 C 90 62, 160 74, 240 78" fill="none" stroke="#C4534F" stroke-width="2.5" stroke-dasharray="5 4"/>
+        </svg>
+        <div class="gt lo">underfitting</div>
+        <div class="gd">both curves stay <strong>high</strong> — the model is too weak / trained too little</div>
+      </div>
+      <div class="gcard">
+        <svg width="260" height="165" viewBox="0 0 260 165">
+          <line x1="30" y1="135" x2="245" y2="135" stroke="#8A9099" stroke-width="1.5"/>
+          <line x1="30" y1="12"  x2="30"  y2="135" stroke="#8A9099" stroke-width="1.5"/>
+          <path d="M34 30 C 90 95, 160 118, 240 122" fill="none" stroke="#0E7C7B" stroke-width="2.5"/>
+          <path d="M34 38 C 90 100, 160 120, 240 126" fill="none" stroke="#C4534F" stroke-width="2.5" stroke-dasharray="5 4"/>
+        </svg>
+        <div class="gt ok">just right</div>
+        <div class="gd">both <strong>low</strong>, small gap — validation tracks training down</div>
+      </div>
+      <div class="gcard">
+        <svg width="260" height="165" viewBox="0 0 260 165">
+          <line x1="30" y1="135" x2="245" y2="135" stroke="#8A9099" stroke-width="1.5"/>
+          <line x1="30" y1="12"  x2="30"  y2="135" stroke="#8A9099" stroke-width="1.5"/>
+          <path d="M34 30 C 90 95, 160 122, 240 130" fill="none" stroke="#0E7C7B" stroke-width="2.5"/>
+          <path d="M34 40 C 90 92, 130 96, 170 92 C 210 88, 230 62, 240 48" fill="none" stroke="#C4534F" stroke-width="2.5" stroke-dasharray="5 4"/>
+          <circle cx="150" cy="94" r="4" fill="#A9721A"/>
+        </svg>
+        <div class="gt hi">overfitting</div>
+        <div class="gd">training keeps dropping, <strong>validation turns back up</strong> — memorizing</div>
+      </div>
+    </div>
+    <div class="callout" style="align-self:center; margin-top:16px">
+      <span class="leg" style="color:var(--signal)">▬ training loss</span> &nbsp;&nbsp; <span class="leg" style="color:var(--neg)">▬ ▬ validation loss</span> &nbsp;·&nbsp;
+      The <strong>gap</strong> between them is the tell. A widening gap = overfitting.
+    </div>
+  </div>
+  <aside class="notes">This is the diagnostic outcome and maps straight onto quiz Q1 (four curve pairs). Teach the reading protocol: always plot BOTH curves — training loss (teal, on data the model learns from) and validation loss (red dashed, on held-out data it never trains on). Three signatures. Underfitting: both curves stuck high and close together — the model literally cannot fit the data yet, too small/simple or trained too briefly; the fix is MORE capacity or MORE training, not less. Just right: both fall low and stay close — validation follows training down; the target. Overfitting: training loss keeps dropping toward zero while validation loss bottoms out then climbs — the model is memorizing the training set's noise and quirks; the amber dot marks where validation was best. The one number to watch is the GAP: small and stable is healthy, wide and growing is overfitting. Everything in the rest of Part 3 is a tool to shrink that gap.</aside>
+</section>
+
+<!-- 19 ─ MS anchor + pair prompt -->
+<section class="slide" id="s19">
+  <div class="eyebrow">Part 3 · overfitting · what it means in your lab</div>
+  <h2 class="slide-title">Memorizing one instrument's <em>quirks</em> vs. learning the <em>chemistry</em></h2>
+  <div class="body center">
+    <div class="cols">
+      <div>
+        <p class="lead">An overfit spectra classifier can learn the <strong>baseline wobble and detector noise of your one instrument</strong> — hitting 99% in-house.</p>
+        <div class="callout ms" style="margin-top:14px">Move it to a <strong>second instrument, site, or reagent lot</strong> and it collapses: it memorized the machine, not the biology. (This is a real, published failure mode — Lecture 10.)</div>
+      </div>
+      <div class="callout pair" style="align-self:center">
+        Your model scores <strong>99% on training data</strong> but only <strong>70% on new samples.</strong> Turn to a neighbour — <strong>2 min:</strong> what is the <em>first</em> thing you would try, and why?
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Ground the abstract idea in their reality, then run the assessed think-pair-share (the 💬 from the spec). The mass-spec anchor: a network trained on spectra from a single instrument can achieve near-perfect training accuracy by latching onto that instrument's fingerprint — its particular baseline drift, detector noise, calibration offset — none of which is the actual biological signal. It looks brilliant until you deploy it on another machine or another site's reagent lot, where those quirks differ, and accuracy craters. Foreshadow Lecture 10's cautionary tale (DRIAMS models losing AUROC across sites). Now the prompt: 99% train, 70% new — classic overfitting; give them two minutes. Harvest good answers and validate the whole toolkit coming up: get more/more-varied data (multiple instruments!), add regularization (dropout, weight decay), stop earlier, or simplify the model — and always evaluate on a truly held-out, ideally external, set. No single "right" answer; the point is they now reach for these tools.</aside>
+</section>
+
+<!-- 20 ─ fix 1: more data + early stopping -->
+<section class="slide" id="s20">
+  <div class="eyebrow">Part 3 · overfitting · fixes 1 &amp; 2</div>
+  <h2 class="slide-title">More data · and <em>early stopping</em></h2>
+  <div class="body center">
+    <div class="cols">
+      <figure class="fig">
+        <svg width="440" height="270" viewBox="0 0 440 270">
+          <line x1="45" y1="225" x2="420" y2="225" stroke="#8A9099" stroke-width="1.5"/>
+          <line x1="45" y1="20"  x2="45"  y2="225" stroke="#8A9099" stroke-width="1.5"/>
+          <text x="232" y="255" text-anchor="middle" class="m" font-size="12" fill="#8A9099">epoch →</text>
+          <text x="28" y="125" class="m" font-size="12" fill="#8A9099" transform="rotate(-90 28 125)">loss</text>
+          <!-- training keeps dropping -->
+          <path d="M55 45 C 130 150, 250 205, 415 214" fill="none" stroke="#0E7C7B" stroke-width="2.5"/>
+          <text x="360" y="205" class="m" font-size="12" fill="#0E7C7B">training</text>
+          <!-- validation dips then rises -->
+          <path d="M55 60 C 120 140, 170 150, 205 148 C 260 145, 320 100, 415 62" fill="none" stroke="#C4534F" stroke-width="2.5" stroke-dasharray="5 4"/>
+          <text x="360" y="70" class="m" font-size="12" fill="#C4534F">validation</text>
+          <!-- stop line at val minimum -->
+          <line x1="205" y1="30" x2="205" y2="225" stroke="#A9721A" stroke-width="2" stroke-dasharray="4 4"/>
+          <circle cx="205" cy="148" r="5" fill="#A9721A"/>
+          <text x="205" y="24" text-anchor="middle" class="m" font-size="12" fill="#A9721A">STOP here</text>
+        </svg>
+        <figcaption>stop where validation loss bottoms out — before it turns back up</figcaption>
+      </figure>
+      <div>
+        <p class="lead"><strong>More (and more varied) data</strong> is the strongest fix — harder to memorize, easier to find the real pattern. Spectra from several instruments beats many from one.</p>
+        <div class="callout" style="margin-top:14px"><strong>Early stopping:</strong> watch validation loss and stop training at its lowest point — keep the model from the moment before it starts memorizing. Free, and always worth doing.</div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Two fixes, one slide. More data first because it is the most reliable and the least clever: a bigger, more diverse training set is simply harder to memorize, so the network is pushed toward the genuine pattern; emphasize DIVERSE — for spectra, data from several instruments/sites directly attacks the "memorized one machine" failure. When you cannot get more real data, augmentation (Lab 2) and transfer learning (Lecture 8) are cousins of "more data." Then early stopping, read straight off the curve: validation loss falls, bottoms out, and starts rising as overfitting sets in; the vertical amber line marks that bottom, and early stopping simply keeps the model from that best epoch and quits. It costs nothing, needs only a validation split you already have, and is standard practice. Bridge: the next two fixes actively handicap the network so it can't memorize — dropout and weight decay.</aside>
+</section>
+
+<!-- 21 ─ fix 3: dropout visualized -->
+<section class="slide" id="s21">
+  <div class="eyebrow">Part 3 · overfitting · fix 3 · regularization</div>
+  <h2 class="slide-title">Dropout: <em>randomly switch off neurons</em> each step</h2>
+  <div class="body center">
+    <div class="droprow">
+      <figure class="fig">
+        <svg width="330" height="240" viewBox="0 0 330 240">
+          <!-- edges (full) -->
+          <g stroke="#D9D9D2" stroke-width="1.2">
+            <line x1="55" y1="70" x2="165" y2="40"/><line x1="55" y1="70" x2="165" y2="95"/><line x1="55" y1="70" x2="165" y2="150"/><line x1="55" y1="70" x2="165" y2="205"/>
+            <line x1="55" y1="170" x2="165" y2="40"/><line x1="55" y1="170" x2="165" y2="95"/><line x1="55" y1="170" x2="165" y2="150"/><line x1="55" y1="170" x2="165" y2="205"/>
+            <line x1="165" y1="40" x2="285" y2="120"/><line x1="165" y1="95" x2="285" y2="120"/><line x1="165" y1="150" x2="285" y2="120"/><line x1="165" y1="205" x2="285" y2="120"/>
+          </g>
+          <!-- input nodes -->
+          <circle cx="55" cy="70" r="15" fill="#fff" stroke="#3D444C" stroke-width="2"/>
+          <circle cx="55" cy="170" r="15" fill="#fff" stroke="#3D444C" stroke-width="2"/>
+          <!-- hidden: 2 dropped (h2,h4) -->
+          <circle cx="165" cy="40"  r="15" fill="#E3F0EF" stroke="#0E7C7B" stroke-width="2"/>
+          <g opacity="0.32"><circle cx="165" cy="95" r="15" fill="#fff" stroke="#8A9099" stroke-width="2" stroke-dasharray="3 3"/></g>
+          <line x1="156" y1="86" x2="174" y2="104" stroke="#C4534F" stroke-width="2"/><line x1="174" y1="86" x2="156" y2="104" stroke="#C4534F" stroke-width="2"/>
+          <circle cx="165" cy="150" r="15" fill="#E3F0EF" stroke="#0E7C7B" stroke-width="2"/>
+          <g opacity="0.32"><circle cx="165" cy="205" r="15" fill="#fff" stroke="#8A9099" stroke-width="2" stroke-dasharray="3 3"/></g>
+          <line x1="156" y1="196" x2="174" y2="214" stroke="#C4534F" stroke-width="2"/><line x1="174" y1="196" x2="156" y2="214" stroke="#C4534F" stroke-width="2"/>
+          <circle cx="285" cy="120" r="16" fill="#0E7C7B"/><text x="285" y="126" text-anchor="middle" font-size="14" fill="#fff">ŷ</text>
+        </svg>
+        <figcaption>training step 1 — drop h2, h4</figcaption>
+      </figure>
+      <figure class="fig">
+        <svg width="330" height="240" viewBox="0 0 330 240">
+          <g stroke="#D9D9D2" stroke-width="1.2">
+            <line x1="55" y1="70" x2="165" y2="40"/><line x1="55" y1="70" x2="165" y2="95"/><line x1="55" y1="70" x2="165" y2="150"/><line x1="55" y1="70" x2="165" y2="205"/>
+            <line x1="55" y1="170" x2="165" y2="40"/><line x1="55" y1="170" x2="165" y2="95"/><line x1="55" y1="170" x2="165" y2="150"/><line x1="55" y1="170" x2="165" y2="205"/>
+            <line x1="165" y1="40" x2="285" y2="120"/><line x1="165" y1="95" x2="285" y2="120"/><line x1="165" y1="150" x2="285" y2="120"/><line x1="165" y1="205" x2="285" y2="120"/>
+          </g>
+          <circle cx="55" cy="70" r="15" fill="#fff" stroke="#3D444C" stroke-width="2"/>
+          <circle cx="55" cy="170" r="15" fill="#fff" stroke="#3D444C" stroke-width="2"/>
+          <g opacity="0.32"><circle cx="165" cy="40" r="15" fill="#fff" stroke="#8A9099" stroke-width="2" stroke-dasharray="3 3"/></g>
+          <line x1="156" y1="31" x2="174" y2="49" stroke="#C4534F" stroke-width="2"/><line x1="174" y1="31" x2="156" y2="49" stroke="#C4534F" stroke-width="2"/>
+          <circle cx="165" cy="95"  r="15" fill="#E3F0EF" stroke="#0E7C7B" stroke-width="2"/>
+          <circle cx="165" cy="150" r="15" fill="#E3F0EF" stroke="#0E7C7B" stroke-width="2"/>
+          <g opacity="0.32"><circle cx="165" cy="205" r="15" fill="#fff" stroke="#8A9099" stroke-width="2" stroke-dasharray="3 3"/></g>
+          <line x1="156" y1="196" x2="174" y2="214" stroke="#C4534F" stroke-width="2"/><line x1="174" y1="196" x2="156" y2="214" stroke="#C4534F" stroke-width="2"/>
+          <circle cx="285" cy="120" r="16" fill="#0E7C7B"/><text x="285" y="126" text-anchor="middle" font-size="14" fill="#fff">ŷ</text>
+        </svg>
+        <figcaption>step 2 — a <em>different</em> random set drops (h1, h4)</figcaption>
+      </figure>
+    </div>
+    <div class="callout" style="align-self:center; margin-top:14px">The net can't lean on any one neuron, so it builds <strong>redundant, robust</strong> features — like training a committee of smaller networks that vote. At test time, all neurons are back on.</div>
+  </div>
+  <aside class="notes">Visualize it with the two panels — same network, two training steps, a different random ~half of the hidden neurons switched off (dashed, X'd out) each time. The mechanism: on every training step, dropout randomly picks some fraction of neurons (say 50%) and temporarily zeroes them, so the network must predict without them; because which neurons vanish changes every step, no single neuron can become a linchpin that memorizes a training quirk, and the network spreads the work across many redundant features. The intuition to say aloud: it is like training a huge committee of smaller sub-networks that share weights, then letting them vote — averaging many views generalizes better than trusting one. Two practical notes: dropout is only ON during training; at test time every neuron is active (outputs scaled so the math balances), so inference is deterministic. And it is one line in PyTorch — nn.Dropout(0.5); typical rates 0.2–0.5. This is fix three; fix four is weight decay, next.</aside>
+</section>
+
+<!-- 22 ─ fix 4: L2 = weight decay -->
+<section class="slide" id="s22">
+  <div class="eyebrow">Part 3 · overfitting · fix 4 · regularization</div>
+  <h2 class="slide-title">L2 regularization = <em>weight decay</em></h2>
+  <div class="body center">
+    <div class="cols">
+      <div>
+        <p class="lead">Big weights let the model bend sharply enough to thread through <strong>every noisy point exactly</strong> — the <strong>output becomes the noise</strong>. So we <strong>penalize large weights</strong>:</p>
+        <div class="eqcard" style="margin-top:10px">
+          <span class="keq" data-display style="font-size:1.0em"
+            data-tex="\text{total loss}=\underbrace{\text{cross-entropy}}_{\text{fit the data}}+\;\lambda\underbrace{\textstyle\sum w^2}_{\text{penalty on big weights}}"></span>
+          <div class="eqnote">every step nudges weights toward 0 — the nickname <strong>"weight decay"</strong></div>
+        </div>
+        <div class="callout ms" style="margin-top:10px">A spectra net could pin one <strong>huge</strong> weight on a noisy m/z channel and "memorize" a fluke. Weight decay <strong>spreads reliance across many channels</strong> → robust.</div>
+      </div>
+      <figure class="fig">
+        <svg width="400" height="270" viewBox="0 0 400 270">
+          <!-- wiggly overfit curve: threads exactly through every noisy point -->
+          <text x="110" y="24" text-anchor="middle" class="m" font-size="13" fill="#C4534F">big weights</text>
+          <line x1="30" y1="115" x2="200" y2="115" stroke="#EDEDE7"/>
+          <path d="M35 115 C 55 55, 70 165, 90 95 C 108 40, 122 170, 140 100 C 158 55, 172 160, 195 110" fill="none" stroke="#C4534F" stroke-width="2.5"/>
+          <g fill="#8A9099"><circle cx="35" cy="115" r="3"/><circle cx="90" cy="95" r="3"/><circle cx="140" cy="100" r="3"/><circle cx="195" cy="110" r="3"/></g>
+          <text x="110" y="138" text-anchor="middle" class="m" font-size="12" fill="#8A9099">output = noise</text>
+          <!-- smooth curve: same noisy points, but the curve ignores them -->
+          <text x="300" y="24" text-anchor="middle" class="m" font-size="13" fill="#0E7C7B">small weights</text>
+          <line x1="215" y1="115" x2="390" y2="115" stroke="#EDEDE7"/>
+          <g fill="#8A9099" opacity=".7"><circle cx="222" cy="130" r="3"/><circle cx="278" cy="95" r="3"/><circle cx="329" cy="100" r="3"/><circle cx="385" cy="100" r="3"/></g>
+          <path d="M222 130 C 262 70, 320 70, 385 100" fill="none" stroke="#0E7C7B" stroke-width="2.5"/>
+          <text x="300" y="138" text-anchor="middle" class="m" font-size="12" fill="#8A9099">output ≈ signal</text>
+          <!-- decay arrows -->
+          <g transform="translate(0,175)">
+            <text x="200" y="0" text-anchor="middle" class="m" font-size="13" fill="#A9721A">each step, weights drift toward 0</text>
+            <g stroke="#A9721A" stroke-width="2" marker-end="url(#wd)">
+              <line x1="120" y1="30" x2="180" y2="30"/><line x1="280" y1="30" x2="220" y2="30"/>
+            </g>
+            <line x1="200" y1="18" x2="200" y2="46" stroke="#0E7C7B" stroke-width="2"/>
+            <text x="200" y="66" text-anchor="middle" class="m" font-size="12" fill="#0E7C7B">0</text>
+            <defs><marker id="wd" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#A9721A"/></marker></defs>
+          </g>
+        </svg>
+        <figcaption>same noisy points, both panels: large weights let the curve thread through every one exactly (memorized) · small weights let it ignore them (generalizes)</figcaption>
+      </figure>
+    </div>
+  </div>
+  <aside class="notes">Frame L2 as weight decay per the instructor note. The idea: add a second term to the loss that grows with the size of the weights (the sum of the squared weights, scaled by a small knob λ). Now minimizing the loss means two things at once — fit the training data AND keep the weights small — and those trade off. Why smaller weights help, made explicit per feedback: the SAME four noisy dots sit in both panels. A network with huge weights has enough "bend" to route its curve through every single dot exactly — at that point the model's output no longer represents the underlying signal at all, it IS the noise, memorized point for point (the red curve, zero training error, useless on a new sample that has different noise). Forcing weights to stay modest removes that bending power, so the curve can only track the broad trend and physically cannot swing over to touch each individual noisy dot (the teal curve) — it ignores the noise and generalizes. The nickname "weight decay" comes from the mechanics: on top of the normal gradient step, every weight is nudged a little toward zero each update, so unused weights quietly decay away. Keep the equation as a picture, not algebra — λ is just "how hard we pull toward zero." In PyTorch it is the weight_decay argument on the optimizer. Note the family resemblance: L2/weight decay is the same "L2" idea, but here it's the regularization term, not a loss — that is why we keep the name L2. Round out: dropout and weight decay are the two everyday regularizers; use them with early stopping and enough data.</aside>
+</section>
+
+<!-- 24 ─ quiz 3 cue -->
+<section class="slide" id="s24">
+  <div class="eyebrow">Lecture 4 · check your understanding</div>
+  <h2 class="slide-title">Quiz 4 — <em>then we walk it together</em></h2>
+  <div class="body" style="justify-content:flex-start">
+    <div class="cols" style="align-items:flex-start; margin-top:6px">
+      <div>
+        <p class="lead" style="margin-bottom:4px">A few short items:</p>
+        <ul style="max-width:28em; margin-top:6px">
+          <li style="font-size:21px; margin-bottom:10px"><strong>(Overfitting)</strong> Match four <strong>train/validation curve pairs</strong> to a diagnosis — and pick a fix for each</li>
+          <li style="font-size:21px; margin-bottom:10px"><strong>(Tuning)</strong> What does a <strong>bigger batch</strong> buy you — and what breaks when it's <strong>too big?</strong></li>
+          <li style="font-size:21px; margin-bottom:0"><strong>(Discuss)</strong> Two short prompts on <strong>class imbalance</strong> — a topic we don't have time to teach, so we think it through together</li>
+        </ul>
+      </div>
+      <div class="eqcard">
+        <div class="eqnote" style="margin:0 0 10px">the through-line</div>
+        <span class="keq big" data-display
+          data-tex="\text{fit the data}\;+\;\text{don't memorize it}"></span>
+        <div class="callout" style="margin-top:16px; text-align:left">If you can read a validation curve and name a fix, you can do every item.</div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Hand out Quiz 4 and give them a few quiet minutes, then walk the answers. Reassure: nothing new. The overfitting item is the curve gallery with a fourth, trickier pair, plus "name the fix" — dropout / weight decay / early stopping / more data. The tuning item is the batch-size trade-off: bigger buys a cleaner gradient and better hardware use, too big costs updates, memory, and generalization. The last two items are short DISCUSSION prompts on class imbalance — a real clinical problem (a handful of resistant isolates among many susceptible) we don't have lecture time to teach, so we reason it out together: first, why plain accuracy and a standard classifier mislead when one class is rare (a model that always says "susceptible" can score 95% and catch zero resistant cases); then, what could help — collect or oversample more of the rare class, class-weighting or focal loss to turn up the rare/hard cases, better metrics (sensitivity, precision-recall), and careful threshold choice — all of which return properly in Lecture 10. Keep it a 2-3 minute conversation, harvest a few answers, and don't expect a single right answer. If time is short, the walkthrough can spill into the start of Lecture 5. Then a ten-minute break.</aside>
+</section>
+
+</body>
+</html>
