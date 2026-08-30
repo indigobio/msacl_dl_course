@@ -1,0 +1,6 @@
+{
+  "pylsp": {
+    "command": ["pylsp"],
+    "extensions": [".py", ".pyi"]
+  }
+}

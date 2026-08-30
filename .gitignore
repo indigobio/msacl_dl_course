@@ -31,3 +31,6 @@ __pycache__/
 
 # OS
 .DS_Store
+
+# pi coding agent: keep shared project config, ignore installed package tree
+.pi/npm/
