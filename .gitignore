@@ -1,0 +1,33 @@
+# Generated outputs — rebuild with tools/, never hand-edit
+slides/pptx/
+quizzes/pdf/
+labs/student/
+# Student pack: env files, README, AND the assembled lab notebooks are all
+# committed. Notebooks are still generated — copied from labs/student/ by
+# tools/build_student_pack.py — then committed so students can open them
+# straight from GitHub in Colab.
+
+# Data is registered in data/README.md, never committed
+data/raw/
+data/slices/
+*.mzML
+*.mzXML
+*.raw
+
+# Python / notebook cruft
+__pycache__/
+.ipynb_checkpoints/
+*.pyc
+.venv/
+
+# LaTeX build artifacts (quizzes/handouts author in .tex, PDFs are generated)
+*.aux
+*.log
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.out
+*.toc
+
+# OS
+.DS_Store
