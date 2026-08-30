@@ -207,3 +207,21 @@ Newest entries at the top. Every entry: date, decision, rationale.
 - **Process**: work proceeds in phases (0 scaffold → 1 outcomes → 2 datasets →
   3 slides → 4 labs → 5 quizzes/dry-run); pause for instructor review at the end
   of each phase; instructor actively steers via interactive questions.
+
+## 2026-08-30 — Lab 2 restructure: threshold as the imbalance teaching moment
+
+- **Plain BCE, no `pos_weight`.** Lab 2's main CNN now trains with vanilla
+  `BCEWithLogitsLoss()`. Dropping the class weight removes a confusing moving
+  part and makes the imbalance failure honest: at the default 0.5 threshold the
+  model scores ~0.94 accuracy but ~0.00 resistant recall — the "always
+  susceptible" trap of Lecture 10.
+- **New Step 7 is a threshold sweep.** Replaces the old focal-loss-in-main-flow
+  section. `evaluate_model` gained a `threshold=` argument; the step sweeps a
+  ladder of cuts (0.5 plus data-driven quantiles) and shows recall climbing
+  (0.00 → ~0.67) as precision/accuracy fall. Core lesson: recall is not a fixed
+  model property — it depends on the decision threshold, and on rare-class data
+  you pick the cut to hit a clinical target rather than trusting 0.5.
+- **Focal loss demoted to Optional stretch**, replacing the old lr/batch grid
+  search. Kept as the "train a model whose probabilities aren't so squashed"
+  follow-up (focal @ 0.5 recovers recall ~0.89). The earlier bug fix (unused
+  `alpha` term) is retained.
