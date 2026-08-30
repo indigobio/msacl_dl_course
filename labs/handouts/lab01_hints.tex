@@ -1,0 +1,114 @@
+% =====================================================================
+%  MSACL DS301 Deep Learning · Lab 1 · Code Hint Sheet
+%  Multiple-choice code options for the two fill-in cells.
+%  Style matches quizzes/src/quiz01_foundations.tex (article/fancyhdr).
+% =====================================================================
+\documentclass[11pt]{article}
+
+\usepackage[letterpaper, margin=0.55in, top=0.55in, bottom=0.4in]{geometry}
+\usepackage{amsmath, amssymb}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textbf{MSACL DS301 --- Deep Learning}}
+\fancyhead[R]{\small\textbf{Lab 1: Code Hint Sheet}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{1.5pt}
+\newcommand{\opt}[1]{\texttt{#1}}
+\setlist[itemize]{leftmargin=2.2em, itemsep=0pt, topsep=0pt, parsep=0pt}
+
+\begin{document}
+\small
+
+\begin{center}
+{\Large \textbf{Lab 1 --- Code Hint Sheet}}\\[2pt]
+{\normalsize Your First Network: the PyTorch training loop}
+\end{center}
+
+\vspace{-2pt}
+\begin{center}
+\fbox{\parbox{0.92\textwidth}{\small
+Stuck on a \textbf{YOUR TURN} cell? Each line you need is below with a few options.
+Pick one, type it in, and \textbf{run the cell} --- the built-in \texttt{assert} checks will tell you
+whether it is right. Only the two marked cells need editing; run everything else as-is.
+}}
+\end{center}
+
+\vspace{2pt}\hrule\vspace{4pt}
+
+\textbf{Step 4 --- the training loop.}\; {\small Write these five lines \emph{in order} inside the
+\texttt{for epoch} loop (Lecture 2: forward $\to$ loss $\to$ zero $\to$ backward $\to$ step).}
+
+\textbf{1. Forward --- make a guess.}
+\begin{itemize}
+  \item[(a)] \opt{pred = model(X\_train)}
+  \item[(b)] \opt{pred = loss\_fn(X\_train)}
+  \item[(c)] \opt{pred = model.guess(y\_train)}
+\end{itemize}
+
+\textbf{2. Loss --- how wrong?}
+\begin{itemize}
+  \item[(a)] \opt{loss = loss\_fn(pred, y\_train)}
+  \item[(b)] \opt{loss = model(pred, y\_train)}
+  \item[(c)] \opt{loss = loss\_fn(X\_train, y\_train)}
+\end{itemize}
+
+\textbf{3. Zero --- clear last step's gradients.}
+\begin{itemize}
+  \item[(a)] \opt{optimizer.zero\_grad()}
+  \item[(b)] \opt{optimizer.reset()}
+  \item[(c)] \opt{model.zero\_grad(loss)}
+\end{itemize}
+
+\textbf{4. Backward --- backprop the blame.}
+\begin{itemize}
+  \item[(a)] \opt{loss.backward()}
+  \item[(b)] \opt{optimizer.backward()}
+  \item[(c)] \opt{model.backward(loss)}
+\end{itemize}
+
+\textbf{5. Step --- nudge every weight.}
+\begin{itemize}
+  \item[(a)] \opt{optimizer.step()}
+  \item[(b)] \opt{optimizer.update()}
+  \item[(c)] \opt{loss.step()}
+\end{itemize}
+
+\vspace{3pt}\hrule\vspace{4pt}
+
+\textbf{Step 6 --- evaluate on the test set.}\; {\small Predict without learning, threshold at 0.5,
+then measure the fraction correct.}
+
+\textbf{1. Predict without gradients.}
+\begin{itemize}
+  \item[(a)] \opt{with torch.no\_grad():}\quad{\small (then, indented)}\quad\opt{probs = model(X\_test)}
+  \item[(b)] \opt{with torch.grad():}\quad{\small (then, indented)}\quad\opt{probs = model(X\_test)}
+  \item[(c)] \opt{probs = model.no\_grad(X\_test)}
+\end{itemize}
+
+\textbf{2. Turn probabilities into 0/1 predictions.}
+\begin{itemize}
+  \item[(a)] \opt{predicted = (probs > 0.5).float()}
+  \item[(b)] \opt{predicted = probs.round(threshold=0.5)}
+  \item[(c)] \opt{predicted = probs.argmax()}
+\end{itemize}
+
+\textbf{3. Accuracy --- fraction that match the label.}
+\begin{itemize}
+  \item[(a)] \opt{test\_acc = (predicted == y\_test).float().mean().item()}
+  \item[(b)] \opt{test\_acc = (predicted - y\_test).mean()}
+  \item[(c)] \opt{test\_acc = accuracy(predicted, y\_test)}
+\end{itemize}
+
+\vspace{4pt}\hrule\vspace{3pt}
+{\small\itshape Answers self-check in the notebook: if the \texttt{assert} cells print their success
+message, you chose right. The loss should fall steeply and then flatten, and test accuracy should
+land around \textbf{0.72--0.77} (coin-flip baseline is 0.50).}
+
+\end{document}
