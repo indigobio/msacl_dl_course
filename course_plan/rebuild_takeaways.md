@@ -26,6 +26,43 @@ open decisions. Keep it terse.
 ## Per-lecture log
 <!-- newest first; one block per lecture on approval -->
 
+### Lecture 14 · Agentic AI, Demo-Driven — BUILT 2026-08-31 (pending review)
+- **17 slides, 11 figure-driven.** Spec: `slides/spec/lecture14_agents.yaml`
+  → `slides/pptx/lecture14_agents.pptx`. FINAL lecture, demo-driven; no new math.
+  The SPINE (rule 3/8) is tracing a **ReAct transcript** and LABELLING each step
+  reason (Thought) vs act (tool call): I-do annotated transcript → you-do →
+  Quiz 14 Q1. One-line RL callback to Lecture 13 stated on the agent/ReAct slides.
+- **Interactive spine, all three Quiz 14 items worked live:** Q1 label reason
+  vs act on a transcript (1R 2A 3R 4A 5R 6A — reasoning/interpreting=reason,
+  every read/compute/write tool call=act; observations aren't steps); Q2 match
+  guardrail→failure (HUMAN REVIEW / RESTRICTED TOOLS / LOGGING, each taught before
+  the match); Q3 what stays human-reviewed in a clinical workflow (release report
+  (c) + final R/S call (d)). Plus a **do-it-together follow-along** on the handout
+  and a 💬 discussion (which task would you hand an agent first + what check).
+- **Quiz** `quizzes/src/quiz14_agents.tex` single-source `\ifsolution`, quiz08
+  conventions (`\rb`,`\keybox`,`\work`). Q1 reproduces the you-do transcript
+  verbatim (labels answerable straight off the ReAct definition); Q2 3-way match;
+  Q3 circle-all + rule-of-thumb. Student 1 pp / key 2 pp both compile (pdflatex).
+- **Follow-along HANDOUT** `quizzes/src/lecture14_followalong.tex` (backprop-handout
+  style; needs `\usepackage[table]{xcolor}` for the `\rowcolor` anomaly row):
+  a 6-run QC table with one obvious out-of-range row (**QC-04**: +5.6 ppm vs ±2,
+  res 22,300 vs >30k, TIC 3.1 vs 8–12), the reason→act→check prompt template the
+  room pastes into ChatGPT/Claude/Gemini, 3 guiding questions, and a "what a good
+  answer looks like" box. Compiles (pdflatex, 2 pp). QC-04 numbers are identical
+  in the handout, the `demo_flag` figure, and the deck callout (rule 3 agreement).
+- **NEW toolkit funcs (extend, not fork) in `_lecture14_figures()`:**
+  `agent_schematic`, `react_transcript(ido/youdo)` (colour-coded Thought/Action/
+  Observation/Answer; shared `_REACT_IDO`/`_REACT_YOUDO` bodies), `followalong_card`,
+  `followalong_debrief`, `demo_storyboard`, `demo_flag`, `agents_fit`,
+  `guardrails(ido/youdo)` (shared `_GUARDRAILS`), `human_review`. Registered in
+  build_all() and FUNCS (key `agents` + per-figure keys). Rebuild:
+  `python3 tools/make_slide_figures.py agents`.
+- **No new images fetched (rule 7):** an agent/ReAct loop has no clean canonical
+  offline diagram, and a synthetic transcript is license-safe AND exact, so every
+  figure is hand-authored, MS-anchored, offline (the rule-6/9 exception).
+- **Verify:** overlap checker 0 FAIL, fractional-EMU 0, all 17 notes non-empty;
+  regression rebuild L10/11/13 all 0 FAIL / 0 fractional-EMU.
+
 ### Lecture 13 · Large Language Models + the DL-in-MS Landscape — BUILT 2026-08-31 (pending review)
 - **25 slides, 21 figure-driven.** Spec: `slides/spec/lecture13_llms_landscape.yaml`
   → `slides/pptx/lecture13_llms_landscape.pptx`. Survey hour, so the ONE numeric

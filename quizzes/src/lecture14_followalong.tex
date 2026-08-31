@@ -1,0 +1,147 @@
+% =====================================================================
+%  MSACL DS301 Deep Learning · Lecture 14 · Follow-Along Handout
+%  "Reason -> Act -> Check" on your own free-tier bot.
+%  A small realistic QC table + a prompt template the room pastes into
+%  ChatGPT / Claude / Gemini, plus guiding questions and what a good
+%  answer looks like. Single-file; compile with:  pdflatex lecture14_followalong.tex
+% =====================================================================
+\documentclass[11pt]{article}
+\usepackage[letterpaper, margin=0.65in, top=0.6in, bottom=0.5in]{geometry}
+\usepackage{amsmath, amssymb}
+\usepackage[table]{xcolor}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usepackage{fancyhdr}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textbf{MSACL DS301 --- Deep Learning}}
+\fancyhead[R]{\small\textbf{Lecture 14: Follow-Along --- Reason $\rightarrow$ Act $\rightarrow$ Check}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ---- course palette ------------------------------------------------------
+\definecolor{ink}{HTML}{1B2025}
+\definecolor{teal}{HTML}{0E7C7B}
+\definecolor{tealsoft}{HTML}{E3F0EF}
+\definecolor{amber}{HTML}{E09E2F}
+\definecolor{ambersoft}{HTML}{FBF0DC}
+\definecolor{redd}{HTML}{C4534F}
+\definecolor{redsoft}{HTML}{F7E4E3}
+\definecolor{inksoft}{HTML}{3D444C}
+\definecolor{muted}{HTML}{8A9099}
+
+\newcommand{\blk}[1]{\underline{\hspace{#1}}}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{3pt}
+
+\begin{document}
+
+\begin{center}
+{\Large \textbf{Follow-Along --- Reason $\rightarrow$ Act $\rightarrow$ Check}}\\[2pt]
+{\normalsize Run one agentic interaction yourself on a free-tier bot (ChatGPT / Claude / Gemini)}
+\end{center}
+
+\vspace{-2pt}
+\begin{center}
+\fbox{\parbox{0.93\textwidth}{\small
+\textbf{What to do (about 5 minutes):}\; Open any free assistant you already use. Paste the
+\textbf{prompt template} below \emph{together with} the \textbf{QC table}. Read the three labelled
+steps it produces. Then answer the guiding questions and compare with a neighbour. No account beyond
+what you already have; nothing is graded.
+}}
+\end{center}
+
+\vspace{2pt}\hrule\vspace{5pt}
+
+% ---------------- The QC table ----------------
+{\large \textbf{1. The QC table}}\quad
+{\small (six of this week's runs; the spec limits are printed under the header)}
+
+\vspace{4pt}
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{c c c c}
+\toprule
+\textbf{Run} & \textbf{Mass error (ppm)} & \textbf{Resolution} & \textbf{TIC ($\times10^6$)} \\
+{\small\itshape spec} & {\small\itshape within $\pm 2$} & {\small\itshape $> 30{,}000$} & {\small\itshape 8--12} \\
+\midrule
+QC-01 & $+0.8$ & $42{,}000$ & $10.2$ \\
+QC-02 & $-1.2$ & $39{,}500$ & $9.6$ \\
+QC-03 & $+0.5$ & $41{,}200$ & $10.8$ \\
+\rowcolor{redsoft}
+QC-04 & $+5.6$ & $22{,}300$ & $3.1$ \\
+QC-05 & $-0.9$ & $40{,}100$ & $9.9$ \\
+QC-06 & $+1.1$ & $38{,}700$ & $11.0$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{4pt}
+
+% ---------------- The prompt template ----------------
+{\large \textbf{2. Paste this prompt (then paste the table under it)}}
+
+\vspace{3pt}
+\begin{center}
+\fbox{\parbox{0.93\textwidth}{\small\ttfamily
+You are my lab QC assistant. Here is a small QC table (below). Work in three\\
+explicit, labelled steps and show each one:\\[3pt]
+1. REASON: state what a QC anomaly would look like and exactly which limit(s)\\
+\hspace*{2.2em}you will check (mass error within $\pm$2 ppm; resolution $>$ 30000; TIC 8--12).\\
+2. ACT: check each run against those limits and name any out-of-range run(s),\\
+\hspace*{2.2em}listing which specific metric is out of range for each.\\
+3. CHECK: state what a human must verify before trusting your answer.\\[3pt]
+Use only the numbers in the table. Do not invent any value.\\
+\lbrack paste the QC table here\rbrack
+}}
+\end{center}
+
+\vspace{4pt}
+
+% ---------------- Guiding questions ----------------
+{\large \textbf{3. Guiding questions}}\quad{\small (fill in, then compare with a neighbour)}
+
+\vspace{3pt}
+\textbf{(a)} Which run did your bot flag, and which specific metric(s) violate spec?
+
+\blk{\linewidth}
+
+\vspace{6pt}
+\textbf{(b)} Did it show its \textbf{REASON before it ACTED}? Did it invent any number that is
+\emph{not} in the table? (This is the hallucination check.)
+
+\blk{\linewidth}
+
+\vspace{6pt}
+\textbf{(c)} What did it say a \textbf{human} must verify --- and do you agree? Where should the agent
+\emph{stop} and a person sign?
+
+\blk{\linewidth}
+
+\vspace{6pt}\hrule\vspace{4pt}
+
+% ---------------- What a good answer looks like ----------------
+{\large \textbf{4. What a good answer looks like}}
+
+\vspace{3pt}
+\begin{center}
+\fbox{\parbox{0.93\textwidth}{\small
+A good answer flags \textbf{QC-04}, and names \emph{why}: mass error $+5.6$ ppm (limit $\pm 2$),
+resolution $22{,}300$ (limit $>30{,}000$), and TIC $3.1$ (limit 8--12) --- it breaks all three, so it is
+a likely miscalibrated / failed run (recalibrate + re-run). Runs QC-01, 02, 03, 05, 06 pass. Crucially,
+it (1) states the limits \textbf{before} it checks the runs (reason before act), (2) cites only values
+that appear in the table (no invented numbers), and (3) ends by \textbf{deferring the final pass/fail to
+a human}: the agent drafts, a qualified person verifies against the instrument logs and signs before any
+result is used. If your bot skipped its reasoning, invented a value, or declared a final pass/fail on its
+own, that is exactly the behaviour the lecture's \textbf{guardrails} (human review, restricted tools,
+logging) are designed to catch.
+}}
+\end{center}
+
+\vspace{4pt}
+{\small\itshape Keep this sheet --- it is the reason$\rightarrow$act$\rightarrow$check loop you'll see the
+instructor's ``MS analysis assistant'' run live next, and the guardrails you'll match on Quiz 14.}
+
+\end{document}

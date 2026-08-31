@@ -1,0 +1,182 @@
+% =====================================================================
+%  MSACL DS301 Deep Learning · Quiz 14 · Agentic AI, Demo-Driven
+%  Academic problem-set style (single-source, \ifsolution toggle)
+%  SINGLE SOURCE — produces BOTH the student quiz and the answer key.
+%
+%  ANSWER TOGGLE
+%  -------------
+%  Student version (answers HIDDEN) — the default:
+%       pdflatex quiz14_agents.tex
+%  Answer key (answers SHOWN):
+%       pdflatex "\def\showsolutions{}\input{quiz14_agents.tex}"
+%  (or, to flip by hand, change \solutionfalse to \solutiontrue below.)
+% =====================================================================
+\documentclass[11pt]{article}
+
+\newif\ifsolution
+\ifdefined\showsolutions \solutiontrue \else \solutionfalse \fi
+% \solutiontrue   % <-- uncomment to hard-code the ANSWER KEY build
+
+\usepackage[letterpaper, margin=0.6in, top=0.7in, bottom=0.5in]{geometry}
+\usepackage{amsmath, amssymb}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, calc}
+\usepackage{fancyhdr}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textbf{MSACL DS301 --- Deep Learning}}
+\fancyhead[R]{\small\textbf{Quiz 14: Agentic AI\ifsolution\ \textmd{(Answer Key)}\fi}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\newcommand{\blk}[1]{\underline{\hspace{#1}}}
+% Reveal-or-blank: shows the answer in the key, a blank rule on the student sheet.
+\newcommand{\rb}[2]{\ifsolution\textbf{#1}\else\blk{#2}\fi}
+% Boxed answer (key only) and blank writing space (student only).
+\newcommand{\keybox}[1]{\ifsolution\par\vspace{2pt}%
+  \fbox{\parbox{0.965\textwidth}{\small\textbf{Answer.}\; #1}}\par\fi}
+\newcommand{\work}[1]{\ifsolution\else\vspace{#1}\fi}
+
+% ---- course palette ------------------------------------------------------
+\definecolor{ink}{HTML}{1B2025}
+\definecolor{teal}{HTML}{0E7C7B}
+\definecolor{tealsoft}{HTML}{E3F0EF}
+\definecolor{amber}{HTML}{E09E2F}
+\definecolor{ambersoft}{HTML}{FBF0DC}
+\definecolor{redd}{HTML}{C4534F}
+\definecolor{redsoft}{HTML}{F7E4E3}
+\definecolor{inksoft}{HTML}{3D444C}
+\definecolor{muted}{HTML}{8A9099}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{3pt}
+\setlength{\abovedisplayskip}{5pt}
+\setlength{\belowdisplayskip}{5pt}
+
+\begin{document}
+
+\begin{center}
+{\Large \textbf{Quiz 14 --- Agentic AI, Demo-Driven}}\\[2pt]
+{\normalsize Label reason vs act on a transcript, match a guardrail to a failure, and decide what stays human-reviewed}
+\end{center}
+
+\vspace{-2pt}
+\begin{center}
+\fbox{\parbox{0.92\textwidth}{\small
+\textbf{Instructions:}\; Answer all three questions --- every part is answerable from the
+ReAct pattern and the guardrails on the slides. No arithmetic; intuition only.%
+\ifsolution\else\\[4pt]\textbf{Name:}\ \blk{6cm}\hfill\textbf{Date:}\ \blk{3.5cm}\fi
+}}
+\end{center}
+
+\vspace{-2pt}\hrule\vspace{5pt}
+
+% =========================== Q1 ===========================
+\textbf{1. Label each step: reason or act?}\; {\small An agent runs the \textbf{ReAct} loop
+(\textcolor{teal}{\textbf{Thought}} $\rightarrow$ \textcolor{amber}{\textbf{Action}} $\rightarrow$
+Observation $\rightarrow \dots \rightarrow$ Answer). A step is \textbf{R} (\emph{reason}) if it is a
+\textbf{Thought} --- the agent planning or interpreting --- and \textbf{A} (\emph{act}) if it is an
+\textbf{Action} --- the agent calling a tool (read, compute, write). The grey observation lines are the
+tool's replies, not steps. Below is one transcript (an assistant asked to summarise this week's
+peptide-ID counts and note any underperforming run). Write \textbf{R} or \textbf{A} beside each
+numbered step.}
+
+\vspace{5pt}
+\begin{center}
+\renewcommand{\arraystretch}{1.35}
+\begin{tabular}{@{}r@{\ \ }p{0.72\textwidth}c@{}}
+\textbf{1.} & ``Before I can compare runs, I need to load \texttt{results.csv} and see its columns.''
+            & \rb{R}{1.4cm} \\
+\textbf{2.} & \texttt{read\_csv("results.csv")} & \rb{A}{1.4cm} \\
+\multicolumn{2}{@{}l}{\hspace{1.1em}\textcolor{muted}{\itshape $\rightarrow$ 6 runs $\cdot$ column: peptide\_ids}} & \\
+\textbf{3.} & ``I'll compute the average ID count so I can see which runs fall below it.''
+            & \rb{R}{1.4cm} \\
+\textbf{4.} & compute the mean of \texttt{peptide\_ids} across the 6 runs & \rb{A}{1.4cm} \\
+\multicolumn{2}{@{}l}{\hspace{1.1em}\textcolor{muted}{\itshape $\rightarrow$ mean $= 1{,}850$ $\cdot$ run B-04 $= 420$}} & \\
+\textbf{5.} & ``B-04 (420) is far below the mean of 1,850, so that run underperformed.''
+            & \rb{R}{1.4cm} \\
+\textbf{6.} & \texttt{write\_summary(flag="B-04")} & \rb{A}{1.4cm} \\
+\end{tabular}
+\end{center}
+
+\keybox{\textbf{1 = R, 2 = A, 3 = R, 4 = A, 5 = R, 6 = A.}\; Odd steps are \emph{Thoughts} --- the agent
+planning (1, 3) or interpreting a result (5) --- so they are \textbf{reason}. Even steps each call a tool
+--- reading the file (2), computing the mean (4), writing the summary (6) --- so they are \textbf{act}.
+The two grey lines are \emph{observations} (what a tool returned), not agent steps. The tell: a step that
+only \emph{thinks/plans/interprets} is reason; a step that \emph{does something with a tool} is act.}
+
+\vspace{2pt}\hrule\vspace{5pt}
+
+% =========================== Q2 ===========================
+\textbf{2. Which guardrail for which failure?}\; {\small Match each failure mode to the ONE guardrail
+that prevents it (each used once), using the word bank.}
+
+\vspace{4pt}
+\textbf{(a)} The agent writes a confident summary containing a \textbf{fabricated number or citation}.
+\hfill $\rightarrow$\;\rb{Human review}{4.6cm}
+
+\vspace{3pt}
+\textbf{(b)} The agent \textbf{deletes or overwrites the raw data file} (or orders reagents) on its own.
+\hfill $\rightarrow$\;\rb{Restricted tools}{4.6cm}
+
+\vspace{3pt}
+\textbf{(c)} A wrong result ships and \textbf{no one can tell what the agent did} or reproduce it.
+\hfill $\rightarrow$\;\rb{Logging}{4.6cm}
+
+\vspace{4pt}
+\begin{center}
+{\small \textbf{Word bank:}\;\; Human review \;$\cdot$\; Restricted tools \;$\cdot$\; Logging}
+\end{center}
+
+\keybox{(a) \textbf{Human review} --- a qualified person verifies every number and flag before anything
+is released, so a fabricated value never reaches a report. (b) \textbf{Restricted tools} --- give the
+agent read-only access and a limited toolset; no write, delete, or purchase without explicit approval, so
+it \emph{cannot} take a destructive or irreversible action. (c) \textbf{Logging} --- record every
+reason$\rightarrow$act step so the run is auditable and reproducible, so you can see exactly what happened
+and why. Each guardrail is used once.}
+
+\vspace{2pt}\hrule\vspace{5pt}
+
+% =========================== Q3 ===========================
+\textbf{3. What must stay human-reviewed in a clinical workflow?}\; {\small An agent could help with each
+step below. \textbf{Circle every step that a qualified human must review and sign before it reaches a
+patient.}}
+
+\vspace{4pt}
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{@{}ll@{}}
+\textbf{(a)} merge / reformat the QC tables &
+\textbf{(b)} draft the QC summary text \\
+\textbf{(c)} release the patient report / sign out results &
+\textbf{(d)} the final resistance (R/S) call in the chart \\
+\textbf{(e)} summarise 3 method papers & \\
+\end{tabular}
+\end{center}
+
+\vspace{3pt}
+Circle all that must stay human-reviewed:\; \rb{(c) and (d)}{5.5cm}
+
+\vspace{3pt}
+In one sentence, what is the rule of thumb?
+
+\work{1.0cm}
+\ifsolution\else\blk{\linewidth}\fi
+
+\keybox{\textbf{(c) and (d)} must stay human-reviewed and signed. Both become a \emph{released clinical
+result} or a \emph{patient-affecting decision} --- releasing/signing a report (c) and the final
+resistance (R/S) call (d) --- so a qualified person must verify and sign no matter how good the agent's
+draft. Steps (a) merge/reformat tables, (b) draft the summary text, and (e) summarise papers are fine for
+an agent to \emph{do} as a helper (still spot-checked, logged, and citations verified), because they do
+not directly affect a patient without a human. \textbf{Rule of thumb:} anything that becomes a released
+result or a patient-affecting decision needs the human gate --- the agent may draft, but a person reviews
+and signs.}
+
+\vspace{4pt}\hrule\vspace{3pt}
+{\small\itshape \ifsolution Answer key.\else Keep this sheet --- next is the Lab 5 capstone: pick a track,
+adapt a working pipeline, evaluate it properly, and write your first-DL-project one-pager.\fi}
+
+\end{document}

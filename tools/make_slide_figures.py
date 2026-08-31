@@ -2632,6 +2632,8 @@ def build_all():
     _lecture11_figures()
     # ---- Lecture 13 ----
     _lecture13_figures()
+    # ---- Lecture 14 ----
+    _lecture14_figures()
 
 
 # deck I-do convolution (5x5 image, 3x3 diagonal detector) and the matched
@@ -5260,6 +5262,546 @@ def _lecture13_figures():
     landscape_match("youdo", "fig_landscape_match_youdo.png")
 
 
+# =====================================================================
+#  Lecture 14 · Agentic AI, Demo-Driven. An agent = LLM + tools + a
+#  reason–act loop (ReAct). The spine is tracing a ReAct transcript and
+#  LABELLING each step reason vs act, so the transcript figures are the
+#  centrepiece (rule 6/9). Everything hand-authored, MS-anchored, offline.
+# =====================================================================
+
+def agent_schematic(name="fig_agent_schematic.png"):
+    """From chatbot to agent. Left: a plain CHATBOT (LLM text-in → text-out,
+    answers from what it already knows). Right: an AGENT = LLM + TOOLS + a
+    reason→act LOOP (+ memory) that can read files, run code, plot, search."""
+    fig, ax = plt.subplots(figsize=(12.2, 5.0))
+    ax.set_xlim(0, 13)
+    ax.set_ylim(0, 6)
+    ax.axis("off")
+
+    # ---- left: chatbot ----
+    ax.add_patch(FancyBboxPatch((0.4, 0.6), 4.6, 4.8,
+                boxstyle="round,pad=0.02,rounding_size=0.06",
+                facecolor="#F1F1EC", edgecolor=HAIRLINE, lw=1.6))
+    ax.text(2.7, 5.0, "CHATBOT", ha="center", color=INK_SOFT, fontsize=13,
+            fontweight="bold")
+    ax.add_patch(FancyBboxPatch((1.35, 2.55), 2.7, 1.4,
+                boxstyle="round,pad=0.02,rounding_size=0.08",
+                facecolor=TEAL_SOFT, edgecolor=TEAL, lw=2.4))
+    ax.text(2.7, 3.25, "LLM", ha="center", va="center", color=TEAL,
+            fontsize=17, fontweight="bold")
+    ax.annotate("", xy=(1.3, 3.25), xytext=(0.55, 3.25),
+                arrowprops=dict(arrowstyle="-|>", color=INK_SOFT, lw=2.0))
+    ax.text(0.9, 3.62, "prompt", ha="center", color=INK_SOFT, fontsize=10)
+    ax.annotate("", xy=(4.85, 3.25), xytext=(4.1, 3.25),
+                arrowprops=dict(arrowstyle="-|>", color=INK_SOFT, lw=2.0))
+    ax.text(4.5, 3.62, "reply", ha="center", color=INK_SOFT, fontsize=10)
+    ax.text(2.7, 1.35, "answers only from what\nit already knows", ha="center",
+            va="center", color=MUTED, fontsize=10.5, style="italic")
+
+    # ---- right: agent ----
+    ax.add_patch(FancyBboxPatch((5.6, 0.6), 7.0, 4.8,
+                boxstyle="round,pad=0.02,rounding_size=0.06",
+                facecolor=PAPER, edgecolor=TEAL, lw=2.2))
+    ax.text(9.1, 5.0, "AGENT  =  LLM  +  TOOLS  +  LOOP", ha="center",
+            color=TEAL, fontsize=13.5, fontweight="bold")
+    # LLM (the reasoner) on the left of the agent panel
+    ax.add_patch(FancyBboxPatch((6.0, 2.55), 2.3, 1.4,
+                boxstyle="round,pad=0.02,rounding_size=0.08",
+                facecolor=TEAL_SOFT, edgecolor=TEAL, lw=2.4))
+    ax.text(7.15, 3.35, "LLM", ha="center", va="center", color=TEAL,
+            fontsize=15, fontweight="bold")
+    ax.text(7.15, 2.85, "reasons", ha="center", va="center", color=INK_SOFT,
+            fontsize=9.5, style="italic")
+    # TOOLS box on the right
+    ax.add_patch(FancyBboxPatch((10.0, 2.35), 2.3, 1.8,
+                boxstyle="round,pad=0.02,rounding_size=0.06",
+                facecolor=AMBER_SOFT, edgecolor=AMBER, lw=2.4))
+    ax.text(11.15, 3.85, "TOOLS", ha="center", color=ROI_INK, fontsize=12,
+            fontweight="bold")
+    for i, t in enumerate(["read files", "run code", "plot", "search"]):
+        ax.text(11.15, 3.4 - i * 0.34, t, ha="center", color=INK,
+                fontsize=9.5)
+    # loop arrows: LLM -> tools (act) top, tools -> LLM (observe) bottom
+    ax.annotate("", xy=(9.95, 3.75), xytext=(8.35, 3.75),
+                arrowprops=dict(arrowstyle="-|>", color=AMBER, lw=2.2,
+                                connectionstyle="arc3,rad=-0.28"))
+    ax.text(9.15, 4.4, "act (call a tool)", ha="center", color=ROI_INK,
+            fontsize=9.5, fontweight="bold")
+    ax.annotate("", xy=(8.35, 2.75), xytext=(9.95, 2.75),
+                arrowprops=dict(arrowstyle="-|>", color=RED, lw=2.2,
+                                connectionstyle="arc3,rad=-0.28"))
+    ax.text(9.15, 2.05, "observe the result", ha="center", color=RED,
+            fontsize=9.5, fontweight="bold")
+    # memory strip along the bottom
+    ax.add_patch(FancyBboxPatch((6.0, 0.95), 6.3, 0.55,
+                boxstyle="round,pad=0.02,rounding_size=0.06",
+                facecolor="#F1F1EC", edgecolor=INK_SOFT, lw=1.4))
+    ax.text(9.15, 1.22, "MEMORY — keeps what it has seen and done, and repeats",
+            ha="center", va="center", color=INK_SOFT, fontsize=10)
+    _save(fig, name)
+
+
+# ---- the ReAct transcript (the centrepiece) --------------------------------
+# One shared transcript body so the I-do (colour-coded, reason vs act named)
+# and the you-do (labels blanked, room fills R/A) read identically. The
+# you-do transcript is REPRODUCED VERBATIM on Quiz 14 Q1, and the correct
+# labels are fixed here: steps 1/3/5 = reason (Thought), 2/4/6 = act (Action).
+
+_REACT_IDO = [
+    ("thought", "To find anomalies I first need to open the QC table and see its columns."),
+    ("action", 'read_csv("qc_runs.csv")'),
+    ("obs", "8 runs · columns: run_id, mass_error_ppm, resolution, TIC"),
+    ("thought", "Mass error must stay within ±2 ppm — I'll check each run against that limit."),
+    ("action", "filter |mass_error_ppm| > 2"),
+    ("obs", "run R-07 → mass_error_ppm = 5.3"),
+    ("thought", "R-07 is far outside ±2 ppm, so it is the anomaly to flag."),
+    ("action", 'draft_summary(flag="R-07")'),
+    ("answer", "R-07 is out of spec (5.3 ppm); recommend re-run. The other 7 runs pass."),
+]
+
+# you-do / quiz transcript: SAME ReAct shape, different task + numbers.
+# (step_text, correct_label) where correct_label in {'R','A'}; observations
+# carry label None and are shown as un-numbered context.
+_REACT_YOUDO = [
+    ("Before I can compare runs, I need to load results.csv and see its columns.", "R"),
+    ('read_csv("results.csv")', "A"),
+    ("6 runs · column: peptide_ids", None),
+    ("I'll compute the average ID count so I can see which runs fall below it.", "R"),
+    ("compute the mean of peptide_ids across the 6 runs", "A"),
+    ("mean = 1,850 · run B-04 = 420", None),
+    ("B-04 (420) is far below the mean of 1,850, so that run underperformed.", "R"),
+    ('write_summary(flag="B-04")', "A"),
+]
+
+
+def react_transcript(mode="ido", name="fig_react_transcript_ido.png"):
+    """The ReAct pattern annotated on a real-looking MS-assistant transcript.
+    mode='ido': colour-code Thought (reason, teal) → Action (act, amber) →
+    Observation (grey) → … → Answer (red), with a reason/act legend.
+    mode='youdo': the SAME-shape quiz transcript with an 'R or A?' blank beside
+    each numbered agent step (Quiz 14 Q1)."""
+    tagcol = {"thought": TEAL, "action": ROI_INK, "obs": MUTED, "answer": RED}
+    tagface = {"thought": TEAL_SOFT, "action": AMBER_SOFT, "obs": "#F1F1EC",
+               "answer": "#F7E4E3"}
+    taglab = {"thought": "THOUGHT", "action": "ACTION", "obs": "OBSERVATION",
+              "answer": "ANSWER"}
+    if mode == "ido":
+        rows = _REACT_IDO
+        fig, ax = plt.subplots(figsize=(12.4, 6.2))
+    else:
+        rows = _REACT_YOUDO
+        fig, ax = plt.subplots(figsize=(12.4, 5.6))
+    ax.set_xlim(0, 13)
+    n = len(rows)
+    ax.set_ylim(0, n + (2.3 if mode == "ido" else 1.4))
+    ax.axis("off")
+
+    if mode == "ido":
+        ax.text(6.5, n + 1.75,
+                "ReAct loop:  Thought → Action → Observation → … → Answer",
+                ha="center", color=INK, fontsize=14, fontweight="bold")
+        # legend: reason vs act (well above the first row)
+        ax.add_patch(FancyBboxPatch((0.4, n + 0.85), 0.34, 0.34,
+                    boxstyle="round,pad=0.02", facecolor=TEAL_SOFT,
+                    edgecolor=TEAL, lw=1.6))
+        ax.text(0.85, n + 1.02, "Thought = REASON", ha="left", va="center",
+                color=TEAL, fontsize=10.5, fontweight="bold")
+        ax.add_patch(FancyBboxPatch((4.6, n + 0.85), 0.34, 0.34,
+                    boxstyle="round,pad=0.02", facecolor=AMBER_SOFT,
+                    edgecolor=AMBER, lw=1.6))
+        ax.text(5.05, n + 1.02, "Action = ACT (call a tool: read / compute / write)",
+                ha="left", va="center", color=ROI_INK, fontsize=10.5,
+                fontweight="bold")
+        # cue: this demo table is separate from the handout QC table
+        ax.text(6.5, 0.28,
+                "a short standalone demo table (qc_runs.csv) — separate from "
+                "the QC table on your handout",
+                ha="center", va="center", color=MUTED, fontsize=9.5,
+                style="italic")
+        for i, (kind, text) in enumerate(rows):
+            y = n - i
+            ax.add_patch(FancyBboxPatch((0.4, y - 0.34), 2.15, 0.68,
+                        boxstyle="round,pad=0.02,rounding_size=0.06",
+                        facecolor=tagface[kind], edgecolor=tagcol[kind],
+                        lw=1.8))
+            ax.text(1.47, y, taglab[kind], ha="center", va="center",
+                    color=tagcol[kind], fontsize=9.5, fontweight="bold")
+            fam = "monospace" if kind == "action" else None
+            ax.text(2.8, y, text, ha="left", va="center", color=INK,
+                    fontsize=11 if kind != "obs" else 10.2,
+                    style="italic" if kind == "obs" else "normal",
+                    family=fam)
+    else:
+        ax.text(6.5, n + 0.9,
+                "your turn — label each numbered step:  R (reason)  or  A (act)?",
+                ha="center", color=ROI_INK, fontsize=13.5, fontweight="bold")
+        step = 0
+        for i, (text, lab) in enumerate(rows):
+            y = n - i
+            if lab is None:  # observation context, not a numbered step
+                ax.text(3.0, y, "→ " + text, ha="left", va="center",
+                        color=MUTED, fontsize=10, style="italic")
+                continue
+            step += 1
+            ax.add_patch(FancyBboxPatch((0.4, y - 0.32), 0.6, 0.64,
+                        boxstyle="round,pad=0.02,rounding_size=0.06",
+                        facecolor=TEAL_SOFT, edgecolor=TEAL, lw=1.6))
+            ax.text(0.7, y, str(step), ha="center", va="center", color=TEAL,
+                    fontsize=12, fontweight="bold")
+            fam = "monospace" if text.endswith(")") else None
+            ax.text(1.25, y, text, ha="left", va="center", color=INK,
+                    fontsize=11, family=fam)
+            # blank for the label
+            ax.add_patch(FancyBboxPatch((11.7, y - 0.3), 1.0, 0.6,
+                        boxstyle="round,pad=0.02,rounding_size=0.06",
+                        facecolor=AMBER_SOFT, edgecolor=AMBER, lw=1.6))
+            ax.text(12.2, y, "R / A", ha="center", va="center", color=ROI_INK,
+                    fontsize=10, fontweight="bold")
+    _save(fig, name)
+
+
+def followalong_card(name="fig_followalong_card.png"):
+    """The reason→act→check prompt template the room pastes into their own
+    free-tier bot (ChatGPT / Claude / Gemini), with the handout QC table."""
+    fig, ax = plt.subplots(figsize=(12.0, 5.2))
+    ax.set_xlim(0, 12)
+    ax.set_ylim(0, 6)
+    ax.axis("off")
+    ax.text(6.0, 5.65, "paste this into your own bot — ask for three labelled steps",
+            ha="center", color=INK, fontsize=13.5, fontweight="bold")
+    steps = [
+        ("REASON", TEAL, TEAL_SOFT,
+         "state what a QC anomaly looks like and\nwhich limit you will check"),
+        ("ACT", AMBER, AMBER_SOFT,
+         "check each run against that limit and\nname any out-of-range run"),
+        ("CHECK", RED, "#F7E4E3",
+         "say what a human must verify before\nthe answer is trusted"),
+    ]
+    ys = [4.35, 3.05, 1.75]
+    for (lab, col, face, body), y in zip(steps, ys):
+        ax.add_patch(FancyBboxPatch((0.6, y - 0.55), 2.5, 1.1,
+                    boxstyle="round,pad=0.02,rounding_size=0.08",
+                    facecolor=col, edgecolor=col, lw=2.0))
+        ax.text(1.85, y, lab, ha="center", va="center", color=WHITE,
+                fontsize=14, fontweight="bold")
+        ax.annotate("", xy=(3.55, y), xytext=(3.15, y),
+                    arrowprops=dict(arrowstyle="-|>", color=col, lw=2.0))
+        ax.add_patch(FancyBboxPatch((3.7, y - 0.55), 7.7, 1.1,
+                    boxstyle="round,pad=0.02,rounding_size=0.06",
+                    facecolor=face, edgecolor=col, lw=1.6))
+        ax.text(7.55, y, body, ha="center", va="center", color=INK,
+                fontsize=11)
+    ax.text(6.0, 0.75,
+            "… then paste the QC table from your handout, and compare answers with a neighbour",
+            ha="center", color=INK_SOFT, fontsize=10.5, style="italic")
+    _save(fig, name)
+
+
+def followalong_debrief(name="fig_followalong_debrief.png"):
+    """What a GOOD reason→act→check answer shows — the debrief checklist for the
+    do-it-together (a genuine 3-item check, MS-anchored to the QC table)."""
+    fig, ax = plt.subplots(figsize=(11.6, 4.2))
+    ax.set_xlim(0, 12)
+    ax.set_ylim(0, 5)
+    ax.axis("off")
+    ax.text(6.0, 4.6, "a good answer — what to look for", ha="center",
+            color=INK, fontsize=13.5, fontweight="bold")
+    items = [
+        ("shows its REASON before it ACTS",
+         "it states the ±2 ppm / resolution limit first, then checks the runs"),
+        ("flags the right run and no other",
+         "QC-04 — and it names WHICH metrics are out of range"),
+        ("invents no number that isn't in the table",
+         "every value it cites is in the pasted QC table (hallucination check)"),
+        ("defers the final pass/fail to a human",
+         "it drafts; a qualified person signs off before results are used"),
+    ]
+    ys = [3.7, 2.85, 2.0, 1.15]
+    for (head, body), y in zip(items, ys):
+        ax.text(0.7, y, "✓", ha="center", va="center", color=TEAL,
+                fontsize=17, fontweight="bold")
+        ax.text(1.15, y, head, ha="left", va="center", color=INK,
+                fontsize=12, fontweight="bold")
+        ax.text(6.6, y, body, ha="left", va="center", color=INK_SOFT,
+                fontsize=10.5, style="italic")
+    _save(fig, name)
+
+
+def demo_storyboard(name="fig_demo_storyboard.png"):
+    """Live-demo storyboard: the MS analysis assistant reads → analyzes → plots
+    → flags → drafts, each panel a reason→act beat the instructor narrates."""
+    fig, ax = plt.subplots(figsize=(12.8, 4.4))
+    ax.set_xlim(0, 13)
+    ax.set_ylim(0, 5)
+    ax.axis("off")
+    ax.text(6.5, 4.65, "instructor live demo — the 'MS analysis assistant', narrated",
+            ha="center", color=INK, fontsize=13.5, fontweight="bold")
+    panels = [
+        ("READ", TEAL, "open the\nQC / spectra CSV"),
+        ("ANALYZE", AMBER, "run the checks\n(limits, stats)"),
+        ("PLOT", TEAL, "draw the\nspectra / trends"),
+        ("FLAG", RED, "mark the\nout-of-range run"),
+        ("DRAFT", INK_SOFT, "write the QC\nsummary for review"),
+    ]
+    w = 2.15
+    gap = 0.42
+    x0 = 0.5
+    for i, (lab, col, body) in enumerate(panels):
+        cx = x0 + i * (w + gap)
+        ax.add_patch(FancyBboxPatch((cx, 1.35), w, 2.5,
+                    boxstyle="round,pad=0.02,rounding_size=0.06",
+                    facecolor=PAPER, edgecolor=col, lw=2.2))
+        ax.add_patch(FancyBboxPatch((cx, 3.15), w, 0.7,
+                    boxstyle="round,pad=0.02,rounding_size=0.06",
+                    facecolor=col, edgecolor=col, lw=2.0))
+        ax.text(cx + w / 2, 3.5, lab, ha="center", va="center", color=WHITE,
+                fontsize=12.5, fontweight="bold")
+        ax.text(cx + w / 2, 2.25, body, ha="center", va="center", color=INK,
+                fontsize=10.5)
+        if i < len(panels) - 1:
+            ax.annotate("", xy=(cx + w + gap - 0.06, 2.6),
+                        xytext=(cx + w + 0.06, 2.6),
+                        arrowprops=dict(arrowstyle="-|>", color=INK_SOFT,
+                                        lw=2.0))
+    ax.text(6.5, 0.7,
+            "each panel = one reason→act step · primary: Claude Code  ·  alt: Bedrock API  ·  fallback: pre-recorded run",
+            ha="center", color=INK_SOFT, fontsize=10.5, style="italic")
+    _save(fig, name)
+
+
+def demo_flag(name="fig_demo_flag.png"):
+    """The flag+draft beat of the demo made concrete: a mini QC table with one
+    clearly out-of-range row highlighted, and the agent's drafted summary —
+    reason then act. Mirrors the handout table so the room recognises it."""
+    fig, ax = plt.subplots(figsize=(12.2, 5.0))
+    ax.set_xlim(0, 12)
+    ax.set_ylim(0, 6)
+    ax.axis("off")
+    ax.text(6.0, 5.65, "FLAG → DRAFT: the agent finds the bad run, then writes it up",
+            ha="center", color=INK, fontsize=13, fontweight="bold")
+    # mini table
+    headers = ["run", "mass err (ppm)", "resolution", "TIC"]
+    data = [
+        ("QC-01", "+0.8", "42,000", "10.2", False),
+        ("QC-04", "+5.6", "22,300", "3.1", True),
+        ("QC-05", "-0.9", "40,100", "9.9", False),
+    ]
+    cxs = [1.1, 2.7, 4.5, 6.1]
+    ytop = 4.7
+    for cx, h in zip(cxs, headers):
+        ax.text(cx, ytop, h, ha="center", color=MUTED, fontsize=10.5,
+                fontweight="bold")
+    for r, (run, me, res, tic, bad) in enumerate(data):
+        y = ytop - 0.55 - r * 0.55
+        if bad:
+            ax.add_patch(FancyBboxPatch((0.7, y - 0.24), 6.0, 0.48,
+                        boxstyle="round,pad=0.01,rounding_size=0.04",
+                        facecolor="#F7E4E3", edgecolor=RED, lw=1.8, zorder=1))
+        col = RED if bad else INK
+        for cx, v in zip(cxs, [run, me, res, tic]):
+            ax.text(cx, y, v, ha="center", va="center", color=col,
+                    fontsize=10.5, fontweight="bold" if bad else "normal",
+                    zorder=2)
+    ax.text(6.8, ytop - 0.55 - 1 * 0.55 - 0.34, "↑ out of spec", ha="left",
+            va="center", color=RED, fontsize=9.5, fontweight="bold")
+    # reason + act narration
+    ax.add_patch(FancyBboxPatch((8.2, 3.1), 3.5, 1.5,
+                boxstyle="round,pad=0.02,rounding_size=0.06",
+                facecolor=TEAL_SOFT, edgecolor=TEAL, lw=1.8))
+    ax.text(8.45, 4.3, "REASON", ha="left", color=TEAL, fontsize=10,
+            fontweight="bold")
+    ax.text(8.45, 3.75,
+            "QC-04 breaks all three\nlimits (±2 ppm, >30k, TIC 8–12)",
+            ha="left", va="center", color=INK, fontsize=10)
+    # drafted summary bubble
+    ax.add_patch(FancyBboxPatch((0.7, 0.6), 11.0, 1.9,
+                boxstyle="round,pad=0.02,rounding_size=0.06",
+                facecolor="#F1F1EC", edgecolor=INK_SOFT, lw=1.8))
+    ax.text(1.05, 2.2, "ACT — drafted summary (for human review)", ha="left",
+            color=ROI_INK, fontsize=10.5, fontweight="bold")
+    ax.text(1.05, 1.5,
+            "“Run QC-04 failed QC: mass error +5.6 ppm (limit ±2), resolution 22,300\n"
+            "(limit >30,000), TIC 3.1 (limit 8–12). Recommend recalibrate + re-run.\n"
+            "Runs QC-01/02/03/05/06 pass. Please verify before releasing results.”",
+            ha="left", va="center", color=INK, fontsize=10.5)
+    _save(fig, name)
+
+
+def agents_fit(name="fig_agents_fit.png"):
+    """Where agents fit in the lab (good first fits, each with a check) and where
+    they must NOT run unsupervised — plus the three guardrails."""
+    fig, ax = plt.subplots(figsize=(12.6, 5.6))
+    ax.set_xlim(0, 13)
+    ax.set_ylim(0, 6.2)
+    ax.axis("off")
+    # left column: good fits
+    ax.add_patch(FancyBboxPatch((0.4, 1.35), 6.0, 4.4,
+                boxstyle="round,pad=0.02,rounding_size=0.05",
+                facecolor=TEAL_SOFT, edgecolor=TEAL, lw=2.0))
+    ax.text(3.4, 5.45, "GOOD FIRST FITS  (with a check)", ha="center",
+            color=TEAL, fontsize=12.5, fontweight="bold")
+    fits = [
+        ("triage", "flag runs for a human to look at"),
+        ("report drafting", "human verifies every number/citation"),
+        ("data wrangling", "work on copies; spot-check + log"),
+        ("literature", "verify each citation against the source"),
+    ]
+    for i, (t, chk) in enumerate(fits):
+        y = 4.75 - i * 0.85
+        ax.text(0.75, y, "✓", ha="center", color=TEAL, fontsize=15,
+                fontweight="bold")
+        ax.text(1.15, y, t, ha="left", va="center", color=INK, fontsize=11.5,
+                fontweight="bold")
+        ax.text(1.15, y - 0.34, chk, ha="left", va="center", color=INK_SOFT,
+                fontsize=9.5, style="italic")
+    # right column: must NOT run unsupervised
+    ax.add_patch(FancyBboxPatch((6.7, 1.35), 5.9, 4.4,
+                boxstyle="round,pad=0.02,rounding_size=0.05",
+                facecolor="#F7E4E3", edgecolor=RED, lw=2.0))
+    ax.text(9.65, 5.45, "MUST NOT RUN UNSUPERVISED", ha="center", color=RED,
+            fontsize=12.5, fontweight="bold")
+    nots = [
+        "releasing a patient report / signing results",
+        "the final clinical call (diagnosis, R/S)",
+        "deleting or overwriting raw data",
+        "ordering reagents / anything irreversible",
+    ]
+    for i, t in enumerate(nots):
+        y = 4.75 - i * 0.85
+        ax.text(7.05, y, "✗", ha="center", color=RED, fontsize=15,
+                fontweight="bold")
+        ax.text(7.45, y, t, ha="left", va="center", color=INK, fontsize=11)
+    ax.text(6.5, 0.7,
+            "guardrails on every fit:   human review   ·   restricted tools   ·   logging",
+            ha="center", color=INK, fontsize=11.5, fontweight="bold")
+    _save(fig, name)
+
+
+# ---- guardrails: failure → guardrail (I-do) / match (you-do = Q2) ----------
+_GUARDRAILS = [
+    ("the agent writes a confident summary with a\nfabricated number or citation",
+     "HUMAN REVIEW",
+     "a person verifies every number and flag\nbefore anything is released"),
+    ("the agent deletes or overwrites the raw data\nfile (or orders reagents) on its own",
+     "RESTRICTED TOOLS",
+     "give it read-only access; no write / delete /\npurchase without approval"),
+    ("a wrong result ships and no one can tell what\nthe agent did or reproduce it",
+     "LOGGING",
+     "record every reason→act step so the run is\nauditable and reproducible"),
+]
+
+
+def guardrails(mode="ido", name="fig_guardrails_ido.png"):
+    """Three failure modes, each with the guardrail that prevents it. mode='ido'
+    pairs failure → guardrail → what it does; mode='youdo' shows the three
+    failures with the guardrail column blanked + a word bank (Quiz 14 Q2)."""
+    fig, ax = plt.subplots(figsize=(12.8, 5.4))
+    ax.set_xlim(0, 13)
+    ax.set_ylim(0, 6)
+    ax.axis("off")
+    if mode == "ido":
+        ax.text(6.5, 5.6, "each failure mode has a guardrail", ha="center",
+                color=INK, fontsize=14, fontweight="bold")
+    else:
+        ax.text(6.5, 5.6, "your turn — which guardrail stops which failure?",
+                ha="center", color=ROI_INK, fontsize=14, fontweight="bold")
+    ax.text(2.4, 4.95, "failure mode", ha="center", color=MUTED, fontsize=11)
+    ax.text(7.4, 4.95, "guardrail", ha="center", color=MUTED, fontsize=11)
+    if mode == "ido":
+        ax.text(11.0, 4.95, "what it does", ha="center", color=MUTED,
+                fontsize=11)
+    ys = [3.9, 2.55, 1.2]
+    cols = [RED, AMBER, TEAL]
+    for (fail, guard, does), y, col in zip(_GUARDRAILS, ys, cols):
+        ax.add_patch(FancyBboxPatch((0.4, y - 0.55), 4.0, 1.1,
+                    boxstyle="round,pad=0.02,rounding_size=0.05",
+                    facecolor="#F7E4E3", edgecolor=RED, lw=1.8))
+        ax.text(2.4, y, fail, ha="center", va="center", color=INK,
+                fontsize=10)
+        ax.annotate("", xy=(5.5, y), xytext=(4.55, y),
+                    arrowprops=dict(arrowstyle="-|>", color=INK_SOFT, lw=1.8))
+        if mode == "ido":
+            ax.add_patch(FancyBboxPatch((5.6, y - 0.5), 3.6, 1.0,
+                        boxstyle="round,pad=0.02,rounding_size=0.06",
+                        facecolor=col, edgecolor=col, lw=2.0))
+            ax.text(7.4, y, guard, ha="center", va="center", color=WHITE,
+                    fontsize=12.5, fontweight="bold")
+            ax.add_patch(FancyBboxPatch((9.4, y - 0.5), 3.3, 1.0,
+                        boxstyle="round,pad=0.02,rounding_size=0.06",
+                        facecolor=WHITE, edgecolor=col, lw=1.6))
+            ax.text(11.05, y, does, ha="center", va="center", color=INK_SOFT,
+                    fontsize=9.5)
+        else:
+            ax.add_patch(FancyBboxPatch((5.6, y - 0.5), 3.6, 1.0,
+                        boxstyle="round,pad=0.02,rounding_size=0.06",
+                        facecolor=AMBER_SOFT, edgecolor=AMBER, lw=1.8))
+            ax.text(7.4, y, "?", ha="center", va="center", color=ROI_INK,
+                    fontsize=16, fontweight="bold")
+    if mode == "youdo":
+        ax.text(6.5, 0.35,
+                "word bank:   HUMAN REVIEW   ·   RESTRICTED TOOLS   ·   LOGGING",
+                ha="center", color=INK_SOFT, fontsize=12, fontweight="bold")
+    _save(fig, name)
+
+
+def human_review(name="fig_human_review.png"):
+    """Clinical workflow strip for Quiz 14 Q3: which steps may an agent do and
+    which MUST stay human-reviewed before they reach a patient. The room marks
+    the human gate."""
+    fig, ax = plt.subplots(figsize=(12.6, 4.8))
+    ax.set_xlim(0, 13)
+    ax.set_ylim(0, 5.2)
+    ax.axis("off")
+    ax.text(6.5, 4.85,
+            "your turn — which steps must a qualified human review & sign?",
+            ha="center", color=ROI_INK, fontsize=13.5, fontweight="bold")
+    steps = [
+        ("(a)", "merge / reformat\nthe QC tables", "agent"),
+        ("(b)", "draft the QC\nsummary text", "agent"),
+        ("(c)", "release the patient\nreport / sign results", "human"),
+        ("(d)", "final resistance\n(R/S) call in chart", "human"),
+        ("(e)", "summarise 3\nmethod papers", "agent"),
+    ]
+    w = 2.2
+    gap = 0.35
+    x0 = 0.45
+    for i, (tag, body, who) in enumerate(steps):
+        cx = x0 + i * (w + gap)
+        # neutral cards on the you-do (the room decides who); tag only
+        ax.add_patch(FancyBboxPatch((cx, 1.7), w, 2.2,
+                    boxstyle="round,pad=0.02,rounding_size=0.06",
+                    facecolor=PAPER, edgecolor=INK_SOFT, lw=1.8))
+        ax.text(cx + w / 2, 3.55, tag, ha="center", va="center",
+                color=INK_SOFT, fontsize=12, fontweight="bold")
+        ax.text(cx + w / 2, 2.6, body, ha="center", va="center", color=INK,
+                fontsize=10.5)
+        # a blank 'human gate?' checkbox under each
+        ax.add_patch(FancyBboxPatch((cx + w / 2 - 0.3, 1.1, ), 0.6, 0.45,
+                    boxstyle="round,pad=0.02,rounding_size=0.05",
+                    facecolor=AMBER_SOFT, edgecolor=AMBER, lw=1.6))
+        ax.text(cx + w / 2, 1.32, "human?", ha="center", va="center",
+                color=ROI_INK, fontsize=9, fontweight="bold")
+    ax.text(6.5, 0.5,
+            "rule of thumb: anything that becomes a released result or a "
+            "patient-affecting decision needs the human gate",
+            ha="center", color=INK_SOFT, fontsize=10.5, style="italic")
+    _save(fig, name)
+
+
+def _lecture14_figures():
+    agent_schematic()
+    react_transcript("ido", "fig_react_transcript_ido.png")
+    react_transcript("youdo", "fig_react_transcript_youdo.png")
+    followalong_card()
+    followalong_debrief()
+    demo_storyboard()
+    demo_flag()
+    agents_fit()
+    guardrails("ido", "fig_guardrails_ido.png")
+    guardrails("youdo", "fig_guardrails_youdo.png")
+    human_review()
+
+
 FUNCS = {
     "maldi": maldi_real,
     "chatgpt": chatgpt_panel,
@@ -5439,6 +5981,22 @@ FUNCS = {
         paradigm_chart("ido", "fig_paradigm_chart.png"),
         paradigm_chart("youdo", "fig_paradigm_youdo.png"),
     ),
+    # ---- Lecture 14 ----
+    "agents": _lecture14_figures,
+    "agent_schematic": agent_schematic,
+    "react": lambda: (
+        react_transcript("ido", "fig_react_transcript_ido.png"),
+        react_transcript("youdo", "fig_react_transcript_youdo.png"),
+    ),
+    "followalong": lambda: (followalong_card(), followalong_debrief()),
+    "demo_storyboard": demo_storyboard,
+    "demo_flag": demo_flag,
+    "agents_fit": agents_fit,
+    "guardrails": lambda: (
+        guardrails("ido", "fig_guardrails_ido.png"),
+        guardrails("youdo", "fig_guardrails_youdo.png"),
+    ),
+    "human_review": human_review,
     # ---- Lecture 13 ----
     "llms": _lecture13_figures,
     "next_token": next_token_predict,

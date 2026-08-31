@@ -1,0 +1,375 @@
+deck:
+  title: "Lecture 14 · Agentic AI, Demo-Driven"
+  eyebrow: "MSACL · DS301 Deep Learning · Segment 5 · Lecture 14"
+
+slides:
+  - type: title
+    title: "Agentic AI, demo-driven"
+    subtitle: "from chatbot to agent · the ReAct reason→act loop, annotated on a transcript · a follow-along on your own bot · a live 'MS analysis assistant' · where agents fit in the lab, and the guardrails each needs"
+    notes: >
+      The FINAL lecture, Tuesday morning, straight after Lecture 13's LLMs — and
+      then Lab 5 (the capstone). This hour is deliberately DEMO-DRIVEN and
+      hands-on. One idea carries the whole hour: an AGENT is just an LLM given
+      TOOLS and a reason→act LOOP (the ReAct pattern), and everything we do
+      traces or builds that loop. Four stops. (1) From chatbot to agent — the
+      ReAct pattern (Thought → Action → Observation → … → Answer) annotated on a
+      real-looking transcript, with a one-line callback to Lecture 13's RL:
+      reinforcement-style feedback/reward is how these reason→act behaviours get
+      trained. (2) A FOLLOW-ALONG on your own free-tier bot — paste a small QC
+      table from the handout and prompt for explicit reason→act→check steps, then
+      compare with a neighbour. (3) An instructor LIVE DEMO — an 'MS analysis
+      assistant' that reads a QC CSV, analyses it, plots, flags an anomaly, and
+      drafts a summary, each reason→act step narrated. (4) WHERE agents fit in the
+      lab (triage, report drafting, data wrangling, literature) and where they
+      must NOT run unsupervised, with guardrails: human review, restricted tools,
+      logging. The interactive spine (rule 8): the ReAct I-do → a you-do that
+      points to Quiz 14 Q1 (LABEL reason vs act); the guardrails I-do → Quiz 14
+      Q2 (which guardrail for which failure); a human-review you-do → Quiz 14 Q3;
+      the follow-along is a do-it-together on the handout; and a 💬 discussion on
+      which task you'd hand an agent first. Hand out Quiz 14 (short) now, blank —
+      the room fills it across the hour. Close with the Lab 5 capstone briefing.
+
+  - type: bullets
+    eyebrow: "Lecture 14 · where this hour goes"
+    title: "Four stops — and it's demo-driven"
+    bullets:
+      - {text: "From chatbot to agent — the ReAct reason→act loop, annotated on a transcript (+ a one-line callback to Lecture 13's RL)", time: "12 min"}
+      - {text: "Follow-along on YOUR bot — paste a QC table, prompt for reason→act→check, compare with a neighbour", time: "10 min"}
+      - {text: "Instructor live demo — an 'MS analysis assistant' reads, analyses, plots, flags, drafts", time: "18 min"}
+      - {text: "Where agents fit in the lab — and the guardrails each needs; then Quiz 14 + capstone briefing", time: "12 min"}
+    notes: >
+      Signpost the four stops and set expectations: this hour has almost no new
+      machinery — an agent is the LLM you already understand, wrapped in tools and
+      a loop — so the work is TRACING and RUNNING that loop, not math. The single
+      skill we assess all hour is reading a ReAct transcript and labelling each
+      step reason vs act; the follow-along and the live demo are the same loop,
+      first on your own bot, then on a real MS-analysis task. Aim for a hands-on
+      beat every ~8–10 minutes: the ReAct you-do (Quiz 14 Q1), the follow-along
+      do-it-together on the handout, the guardrail you-do (Q2), the human-review
+      you-do (Q3), and the 💬 discussion. Keep the demo brisk and narrated — every
+      panel is one reason→act step. Reassure the room the quiz is short.
+
+  # ============ PART 1 · From chatbot to agent ============
+  - type: image
+    eyebrow: "Chatbot → agent · 1 of 3 · the definition · I-do"
+    title: "An agent = LLM + tools + a reason→act loop"
+    image: img/fig_agent_schematic.png
+    img_h: 4.4
+    callout: {kind: ms, text: "A CHATBOT answers only from what it already knows. An AGENT wraps that same LLM with TOOLS (read files, run code, plot, search) and a LOOP: it REASONS about what to do, ACTS by calling a tool, OBSERVES the result, and repeats — plus MEMORY of what it has seen and done. Same LLM; the tools and the loop are what's new."}
+    notes: >
+      Demystify 'agent' in one picture. On the left, a plain chatbot: prompt in,
+      reply out, answering only from what the model already learned — it cannot
+      touch your files or run anything. On the right, an AGENT: the SAME LLM, now
+      given a set of TOOLS (read a file, run code, make a plot, search) and run
+      in a LOOP — it reasons about the next step, acts by calling a tool,
+      observes what came back, and goes around again, keeping a memory of the
+      run. That is the whole idea; there is no new neural architecture here — an
+      agent is a wiring pattern around an LLM. One-line callback to Lecture 13
+      (say it out loud): reinforcement-style feedback and reward is how these
+      reason→act behaviours get TRAINED — the model was tuned (RLHF and related)
+      to plan, call tools, and use their results well. Next slide we watch the
+      loop turn, step by step, on a real-looking MS-analysis transcript.
+
+  - type: image
+    eyebrow: "Chatbot → agent · 2 of 3 · the ReAct pattern · I-do"
+    title: "ReAct, annotated: Thought → Action → Observation → … → Answer"
+    image: img/fig_react_transcript_ido.png
+    img_h: 5.0
+    callout: {kind: ms, text: "The ReAct pattern, colour-coded on a transcript. A THOUGHT is the agent REASONING about what to do (teal). An ACTION is the agent ACTING — calling a tool (read a file, filter, compute/run code, write): here read_csv, filter, draft_summary (amber). An OBSERVATION is the tool's result (grey). The loop repeats until an ANSWER. Reason → act → observe → … → answer. (This qc_runs.csv is a short standalone demo table — separate from the QC table on your handout.) Callback: RL feedback is how this behaviour got trained."}
+    notes: >
+      The centrepiece (rule 6/9): the ReAct loop annotated on a real-looking
+      transcript of the 'MS analysis assistant' asked to flag QC anomalies. Walk
+      it top to bottom, naming each colour. THOUGHT (teal) = the agent REASONING:
+      "I first need to open the QC table and see its columns" — a plan, no tool
+      used yet. ACTION (amber) = the agent ACTING by calling a tool:
+      read_csv("qc_runs.csv"). OBSERVATION (grey) = what the tool returned: 8
+      runs, columns run_id/mass_error_ppm/resolution/TIC. Then it loops again:
+      THOUGHT — mass error must stay within ±2 ppm, check each run; ACTION —
+      filter |mass_error_ppm| > 2; OBSERVATION — R-07 = 5.3 ppm. Once more:
+      THOUGHT — R-07 is far outside ±2 ppm, so it's the anomaly; ACTION —
+      draft_summary(flag="R-07"); then the final ANSWER. The single distinction
+      the room must carry to the quiz: a step is REASON if it's a Thought
+      (planning/interpreting) and ACT if it's an Action (invoking a tool: read,
+      run/compute, filter, plot, write/draft — so "compute the mean" is an act,
+      because it runs a tool). Observations are the environment's replies, not
+      the agent's steps. Note the qc_runs.csv here is a short standalone demo
+      table, separate from the six-run QC-04 table on the follow-along handout —
+      say so if anyone asks. One-line RL callback again: this reason-then-act
+      behaviour is exactly what preference tuning (Lecture 13) shapes. Next slide
+      the room labels a fresh transcript themselves (Quiz 14 Q1).
+
+  - type: image
+    eyebrow: "Chatbot → agent · 3 of 3 · your turn (you-do = Q1)"
+    title: "Your turn — label each step: reason or act?"
+    image: img/fig_react_transcript_youdo.png
+    img_h: 5.0
+    callout: {kind: check, text: "Your turn → Quiz 14, Q1. A new transcript (same ReAct shape). Label each numbered step R (reason = a Thought) or A (act = calling a tool). The observations (grey) are given context, not steps. Worked answer in the notes."}
+    notes: >
+      YOU-DO = Quiz 14 Q1 (label reason vs act on a transcript — the hour's spine,
+      assessing the ReAct outcome). Same ReAct shape, a different task (summarise
+      this week's peptide-ID counts and note any underperforming run) and
+      different numbers, so it's transfer not recall. The transcript is reproduced
+      verbatim on the Quiz 14 sheet, so the room answers straight off it. The
+      correct labels, fixed by the ReAct definition on the previous slide:
+      Step 1 (plan: load results.csv and see its columns) = REASON;
+      Step 2 (read_csv("results.csv")) = ACT;
+      Step 3 (plan: compute the average to see which runs fall below) = REASON;
+      Step 4 (compute the mean of peptide_ids) = ACT;
+      Step 5 (interpret: B-04 at 420 is far below the mean of 1,850 → underperformed) = REASON;
+      Step 6 (write_summary(flag="B-04")) = ACT.
+      So: 1 R, 2 A, 3 R, 4 A, 5 R, 6 A — reasoning/interpreting is reason; every
+      step that calls a tool (read, compute, write) is act; the grey lines are
+      observations, not steps. Take a couple of labels from the floor, confirm
+      against the pattern, then have the room fill Q1.
+
+  # ============ PART 2 · Follow-along on your own bot ============
+  - type: image
+    eyebrow: "Follow-along · 1 of 2 · do-it-together"
+    title: "Do it together: reason → act → check, on your own bot"
+    image: img/fig_followalong_card.png
+    img_h: 4.6
+    callout: {kind: pair, text: "Do-it-together → your handout. Open any free-tier bot (ChatGPT / Claude / Gemini). Paste the prompt template AND the small QC table from your handout, and ask for three labelled steps — REASON (what a QC anomaly is + which limit), ACT (check each run, name the out-of-range one), CHECK (what a human must verify). Then compare answers with a neighbour."}
+    notes: >
+      DO-IT-TOGETHER (rule 8), pointing at the printed handout, not the quiz. Give
+      the room ~5 minutes on whatever free-tier assistant they have — ChatGPT,
+      Claude, or Gemini — no sign-ups beyond what they already use. The handout
+      carries a small realistic QC table (six runs, one obviously out-of-range
+      row, QC-04) and this exact reason→act→check prompt template. They paste both
+      and read what comes back. The point is to FEEL the loop: a good bot states
+      its REASON (the ±2 ppm / resolution / TIC limits) before it ACTS (checks the
+      runs and names QC-04), and ends with a CHECK (what a human must verify). Walk
+      the room; some bots will skip straight to an answer or invent a number — that
+      is the teachable moment for the next slide and for guardrails later. Then
+      have neighbours compare answers: did both flag QC-04? did either invent a
+      value? Next slide, what a good answer looks like.
+
+  - type: image
+    eyebrow: "Follow-along · 2 of 2 · debrief · 💬 pair"
+    title: "What a good answer looks like"
+    image: img/fig_followalong_debrief.png
+    img_h: 3.9
+    callout: {kind: pair, text: "💬 With your neighbour: did your bot (1) show its REASON before it ACTED, (2) flag QC-04 and name which metrics are out of range, (3) invent any number not in the table, and (4) leave the final pass/fail to a human? Answer in the notes."}
+    notes: >
+      Debrief the follow-along against four checks (a genuine checklist, rule 9).
+      A GOOD answer: (1) shows its REASON before it ACTS — it states the limits
+      (±2 ppm, resolution > 30,000, TIC 8–12) first, then checks the runs;
+      (2) flags the right run and no other — QC-04 — and names WHICH metrics are
+      out of range (mass error +5.6 ppm, resolution 22,300, TIC 3.1); (3) invents
+      no number that isn't in the pasted table — this is the hallucination check
+      from Lecture 13, made concrete; (4) defers the final pass/fail to a human —
+      it drafts, a person signs off. 💬 Run the pair prompt: have neighbours score
+      each other's bot output on those four. The likely findings — some bots
+      answer confidently without showing reasoning, and some cite a value that
+      isn't in the table — are exactly why the lab needs guardrails, which we get
+      to after the live demo. Harvest two observations, then move to the demo.
+
+  # ============ PART 3 · Instructor live demo ============
+  - type: title
+    eyebrow: "Lecture 14 · part three"
+    title: "Instructor live demo — the 'MS analysis assistant'"
+    subtitle: "a real agent on a spectra/QC CSV: reads files → runs analysis → plots → flags anomalies → drafts a summary, each reason→act step narrated"
+    notes: >
+      The set piece of the hour: watch a REAL agent do the ReAct loop on real MS
+      data, not a toy transcript. The assistant is pointed at a QC/spectra CSV
+      derived from the course datasets (the same Lab 2/4 style data), and it
+      reads the file, runs the analysis, plots, flags any anomaly, and drafts a
+      QC summary — with the instructor narrating each reason→act step as it
+      happens, tying every action back to the ReAct pattern the room just
+      labelled. Tooling plan (state it briefly): PRIMARY is the instructor's
+      Claude Code as a live agent; ALTERNATIVE is the Bedrock API if Claude Code
+      is unavailable; FALLBACK is a pre-recorded run so the demo never fails live.
+      Keep narrating the loop out loud — "here it REASONS, now it ACTS by running
+      code, here's the OBSERVATION" — so the abstract pattern becomes concrete.
+
+  - type: image
+    eyebrow: "Live demo · the storyboard"
+    title: "The demo, five reason→act beats"
+    image: img/fig_demo_storyboard.png
+    img_h: 4.2
+    callout: {kind: ms, text: "The demo as five beats, each one reason→act: READ the QC/spectra CSV → ANALYZE (limits, stats) → PLOT the spectra/trends → FLAG the out-of-range run → DRAFT the QC summary for review. 💬 Before the FLAG beat, take 30 s: predict which run the agent will flag. Primary: instructor's Claude Code · alt: Bedrock API · fallback: pre-recorded run — the demo never fails live."}
+    notes: >
+      The storyboard so the room knows what's coming and can map each step to the
+      ReAct loop. Five beats: READ (open the CSV — an Action; the Thought before
+      it: "I need the data first"), ANALYZE (run the limit checks and stats),
+      PLOT (draw the spectra or QC trends), FLAG (mark the out-of-range run), and
+      DRAFT (write a QC summary for a human to review). Narrate each as
+      reason→act as the agent runs. Keep the room's hands in it: just before the
+      FLAG beat, pause 30 seconds and have everyone PREDICT which run the agent
+      will flag (they've already seen the QC-04 row on the follow-along handout),
+      then run it and check the prediction — a quick hands-on beat inside the
+      demo stretch. Emphasise two things the room should watch
+      for: the agent shows its reasoning before each tool call (that's the ReAct
+      transcript, live), and its final output is a DRAFT for review, never a
+      released result — which sets up the guardrails stop. Restate the tooling
+      plan: primary Claude Code, alternative Bedrock, fallback recording. Next
+      slide, the flag→draft beat made concrete on the QC numbers.
+
+  - type: image
+    eyebrow: "Live demo · flag → draft, concrete"
+    title: "It finds the bad run, then drafts it up"
+    image: img/fig_demo_flag.png
+    img_h: 4.4
+    callout: {kind: ms, text: "The FLAG→DRAFT beat on real numbers. REASON: QC-04 breaks all three limits (mass error +5.6 ppm vs ±2; resolution 22,300 vs >30,000; TIC 3.1 vs 8–12). ACT: it drafts a summary naming the failed run, the exact out-of-range values, and a recommendation — and ends 'please verify before releasing results'. Every number is read from the table, none invented."}
+    notes: >
+      Zoom in on the money beat so the class sees the reason→act with real
+      numbers (the same QC-04 row the follow-along handout uses, so it's
+      familiar). REASON: the agent notes QC-04 breaks all three limits at once —
+      mass error +5.6 ppm (limit ±2), resolution 22,300 (limit > 30,000), TIC 3.1
+      (limit 8–12) — while QC-01/02/03/05/06 pass. ACT: it drafts a short QC
+      summary that names the failed run, cites each out-of-range value, gives a
+      recommendation (recalibrate + re-run), and explicitly asks a human to verify
+      before results are released. Two teaching points to say out loud: (1) every
+      number in the draft is READ from the table — nothing invented, the
+      hallucination guardrail working; (2) the draft ends by handing the decision
+      back to a human — the agent proposes, a person disposes. That is exactly the
+      posture we want in a lab, and it motivates the guardrails next.
+
+  # ============ PART 4 · Where agents fit + guardrails ============
+  - type: image
+    eyebrow: "Where agents fit · the map · I-do"
+    title: "Where agents fit — and where they must not run alone"
+    image: img/fig_agents_fit.png
+    img_h: 4.8
+    callout: {kind: ms, text: "GOOD FIRST FITS (each with a check): triage (flag runs for a human), report drafting (human verifies every number), data wrangling (work on copies; spot-check + log), literature (verify each citation). MUST NOT run unsupervised: releasing a patient report, the final clinical call (R/S), deleting raw data, ordering reagents. Guardrails on every fit: human review · restricted tools · logging."}
+    notes: >
+      The practical map for a clinical lab (rule 2). On the left, tasks an agent
+      can plausibly help with FIRST — each paired with the check that keeps it
+      honest: TRIAGE (flag runs/samples for a human to look at — the human still
+      decides), REPORT DRAFTING (a person verifies every number and citation
+      before release), DATA WRANGLING (reformat/merge tables — but on COPIES, with
+      spot-checks and logging), LITERATURE (search and summarise — verify each
+      citation against the source, per Lecture 13's hallucination lesson). On the
+      right, what must NEVER run unsupervised: releasing a patient report or
+      signing out results, making the final clinical call (a diagnosis or a
+      resistance R/S decision), deleting or overwriting raw data, or ordering
+      reagents / anything irreversible. Three guardrails ride on every fit —
+      HUMAN REVIEW, RESTRICTED TOOLS, LOGGING — which we pair to failure modes
+      next. This is also the setup for the Q3 human-review item.
+
+  - type: image
+    eyebrow: "Guardrails · failure → guardrail · I-do"
+    title: "Each failure mode has a guardrail"
+    image: img/fig_guardrails_ido.png
+    img_h: 4.6
+    callout: {kind: ms, text: "Three failures, three guardrails. FABRICATED number/citation in a summary → HUMAN REVIEW (a person verifies every number before release). Agent DELETES/overwrites raw data or orders reagents → RESTRICTED TOOLS (read-only; no write/delete/purchase without approval). A wrong result ships and no one can tell what happened → LOGGING (record every reason→act step so the run is auditable)."}
+    notes: >
+      The three guardrails from the outcomes, each tied to the specific failure it
+      prevents (rule 3 — every guardrail and failure is taught HERE, before the Q2
+      match). FAILURE 1: the agent writes a confident summary containing a
+      fabricated number or citation (the Lecture 13 hallucination, in an agent) →
+      GUARDRAIL: HUMAN REVIEW — a qualified person verifies every number and flag
+      before anything is released. FAILURE 2: the agent takes a destructive or
+      irreversible action — deletes/overwrites the raw data file, or orders
+      reagents — on its own → GUARDRAIL: RESTRICTED TOOLS — give it read-only
+      access and a limited toolset; no write, delete, or purchase without explicit
+      approval. FAILURE 3: a wrong result ships and no one can tell what the agent
+      did or reproduce it → GUARDRAIL: LOGGING — record every reason→act step so
+      the run is auditable and reproducible. Say the pairing pattern aloud, then
+      the room matches them itself next slide (Quiz 14 Q2).
+
+  - type: image
+    eyebrow: "Guardrails · your turn (you-do = Q2)"
+    title: "Your turn — which guardrail for which failure?"
+    image: img/fig_guardrails_youdo.png
+    img_h: 4.6
+    callout: {kind: check, text: "Your turn → Quiz 14, Q2. Match each failure mode to the ONE guardrail that prevents it, using the word bank: HUMAN REVIEW · RESTRICTED TOOLS · LOGGING. Worked answer in the notes."}
+    notes: >
+      YOU-DO = Quiz 14 Q2 (match guardrail to failure; assesses the guardrails
+      outcome). Answers, identical to the Quiz 14 Q2 key and straight off the
+      previous slide: (1) fabricated number/citation in a summary → HUMAN REVIEW
+      (a person verifies every number/flag before release); (2) the agent
+      deletes/overwrites raw data or orders reagents on its own → RESTRICTED TOOLS
+      (read-only; no write/delete/purchase without approval); (3) a wrong result
+      ships and no one can tell what the agent did or reproduce it → LOGGING
+      (record every reason→act step; auditable, reproducible). Each guardrail used
+      once. Take one match from the floor, confirm, then have the room fill Q2.
+
+  - type: image
+    eyebrow: "Clinical review · your turn (you-do = Q3)"
+    title: "Your turn — what must stay human-reviewed?"
+    image: img/fig_human_review.png
+    img_h: 4.6
+    callout: {kind: check, text: "Your turn → Quiz 14, Q3. In a clinical workflow, which of these steps must a qualified human review and sign before it reaches a patient? (a) merge/reformat QC tables (b) draft the QC summary (c) release the patient report (d) the final R/S call (e) summarise 3 papers. Worked answer in the notes."}
+    notes: >
+      YOU-DO = Quiz 14 Q3 (what must stay human-reviewed in a clinical workflow;
+      assesses the guardrail/where-agents-fit outcome). Answer (identical to the
+      Quiz 14 Q3 key): steps (c) releasing the patient report / signing results
+      and (d) the final resistance (R/S) call MUST stay human-reviewed and signed
+      — they become a released clinical result or a patient-affecting decision, so
+      a qualified person must verify and sign, no matter how good the agent's
+      draft. Steps (a) merge/reformat QC tables, (b) draft the QC summary text,
+      and (e) summarise method papers are fine for an agent to DO as a helper —
+      still checked (spot-check + log; verify citations; verify the draft before
+      release), but they don't directly affect a patient without a human. The rule
+      of thumb: anything that becomes a released result or a patient-affecting
+      decision needs the human gate. Take one answer, then have the room fill Q3 —
+      that's all three Quiz 14 items worked live.
+
+  - type: bullets
+    eyebrow: "Where agents fit · 💬 discuss"
+    title: "💬 Which task would you hand an agent first?"
+    bullets:
+      - "Pick ONE task from your own week you'd hand an agent first — triage, report drafting, data wrangling, or a literature scan"
+      - "Name the ONE check that keeps it honest — a human review, a restricted (read-only) toolset, or a log you can audit"
+      - "Say where it must stop — the point at which a human must review and sign before anything reaches a patient"
+    callout: {kind: pair, text: "💬 2 minutes with your neighbour: which task would you hand an agent first — and what ONE check keeps it honest? Be specific about where the agent stops and the human signs. Share-outs in the notes."}
+    notes: >
+      💬 The outcomes' discussion beat (rule 8), and the bridge to using this in
+      their own lab. Two minutes, then harvest three or four. Good answers pair a
+      concrete first task with a concrete check and a clear stopping point:
+      "an agent triages overnight QC runs and flags the suspect ones — a tech
+      reviews the flags each morning (human review), it only READS the QC files
+      (restricted tools), and every check is logged"; or "it drafts the method
+      section of a validation report — I verify every number and citation before
+      it goes anywhere (human review + logging)." Push for WHERE IT STOPS: the
+      agent proposes, a qualified human reviews and signs before any result
+      reaches a patient. This rehearses the exact judgement the course objective
+      5 asks for — deciding when the tool is and isn't appropriate — now for
+      agents. Then finish Quiz 14 and brief the capstone.
+
+  # ============ Recap + capstone ============
+  - type: bullets
+    eyebrow: "Lecture 14 · what you can do now"
+    title: "You can now…"
+    bullets:
+      - "Define an agent as LLM + tools + a reason→act loop (ReAct), and label the reasoning vs acting steps on a transcript (Quiz 14 Q1)"
+      - "Run a simple agentic interaction yourself on a free-tier bot — a structured reason → act → check prompt (the follow-along)"
+      - "Name where agents fit in lab workflows and the guardrail each needs — human review, restricted tools, logging (Quiz 14 Q2)"
+      - "Say what must stay human-reviewed in a clinical workflow — anything that becomes a released result or a patient decision (Quiz 14 Q3)"
+    callout: {kind: plain, text: "You've now worked every item on Quiz 14 live — labelling reason vs act on a transcript (Q1), matching guardrail to failure (Q2), and what stays human-reviewed (Q3) — plus a follow-along on your own bot and a live demo. Keep the sheet."}
+    notes: >
+      Recap = the Lecture 14 outcomes, each already a you-do this hour tied to a
+      Quiz 14 item: define/trace the ReAct loop and label reason vs act (Q1); run
+      a reason→act→check interaction on your own bot (the follow-along); name
+      where agents fit and the guardrail each needs (Q2); and what must stay
+      human-reviewed in a clinical workflow (Q3). The sheet was filled across the
+      hour, not as an end block. The big takeaway to send them off with: an agent
+      is not a new kind of AI — it is the LLM you already understand, given tools
+      and a reason→act loop, and the whole job of deploying it safely is putting a
+      human in the loop where it matters and restricting and logging what it can
+      do. Keep the sheet; the capstone is next.
+
+  - type: bullets
+    eyebrow: "Lecture 14 · next — Lab 5 capstone"
+    title: "Next — the Lab 5 capstone"
+    bullets:
+      - "Pick ONE guided track: A — beat the Lab 2 spectra baseline · B — peak QC (good/bad integrations) · C — new question, same spectra (transfer learning)"
+      - "Adapt a working pipeline, evaluate it PROPERLY — split, metrics, honest error analysis (Lectures 4 & 10) — all rubric-scored"
+      - "Complete your project one-pager: problem → data & representation → architecture → validation plan → 'why not a simpler model?'"
+      - "Closing discussion D5: share your one-pager in pairs, a few 60-second share-outs, then resources to keep learning"
+    callout: {kind: check, text: "2 minutes to finish Quiz 14 solo → we mark it together as Lab 5 opens. Then choose your capstone track and open the Colab. Bring everything: representation (Lec 10), the right architecture (Lec 5/8/11), and honest metrics (Lec 4/10)."}
+    notes: >
+      Hand the last minutes to finishing Quiz 14, then brief the Lab 5 capstone —
+      the course's integrative finale. Each participant picks one guided,
+      rubric-scored track: A (beat the Lab 2 spectra classifier by architecture /
+      augmentation / tuning), B (peak QC — classify chromatographic peaks as
+      good/bad integrations, the Lecture 5 object-detection segment made real), or
+      C (a new question on the same spectra via fine-tuning / re-heading — transfer
+      learning in practice). All reuse course datasets. The rubric rewards proper
+      data handling, a justified model choice, correct split/metrics, and honest
+      error analysis — everything from Lectures 4 and 10. Everyone also completes
+      the one-page 'first DL project in my own lab' template: problem → data &
+      representation → architecture → validation plan → why not a simpler model.
+      Closing Discussion D5: share one-pagers in pairs, a few 60-second
+      presentations, and a resources-to-keep-learning slide to send them off. Mark
+      Quiz 14 together as Colab boots.
