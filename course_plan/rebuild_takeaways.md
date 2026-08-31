@@ -176,3 +176,57 @@ bottom `y` (never above it). Tall figures shrink instead of colliding. After the
 fix, `spec2pptx.py --all` + `check_pptx_overlap.py --all` reports 0 FAIL across
 all 7 decks (lecture08 slides 6/7/8/11 and lecture10 slides 3/4 now clean).
 Builds since keep 0 fractional-EMU and non-empty notes.
+
+## Active-learning review pass (2026-08-31): you-do QUALITY bar
+
+Reviewing all lecture decks for genuine vs. fake interactivity. A you-do is
+GENUINE only if it makes the room compute / predict / decide / transfer with
+information NOT already answered on the slide. Two failure modes to delete on
+sight:
+
+- **Recognition dressed up** — reusing the I-do figure with a part masked and
+  asking students to name/read what was just shown (e.g. old Lecture 1 Q1
+  "name that activation"; old Lecture 2 Q4 "put the loop in order").
+- **Trivial plug-in / picture-read** — asking for an answer that is obvious from
+  the drawing or is a one-line substitution of numbers just given (e.g. the
+  dropped Lecture 2 "ball on the left wall, which way is downhill?" beat — the
+  valley is visibly to one side, so it teaches nothing). **Instructor ruling:
+  avoid this type entirely.** A one-step calc only earns its place if it hides a
+  real trap (a genuinely non-obvious result), and even then prefer diagnosis /
+  decision framings.
+- **Answer bank on the slide** — printing the options as bullets then asking
+  students to "name two" (old Lecture 4 Q6). They just copy. Remove the bullets
+  or convert to a constrained decision the slide can't answer.
+
+Prefer upgrades that keep the same content but flip the task to reasoning:
+spot-the-bug (L2 Q4), symptom→cause diagnosis (L4 Q3), constrained decision +
+"what can none of these fix?" (L4 Q5). Also watch cadence (no >~10-min monologue)
+AND over-beating (don't stack 2-3 discussion beats on one topic — L4 merged Q5/Q6).
+
+Edits applied this pass: L1 (Q1 apply/decide + early "is this ML?" sort),
+L2 (Q4 spot-the-bug; dropped a trivial bowl beat), L4 (Q3 symptom→cause;
+merged Q6 into a constrained-decision Q5, deck 31→30 slides, quiz 6→5 items).
+
+## Text-overflow ROOT CAUSE FIXED (2026-08-31)
+
+Second recurring layout bug (after callout/image overlap): wrapped text spilled
+OUT of fixed-size shapes. Root cause: `_callout()` hard-coded `Inches(1.0)` box
+height (and `_title`/bullets/pipeline/grid/two-col used fixed boxes) with
+`word_wrap=True` but no auto-fit, so long text overflowed the bottom edge
+(e.g. Lecture 4 slide 6's long CE formula callout: box 1.00in / text ~1.23in).
+
+Fix (tools/spec2pptx.py, builder only — NOT SHAPE_TO_FIT_TEXT, which breaks the
+layout math + overlap checker): a deterministic wrapped-text-height estimator
+(ADVANCE=0.55 mean glyph advance as fraction of pt size; LH=1.2 line-height;
+integer-EMU geometry) sizes each box to its text. `_callout` grows from a 1.0in
+floor (short callouts unchanged) up to a 2.6in clamp; a shared `_callout_height`
+lets `slide_image`/`slide_two_col`/`slide_pipeline`/`slide_grid`/`slide_bullets`
+reserve the REAL callout height and keep it above the slide bottom. `_title`
+grows for 2-line titles; bullets auto-shrink 26->16 and two-col lead 22->15 when a
+list is too tall. Permanent non-invasive checker `tools/check_text_overflow.py`
+(same estimator constants) re-estimates every wrapping frame and FAILs when
+est > box_h + 0.06in. Result: 218 overflowing boxes -> 0 across all 10 decks;
+overlap still 0 FAIL, fractional-EMU 0, slide counts unchanged. Caveat: heuristic
+(no pptx->pixel rendering on this host), so eyeball worst slides once in PPT.
+Wire `check_text_overflow.py --all` into build/critique verification alongside the
+overlap checker.

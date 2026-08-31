@@ -109,6 +109,56 @@ CALLOUT_STYLE = {  # kind -> (bar color, prefix)
 }
 
 
+# ---- text-height estimation (prevents text overflowing its box) -------------
+# python-pptx does not measure text, and there is no LibreOffice on the build
+# host, so we estimate wrapped text height deterministically and size boxes to
+# fit. Constants are calibrated against the real decks (Avenir Next, a humanist
+# sans a touch wider than average): ADVANCE is the mean glyph advance as a
+# fraction of the point size, LH the line-height multiple. Kept slightly
+# conservative so we never UNDER-estimate (which would let text spill). The
+# throwaway checker tools/_verify_textfit.py uses the identical formula.
+ADVANCE = 0.55
+LH = 1.2
+EMU_PER_IN = 914400.0
+
+
+def _est_lines(text, usable_in, font_pt):
+    """Estimate how many wrapped lines `text` needs in `usable_in` inches at
+    `font_pt`. Word-aware; respects explicit newlines."""
+    if not text:
+        return 0
+    cw = ADVANCE * font_pt / 72.0
+    cpl = max(usable_in / cw, 1.0)
+    lines = 0
+    for para in text.split("\n"):
+        words = para.split(" ")
+        cur = 0
+        pl = 1
+        for w in words:
+            add = (len(w) + 1) if cur > 0 else len(w)
+            if cur + add > cpl and cur > 0:
+                pl += 1
+                cur = len(w)
+            else:
+                cur += add
+        lines += pl
+    return lines
+
+
+def _est_height_in(segments, box_w_in, margin_lr_in=0.1, pad_in=0.14,
+                   space_after_pt=0.0):
+    """Estimate the total height (inches) a stack of text segments needs.
+    `segments` is a list of (text, font_pt) rendered as separate paragraphs;
+    a single wrapped run is one segment. `pad_in` is total top+bottom padding."""
+    usable = max(box_w_in - 2 * margin_lr_in, 0.5)
+    total = pad_in
+    for text, fpt in segments:
+        lines = _est_lines(text, usable, fpt)
+        total += lines * (fpt * LH / 72.0)
+        total += space_after_pt / 72.0
+    return total
+
+
 def _set(run, size, color, bold=False, italic=False, font=SANS):
     run.font.size = Pt(size)
     run.font.color.rgb = color
@@ -147,11 +197,39 @@ def _eyebrow(slide, text):
 
 
 def _title(slide, text, top=Inches(0.8)):
-    _, tf = _text(slide, MARGIN, top, Inches(12.1), Inches(1.1))
+    # Grow the title box when the text wraps to 2 lines so it never spills; a
+    # single-line title keeps the original 1.1in look. Returns the bottom edge.
+    est = _est_height_in([(text, 34)], 12.1, margin_lr_in=0.1, pad_in=0.10)
+    h = max(Inches(1.1), int(Inches(est)))
+    _, tf = _text(slide, MARGIN, top, Inches(12.1), h)
     p = tf.paragraphs[0]
     r = p.add_run()
     r.text = text
     _set(r, 34, INK, bold=True)
+    return int(top) + int(h)
+
+
+CALLOUT_MIN_H = Inches(1.0)
+CALLOUT_MAX_H = Inches(2.6)
+CALLOUT_MARGIN_LR = 0.2
+
+
+def _callout_height(spec, width=Inches(11.5)):
+    """Estimate the height (EMU, integer) a callout box needs for its text so
+    callers can reserve space / position it without overflow. Mirrors _callout.
+    Short callouts stay at the 1.0in floor to preserve the current look."""
+    if not spec:
+        return 0
+    kind = spec.get("kind", "plain")
+    _, prefix = CALLOUT_STYLE.get(kind, CALLOUT_STYLE["plain"])
+    text = (prefix or "") + spec["text"]
+    box_w_in = int(width) / EMU_PER_IN
+    # prefix run is mono 12pt, body 17pt; estimate the whole line at 17pt (the
+    # larger, so slightly conservative) as a single wrapped paragraph.
+    est_in = _est_height_in([(text, 17)], box_w_in,
+                            margin_lr_in=CALLOUT_MARGIN_LR, pad_in=0.16)
+    h = max(int(CALLOUT_MIN_H), int(Inches(est_in)))
+    return min(h, int(CALLOUT_MAX_H))
 
 
 def _callout(slide, spec, top, width=Inches(11.5), left=None):
@@ -160,7 +238,8 @@ def _callout(slide, spec, top, width=Inches(11.5), left=None):
     kind = spec.get("kind", "plain")
     bar, prefix = CALLOUT_STYLE.get(kind, CALLOUT_STYLE["plain"])
     left = left if left is not None else MARGIN
-    box = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, top, width, Inches(1.0))
+    height = _callout_height(spec, width)
+    box = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, int(left), int(top), int(width), height)
     box.fill.solid()
     box.fill.fore_color.rgb = SIGNAL_SOFT if kind == "ms" else RGBColor(0xF1, 0xF1, 0xEC)
     box.line.color.rgb = bar
@@ -184,7 +263,16 @@ def _callout(slide, spec, top, width=Inches(11.5), left=None):
 # ---- slide builders ---------------------------------------------------------
 def slide_title(slide, prs, s):
     _eyebrow(slide, s.get("eyebrow"))
-    _, tf = _text(slide, MARGIN, Inches(2.4), Inches(12.1), Inches(2.2), MSO_ANCHOR.MIDDLE)
+    # Size the (middle-anchored) title box to its content so long titles or
+    # multi-line subtitles never clip. Kept centered on ~y=3.5in.
+    segs = [(s["title"], 44)]
+    if s.get("subtitle"):
+        segs.append((s["subtitle"], 22))
+    est = _est_height_in(segs, 12.1, margin_lr_in=0.1, pad_in=0.10,
+                         space_after_pt=16.0)
+    box_h = max(int(Inches(2.2)), int(Inches(est)))
+    box_top = int(Inches(3.5)) - box_h // 2
+    _, tf = _text(slide, MARGIN, box_top, Inches(12.1), box_h, MSO_ANCHOR.MIDDLE)
     r = tf.paragraphs[0].add_run()
     r.text = s["title"]
     _set(r, 44, INK, bold=True)
@@ -227,13 +315,47 @@ def _bullets(tf, bullets, size=26):
             _set(r, size - 5, MUTED)
 
 
+def _bullets_est_height(bullets, size=26, box_w_in=11.8):
+    """Estimate height (in) a bullet list needs, mirroring _bullets: each bullet
+    is a paragraph (prefix '•  ' + text) with 18pt space_after; a 'sub' adds a
+    smaller paragraph."""
+    segs = []
+    for b in bullets:
+        if isinstance(b, str):
+            b = {"text": b}
+        line = "\u2022  " + b["text"]
+        if b.get("time"):
+            line += f"   \u00b7 {b['time']}"
+        segs.append((line, size))
+        if b.get("sub"):
+            segs.append(("     " + b["sub"], size - 5))
+    return _est_height_in(segs, box_w_in, margin_lr_in=0.1, pad_in=0.10,
+                          space_after_pt=18.0)
+
+
 def slide_bullets(slide, prs, s):
     _eyebrow(slide, s.get("eyebrow"))
-    _title(slide, s["title"])
-    _, tf = _text(slide, MARGIN, Inches(2.1), Inches(11.8), Inches(3.6))
-    _bullets(tf, s.get("bullets", []))
+    title_bottom = _title(slide, s["title"])
+    bullets = s.get("bullets", [])
+    top = max(Inches(2.1), title_bottom + Inches(0.05))
+    # Reserve room for the callout (if any) so bullets don't run into it.
+    call_h = _callout_height(s["callout"]) if s.get("callout") else 0
+    reserve_below = (call_h + int(Inches(0.15))) if call_h else int(Inches(0.1))
+    avail = int(Inches(7.5)) - int(top) - reserve_below
+    # Auto-shrink the bullet font (26 -> down to 16) if the list is too tall to
+    # fit the available height, so text never spills off the box / slide.
+    size = 26
+    while size > 16 and int(Inches(_bullets_est_height(bullets, size, 11.8))) > avail:
+        size -= 1
+    est = _bullets_est_height(bullets, size, 11.8)
+    box_h = min(max(int(Inches(est)), int(Inches(1.0))), avail)
+    _, tf = _text(slide, MARGIN, int(top), Inches(11.8), box_h)
+    _bullets(tf, bullets, size=size)
     if s.get("callout"):
-        _callout(slide, s["callout"], Inches(6.1))
+        # Sit the callout just below the bullets, clamped above the slide bottom.
+        cy = int(top) + box_h + int(Inches(0.15))
+        max_cy = int(Inches(7.5)) - call_h - int(Inches(0.1))
+        _callout(slide, s["callout"], min(cy, max_cy))
 
 
 def _annotate(slide, img_x, img_y, img_w, img_h, boxes):
@@ -305,31 +427,45 @@ def slide_two_col(slide, prs, s):
     colw = Inches(5.9)
     left = s.get("left", {})
     right = s.get("right", {})
-    if left.get("image"):
-        _place_image(slide, left["image"], MARGIN, Inches(2.15), int(colw), Inches(3.2), left.get("caption"), left.get("boxes"))
-    elif left.get("lead"):
-        _, tf = _text(slide, MARGIN, Inches(2.2), colw, Inches(4))
-        for i, para in enumerate(left["lead"]):
+    # Vertical room a lead column has before the callout row (~5.8in).
+    lead_avail = int(Inches(5.75)) - int(Inches(2.2))
+
+    def _lead(paras, x, colw_):
+        # Auto-shrink the lead font (22 -> down to 15) so multi-paragraph lead
+        # text never spills into the callout / off the column.
+        colw_in = int(colw_) / EMU_PER_IN
+        size = 22
+        while size > 15:
+            est = _est_height_in([(p, size) for p in paras], colw_in,
+                                 margin_lr_in=0.1, pad_in=0.10, space_after_pt=12.0)
+            if int(Inches(est)) <= lead_avail:
+                break
+            size -= 1
+        _, tf = _text(slide, x, Inches(2.2), colw_, Inches(4))
+        for i, para in enumerate(paras):
             p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
             p.space_after = Pt(12)
             r = p.add_run()
             r.text = para
-            _set(r, 22, INK)
+            _set(r, size, INK)
+
+    if left.get("image"):
+        _place_image(slide, left["image"], MARGIN, Inches(2.15), int(colw), Inches(3.2), left.get("caption"), left.get("boxes"))
+    elif left.get("lead"):
+        _lead(left["lead"], MARGIN, colw)
     rx = Inches(6.9)
     if right.get("image"):
         _place_image(slide, right["image"], rx, Inches(2.15), int(colw), Inches(3.2), right.get("caption"), right.get("boxes"))
     else:
-        _, tf = _text(slide, rx, Inches(2.2), colw, Inches(3.4))
-        for i, para in enumerate(right.get("lead", [])):
-            p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-            p.space_after = Pt(12)
-            r = p.add_run()
-            r.text = para
-            _set(r, 22, INK)
+        _lead(right.get("lead", []), rx, colw)
     if right.get("callout"):
-        _callout(slide, right["callout"], Inches(5.9), width=colw, left=rx)
+        ch = _callout_height(right["callout"], width=colw)
+        cy = min(int(Inches(5.9)), int(Inches(7.5)) - ch - int(Inches(0.1)))
+        _callout(slide, right["callout"], cy, width=colw, left=rx)
     elif s.get("callout"):
-        _callout(slide, s["callout"], Inches(6.2))
+        ch = _callout_height(s["callout"])
+        cy = min(int(Inches(6.2)), int(Inches(7.5)) - ch - int(Inches(0.1)))
+        _callout(slide, s["callout"], cy)
 
 
 def slide_image(slide, prs, s):
@@ -347,21 +483,28 @@ def slide_image(slide, prs, s):
     reserve = Inches(0.1)
     if s.get("caption"):
         reserve += Inches(0.55)
+    calc_h = 0
     if s.get("calc"):
-        reserve += Inches(0.55)
+        # calc strip (15pt mono, centered) can wrap to 2 lines -> size it.
+        calc_est = _est_height_in([(s["calc"], 15)], 12.1, margin_lr_in=0.1,
+                                  pad_in=0.10)
+        calc_h = max(int(Inches(0.5)), int(Inches(calc_est)))
+        reserve += calc_h + int(Inches(0.05))
     if s.get("callout"):
-        reserve += Inches(1.0) + Inches(0.15)  # callout box + bottom margin
+        # Reserve the ACTUAL (possibly taller) callout height + bottom margin so
+        # a long callout shrinks the image instead of colliding / running off.
+        reserve += _callout_height(s["callout"]) + int(Inches(0.15))
     avail_h = int(Inches(7.5)) - int(top) - int(reserve)
     max_h = min(int(Inches(s.get("img_h", 3.5))), avail_h)
     y = _place_image(slide, s["image"], MARGIN, top, Inches(12.1), max_h, s.get("caption"), s.get("boxes"))
     y += Inches(0.1)
     if s.get("calc"):
-        _, tf = _text(slide, MARGIN, y, Inches(12.1), Inches(0.5))
+        _, tf = _text(slide, MARGIN, int(y), Inches(12.1), calc_h)
         tf.paragraphs[0].alignment = PP_ALIGN.CENTER
         r = tf.paragraphs[0].add_run()
         r.text = s["calc"]
         _set(r, 15, INK_SOFT, font=MONO)
-        y += Inches(0.55)
+        y = int(y) + calc_h + int(Inches(0.05))
     if s.get("callout"):
         # Place the callout at the true content bottom, never above it.
         _callout(slide, s["callout"], int(y))
@@ -408,7 +551,9 @@ def slide_pipeline(slide, prs, s):
             conn.line.color.rgb = MUTED
             conn.line.width = Pt(1.5)
     if s.get("callout"):
-        _callout(slide, s["callout"], Inches(5.4))
+        ch = _callout_height(s["callout"])
+        cy = min(int(Inches(5.4)), int(Inches(7.5)) - ch - int(Inches(0.1)))
+        _callout(slide, s["callout"], cy)
 
 
 def slide_grid(slide, prs, s):
@@ -439,13 +584,18 @@ def slide_grid(slide, prs, s):
             cellobj.fill.fore_color.rgb = ROI_SOFT if (r_, c) in highlight else WHITE
             cellobj.vertical_anchor = MSO_ANCHOR.MIDDLE
     if s.get("calc"):
-        _, tf = _text(slide, MARGIN, y0 + th + Inches(0.3), Inches(12.1), Inches(0.6))
+        calc_est = _est_height_in([(s["calc"], 16)], 12.1, margin_lr_in=0.1,
+                                  pad_in=0.10)
+        calc_h = max(int(Inches(0.6)), int(Inches(calc_est)))
+        _, tf = _text(slide, MARGIN, int(y0 + th + Inches(0.3)), Inches(12.1), calc_h)
         tf.paragraphs[0].alignment = PP_ALIGN.CENTER
         r = tf.paragraphs[0].add_run()
         r.text = s["calc"]
         _set(r, 16, INK_SOFT, font=MONO)
     if s.get("callout"):
-        _callout(slide, s["callout"], Inches(6.2))
+        ch = _callout_height(s["callout"])
+        cy = min(int(Inches(6.2)), int(Inches(7.5)) - ch - int(Inches(0.1)))
+        _callout(slide, s["callout"], cy)
 
 
 BUILDERS = {
