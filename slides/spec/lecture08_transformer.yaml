@@ -5,7 +5,7 @@ deck:
 slides:
   - type: title
     title: "The transformer, assembled — and how to borrow one"
-    subtitle: "Positions · layer norm · the full block · encoder vs decoder · a spectrum → tokens · transfer learning"
+    subtitle: "Positions (sinusoidal + RoPE) · layer norm · the full block · encoder / encoder–decoder / decoder-only + cross-attention · a spectrum → tokens · transfer learning"
     notes: >
       Monday morning, hour two, straight on from Lecture 7. Last hour we built
       one thing — self-attention, a soft lookup that is just a weighted average.
@@ -17,8 +17,9 @@ slides:
       example (I-do) is followed by one you do yourself (you-do), and every
       quiz-backed you-do IS a Quiz 8 item. Hand out Quiz 8 now, blank; the room
       fills it across the hour. Quiz 8 has four items and we hit all four live —
-      label the four transformer blocks (Q1), match data to tokenization strategy
-      (Q2), the fine-tune-vs-scratch call (Q3), and which-norm-averages-what (Q4).
+      context is the values (Q1), the encoder's K,V is the cross-attention context
+      (Q2), match data to a tokenization strategy (Q3), and the fine-tune-vs-scratch
+      call (Q4).
       Keep the Quiz 7 sheet handy — attention is the beating heart of what we
       assemble today.
 
@@ -26,9 +27,9 @@ slides:
     eyebrow: "Lecture 8 · where this hour goes"
     title: "Five stops, one finished machine"
     bullets:
-      - {text: "Positional encoding — attention is order-blind, so inject position", time: "10 min"}
-      - {text: "Normalization — batch vs. layer norm, and why transformers pick layer norm", time: "8 min"}
-      - {text: "Assembling the block; encoder vs. decoder; BERT vs. GPT", time: "12 min"}
+      - {text: "Positional encoding — inject order: sinusoidal 'clocks' + relative (RoPE)", time: "12 min"}
+      - {text: "Normalization — batch vs. layer norm, and why transformers pick layer norm", time: "6 min"}
+      - {text: "Assemble the block; encoder / encoder–decoder / decoder-only + cross-attention", time: "15 min"}
       - {text: "A spectrum → tokens — three strategies, and which to pick", time: "10 min"}
       - {text: "Transfer learning — borrow a body, retrain a head; why 500–800 labels can be enough", time: "13 min"}
     notes: >
@@ -66,6 +67,50 @@ slides:
       positions must be injected because attention won't infer them.
 
   - type: image
+    eyebrow: "Positional encoding · where the signal comes from · I-do"
+    title: "The position signals are clocks at different speeds"
+    image: img/fig_posenc_heatmap.png
+    img_h: 4.0
+    callout: {kind: pair, text: "Where do those per-position signals come from? Sine/cosine waves at different speeds. LEFT: dim 0 ticks fast, dim 8 barely moves. RIGHT: stack every dimension and each POSITION gets a unique row — its fingerprint — and neighbours (boxed rows 2–3) look almost identical, so 'near' and 'far' become visible. 💬 Pair (60 sec): why do we need BOTH fast and slow clocks — what breaks with only slow ones?"}
+    notes: >
+      Answer "where do the per-position signals come from?" The classic choice
+      (Vaswani 2017) is sine and cosine waves at geometrically-spaced frequencies.
+      LEFT panel: three dimensions drawn as clocks — dim 0 ticks fast, dim 4 is
+      medium, dim 8 barely moves across the whole sequence. RIGHT panel: stack all
+      dimensions into the positional-encoding matrix and read it ROW by row — every
+      position gets its own row, a unique blend of clock readings, so no two
+      positions collide. Two teaching points: (1) neighbouring rows are nearly
+      identical (boxed rows 2–3), so nearby positions get similar codes and
+      attention can judge close-vs-far; (2) the pair beat — you need BOTH fast and
+      slow clocks. Pair answer: with only slow clocks, adjacent positions look the
+      same, so the model can't tell residue 4 from residue 5; fast clocks separate
+      neighbours while slow clocks keep far-apart positions distinct — together every
+      position in a long sequence gets a unique fingerprint. Modern models often
+      LEARN the position vectors instead, but the job is identical. This is the one
+      figure worth lingering on; don't derive the formula.
+
+  - type: image
+    eyebrow: "Positional encoding · absolute vs. relative · I-do"
+    title: "RoPE: encode the GAP between tokens, not the seat"
+    image: img/fig_rope.png
+    img_h: 4.2
+    callout: {kind: pair, text: "Absolute encoding tags each seat ('you are at position 7'). RoPE (used by LLaMA) instead ROTATES each token's query and key by an angle set by its position, so the attention score depends only on the GAP (m−n) between two tokens — the 3θ between the two clock hands. 💬 Pair (60 sec): why does encoding the gap, not the seat, let a model handle a sequence LONGER than any it trained on?"}
+    notes: >
+      The absolute scheme just shown tags each seat and adds it in. The modern
+      alternative in LLaMA and GPT-NeoX is RoPE (rotary position embedding), and the
+      intuition needs no matrices: rotate each token's QUERY and KEY by an angle
+      proportional to its position (position m → angle mθ). When you then take the
+      attention dot product query·key, the two rotations combine so the score
+      depends only on the DIFFERENCE (m−n) — the gap between the tokens — not their
+      absolute seats. Picture two clock hands: the query at 5θ and the key at 2θ;
+      what the dot product feels is the angle between them, 3θ, the gap. Pair
+      answer: because the model only ever experiences RELATIVE distances, it keeps
+      working on sequences longer than any it trained on — a peptide or chromatogram
+      longer than the training examples still presents in-range gaps, whereas an
+      absolute seat #9000 was never seen. Keep it intuition-only; do NOT derive the
+      rotation. 💬 60-second pair, harvest one answer, then move on.
+
+  - type: image
     eyebrow: "Normalization · which axis gets averaged · I-do"
     title: "Batch norm vs. layer norm: what gets averaged?"
     image: img/fig_norm_axes.png
@@ -81,30 +126,28 @@ slides:
       (teal row) pools across one token's own features: mean(2,2,6,6)=4; centre to
       [−2,−2,2,2]; the population variance is (4+4+4+4)/4=4 so std=2; divide to get
       [−1,−1,1,1] — all exact, reproducible from the numbers on screen (rule 3).
-      Then the "why layer norm for transformers" beat, stated before the you-do so
-      Q4 is answerable: batch norm's statistics depend on the OTHER samples in the
+      Then the "why layer norm for transformers" beat: batch norm's statistics depend on the OTHER samples in the
       batch, which is fragile when batches are small, mixed-length, or size 1 at
       inference; layer norm looks only within a single token, so it is independent
       of batch size and sequence length — perfect for a model whose inputs are
       ragged sequences. Next slide the room computes both means on a new matrix
-      (Quiz 8 Q4).
+      (a quick do-it-together).
 
   - type: image
-    eyebrow: "Normalization · your turn (you-do = Q4)"
+    eyebrow: "Normalization · your turn · do-it-together"
     title: "Your matrix: which norm averages over what?"
     image: img/fig_norm_youdo.png
     img_h: 3.6
-    callout: {kind: check, text: "Your turn → Quiz 8, Q4. Rows = tokens, columns = features. (a) LAYER norm averages across WHAT — and what is the mean of tok1? (b) BATCH norm averages down WHAT — and what is the mean of feature f1? (c) One reason transformers prefer layer norm. Worked answer in the notes."}
+    callout: {kind: check, text: "Do-it-together (60 sec). Rows = tokens, columns = features. (a) LAYER norm averages across WHAT — and what is the mean of tok1? (b) BATCH norm averages down WHAT — and what is the mean of feature f1? (c) One reason transformers prefer layer norm. Answers below."}
     notes: >
-      YOU-DO = Quiz 8 Q4 (same "which axis, then take the mean" skill, new numbers;
-      it assesses the batch-vs-layer outcome). Answers: (a) LAYER norm averages
-      across a token's FEATURES (one row) — mean of tok1 = (2+4+6)/3 = 4. (b) BATCH
-      norm averages down the BATCH (one feature's column across all samples) — mean
-      of f1 = (2+4)/2 = 3. (c) Layer norm needs no batch statistics, so it is
-      stable at batch size 1 and with variable-length sequences, and treats each
-      token independently — which is why transformers use it. Every number is
-      identical to the Quiz 8 Q4 figure and key. Take one axis answer from the
-      floor, then have them fill Q4.
+      A quick live compute (do-it-together; not a quiz item this hour). Answers:
+      (a) LAYER norm averages across a token's FEATURES (one row) — mean of tok1 =
+      (2+4+6)/3 = 4. (b) BATCH norm averages down the BATCH (one feature's column
+      across all samples) — mean of f1 = (2+4)/2 = 3. (c) Layer norm needs no batch
+      statistics, so it is stable at batch size 1 and with variable-length
+      sequences, and treats each token independently — which is why transformers
+      use it. Take one axis answer from the floor, work both means live, then move
+      on.
 
   - type: image
     eyebrow: "Assemble · the whole transformer"
@@ -128,20 +171,20 @@ slides:
       reads the input. Don't belabour masking; the message is that nothing here is
       new, it is assembly. This is a real licensed figure (dvgodoy, CC BY 4.0, same
       series as Lecture 7's multi-head diagram); credit it. Next slide we strip it
-      to the four blocks we will label.
+      to the four blocks it is built from.
 
   - type: image
     eyebrow: "Assemble · one block, four parts · I-do"
     title: "One block: four parts, each with a name"
     image: img/fig_transformer_block.png
     img_h: 4.6
-    callout: {kind: plain, text: "Simplify to one encoder block, bottom-up: ① Positional encoding (added to the input embeddings — inject order) → ② Multi-head self-attention (the Lecture-7 lookup) → ③ Add & Norm (residual skip + layer norm) → ④ Feed-forward network (the MLP). The residual skip carries the input around a block and adds it back — the Lecture-5 highway. Simplified for labeling: the real diagram (prev. slide) norms before each sub-layer; here we collapse to one Add & Norm per block."}
+    callout: {kind: plain, text: "Simplify to one encoder block, bottom-up: ① Positional encoding (added to the input embeddings — inject order) → ② Multi-head self-attention (the Lecture-7 lookup) → ③ Add & Norm (residual skip + layer norm) → ④ Feed-forward network (the MLP). The residual skip carries the input around a block and adds it back — the Lecture-5 highway. Note: the real diagram (prev. slide) norms before each sub-layer; here we collapse to one Add & Norm per block for a clean picture."}
     notes: >
       Strip the canonical diagram down to the four blocks the quiz will ask for,
-      each labelled here so the you-do next slide is a fair test (rule 3: Q1 must be
-      labelable from a labelled version taught first). Bottom to top: ① the input —
+      each labelled here so the room sees the whole machine is just parts it
+      already owns. Bottom to top: ① the input —
       token embeddings with the positional encoding we added two slides ago (label
-      it "Positional encoding", matching the word bank and Quiz 8 Q1 key); ②
+      it "Positional encoding"); ②
       multi-head self-attention, last hour's query/key/value weighted average run
       by several heads at once; ③ "Add & Norm" — the residual skip (Lecture 5) adds
       the block's input back to its output, then layer norm (this hour) rescales;
@@ -151,26 +194,11 @@ slides:
       transformers train at all. One honesty note if a sharp eye catches it: the
       real dvgodoy diagram on the previous slide places its Norm BEFORE each
       sub-layer (the modern pre-norm arrangement), whereas this teaching block
-      collapses to a single "Add & Norm" drawn after attention for a clean
-      four-way label — same parts, we've just merged the norms for labeling.
-      Next slide the room labels a blank copy (Quiz 8 Q1).
-
-  - type: image
-    eyebrow: "Assemble · your turn (you-do = Q1)"
-    title: "Label the four blocks"
-    image: img/fig_transformer_block_youdo.png
-    img_h: 4.6
-    callout: {kind: check, text: "Your turn → Quiz 8, Q1. Same block, now blank. Name blocks ①–④ from the word bank: Feed-forward network · Multi-head self-attention · Add & Norm (layer norm) · Positional encoding. Worked answer in the notes."}
-    notes: >
-      YOU-DO = Quiz 8 Q1 (the same block, labels removed; it assesses the
-      "assemble/label the architecture" outcome). Reading bottom to top, ① =
-      Positional encoding (added to the input embeddings), ② = Multi-head
-      self-attention, ③ = Add & Norm (the residual skip plus layer norm), ④ =
-      Feed-forward network. These are the identical four blocks and order from the
-      labelled I-do slide and from the Quiz 8 Q1 diagram/key. Take one label from
-      the floor, then have them fill Q1. If anyone flips ② and ④, point back to the
-      teaching diagram: attention comes first (mix information across tokens), then
-      the feed-forward refines each token on its own.
+      collapses to a single "Add & Norm" drawn after attention — same parts, the
+      norms merged for a clean picture. The takeaway is assembly, not new material:
+      every block here is something the room already owns. If anyone is unsure why
+      attention comes before the feed-forward: attention mixes information across
+      tokens, then the feed-forward refines each token on its own.
 
   - type: image
     eyebrow: "Assemble · two ways to wire it"
@@ -193,6 +221,57 @@ slides:
       the room's task list: classification jobs → encoder-only; generation/de-novo
       jobs → decoder-only or encoder–decoder. Lab 3 fine-tunes an encoder-only
       model (DistilBERT) for classification.
+
+  - type: image
+    eyebrow: "Encoder + decoder · context = K,V · I-do → you-do (Q1–Q2)"
+    title: "Cross-attention: the decoder reads the encoder"
+    image: img/fig_cross_attention.png
+    img_h: 4.2
+    callout: {kind: check, text: "Context = the keys and values. In ANY attention a token's output is a weighted blend of the VALUES — that blend IS its context (query and keys only set the weights). Cross-attention makes it literal: the ENCODER computes its K,V once = the whole spectrum's memory, and every residue the decoder writes queries that SAME context. Your turn → Quiz 8, Q1–Q2: which of Q/K/V carries the content? · is the encoder's K,V fixed or recomputed each step — and what if you swap in a different spectrum's K,V halfway through?"}
+    notes: >
+      This is the wire the two-stack diagram hides, and it carries the two Quiz 8
+      context items (Q1, Q2). An encoder-decoder works in two phases. First the ENCODER reads the
+      whole input once (self-attention over all peaks) and produces a set of
+      key/value vectors — the model's MEMORY of the spectrum. Then the DECODER writes
+      the output one token at a time, and at every step does two attentions: ①
+      masked self-attention over the residues already written (so it can't peek
+      ahead), and ② CROSS-attention, where the query comes from the decoder's current
+      position but the keys and values come from the ENCODER's memory. That second
+      attention is how the output stays grounded in the input. Casanovo: each amino
+      acid it writes cross-attends back to the actual fragment peaks, so the peptide
+      it produces explains THIS spectrum. Quiz 8 answers: Q1 — of query/key/value,
+      the VALUE carries the content that lands in the output (context = a blend of
+      values; keys and query only set the weights). Q2 — the encoder's K,V is
+      computed ONCE and held fixed for the whole decode (the memory/context of the
+      spectrum); swap in a different spectrum's K,V halfway through and the rest of
+      the peptide is sequenced against the wrong spectrum → a wrong/incoherent
+      peptide, because the K,V IS the context the output is grounded in. That is
+      also why, without cross-attention at all, the decoder would hallucinate a
+      generic peptide unrelated to the data. Harvest one answer for each, then the
+      room fills Q1–Q2.
+
+  - type: image
+    eyebrow: "Encoder + decoder · three families · I-do → decide"
+    title: "Three families, one block: which one for the job?"
+    image: img/fig_arch_families.png
+    img_h: 4.0
+    callout: {kind: check, text: "Same block, three wirings. Encoder-only READS (BERT); encoder–decoder reads then WRITES a new sequence via cross-attention (T5/Flan-T5, Casanovo); decoder-only continues text (GPT, LLaMA). Your turn (60 sec) — pick the family: (a) call a spectrum resistant/susceptible · (b) turn a spectrum into a peptide sequence · (c) draft a free-text QC report. Answers in the notes."}
+    notes: >
+      Zoom out: the same block wires into three families, and choosing the right one
+      is a real design decision this room will make. Encoder-only (BERT, DistilBERT,
+      ESM-2): read the whole input both directions, emit one label or embedding —
+      classification/search. Encoder–decoder (the original Transformer, T5, Flan-T5,
+      and Casanovo): an encoder reads the input, a decoder writes a DIFFERENT
+      sequence, joined by the cross-attention we just drew — translation,
+      summarization, de novo sequencing. Decoder-only (GPT, LLaMA): a single causal
+      stack that continues text one token at a time — chat and free-text generation,
+      "everything as next-token prediction." Decide beat (60 sec, then reveal): (a)
+      resistant/susceptible call → ENCODER-ONLY (one label from the whole input,
+      exactly Lab 3's DistilBERT); (b) spectrum → peptide sequence → ENCODER–DECODER
+      (read spectrum, write a new sequence — Casanovo); (c) draft a free-text QC
+      report → DECODER-ONLY (generate prose — GPT/LLaMA). This task→family mapping is
+      a strong candidate for a new Quiz 8 item; for now it runs as a live decide
+      beat.
 
   - type: title
     eyebrow: "Lecture 8 · part four"
@@ -246,22 +325,22 @@ slides:
       transformer mixes globally. If it is already a sparse list of peaks with
       variable count — the (m/z, intensity) pairs a spectral library uses — treat
       each peak as a token, the most efficient path and the one Casanovo takes.
-      These three rules are exactly the three matches on Quiz 8 Q2. Next slide the
+      These three rules are exactly the three matches on Quiz 8 Q3. Next slide the
       room does the matching.
 
   - type: image
-    eyebrow: "A spectrum → tokens · your turn (you-do = Q2)"
+    eyebrow: "A spectrum → tokens · your turn (you-do = Q3)"
     title: "Match each data type to its strategy"
     image: img/fig_tokenization_youdo.png
     img_h: 3.9
-    callout: {kind: check, text: "Your turn → Quiz 8, Q2. Match each to one strategy (each used once): imaging-MS image · raw binned spectrum · peak list → {patches + linear projection (ViT), CNN front-end, peak-as-token (Casanovo)}. Worked answer in the notes."}
+    callout: {kind: check, text: "Your turn → Quiz 8, Q3. Match each to one strategy (each used once): imaging-MS image · raw binned spectrum · peak list → {patches + linear projection (ViT), CNN front-end, peak-as-token (Casanovo)}. Worked answer in the notes."}
     notes: >
-      YOU-DO = Quiz 8 Q2 (the same three rules, now applied; it assesses the
+      YOU-DO = Quiz 8 Q3 (the same three rules, now applied; it assesses the
       "name/pick a tokenization strategy" outcome). Answers, straight off the
       decision chart: imaging-MS image (2D) → patches + linear projection (ViT);
       raw binned spectrum (dense 1D) → CNN front-end → token embeddings; peak list
       (sparse (m/z, intensity)) → peak-as-token (Casanovo). Each strategy used
-      once. Identical to the Quiz 8 Q2 key. Take one match from the floor, then
+      once. Identical to the Quiz 8 Q3 key. Take one match from the floor, then
       have them fill Q2. If someone matches the binned spectrum to patches, accept
       the reasoning but point to the chart's primary rule — a dense, ordered 1D
       signal is where a CNN front-end shines.
@@ -337,16 +416,16 @@ slides:
       comparison — full fine-tune vs. frozen-body-head-only vs. from-scratch — and
       from-scratch lands near the majority floor while the fine-tuned model reaches
       far higher, on the same small dataset in the same session. Next slide the
-      room makes the call themselves (Quiz 8 Q3).
+      room makes the call themselves (Quiz 8 Q4).
 
   - type: image
-    eyebrow: "Transfer learning · your turn (you-do = Q3) · 💬 pair"
+    eyebrow: "Transfer learning · your turn (you-do = Q4) · 💬 pair"
     title: "Your call: from scratch, or fine-tune?"
     image: img/fig_transfer_learning.png
     img_h: 4.2
-    callout: {kind: check, text: "Your turn → Quiz 8, Q3. 💬 You have 800 labeled spectra and access to a transformer pretrained on 2 million spectra. Train from scratch, or fine-tune? Give one reason. Worked answer in the notes."}
+    callout: {kind: check, text: "Your turn → Quiz 8, Q4. 💬 You have 800 labeled spectra and access to a transformer pretrained on 2 million spectra. Train from scratch, or fine-tune? Give one reason. Worked answer in the notes."}
     notes: >
-      YOU-DO = Quiz 8 Q3 (the fine-tune-vs-scratch scenario; it assesses the
+      YOU-DO = Quiz 8 Q4 (the fine-tune-vs-scratch scenario; it assesses the
       transfer-learning outcome). Expected answer: FINE-TUNE — freeze the
       pretrained body and train a small new head on the 800 labels (optionally
       unfreeze a little of the top with a small learning rate). Reason (any one is
@@ -355,27 +434,27 @@ slides:
       pretrained body already learned general spectral features from the 2 million
       spectra, so you only need to fit a small head, which 800 labels can do well.
       This is a 💬 pair beat — 90 seconds, harvest one or two answers with their
-      reason — then everyone fills Q3. That's all four Quiz 8 items worked live.
+      reason — then everyone fills Q4. That's all four Quiz 8 items worked live.
 
   - type: bullets
     eyebrow: "Lecture 8 · what you can do now"
     title: "You can now…"
     bullets:
-      - "Say positional encoding's job — attention is order-blind, so add a per-position signal to each token embedding"
-      - "Distinguish batch vs. layer norm by which axis is averaged, and why transformers use layer norm (Quiz 8 Q4)"
-      - "Label the four blocks of a transformer (Quiz 8 Q1) — and tell an encoder (reads) from a decoder (writes), BERT vs. GPT"
-      - "Pick a tokenization for MS data — patches, a CNN front-end, or peak-as-token (Quiz 8 Q2) — and choose fine-tune vs. from-scratch (Quiz 8 Q3)"
-    callout: {kind: plain, text: "You have now worked every item on Quiz 8 live — label the blocks (Q1), match the tokenizations (Q2), the fine-tune call (Q3), and which-norm-averages-what (Q4). Keep the sheet — Lab 3 fine-tunes a real pretrained transformer next hour."}
+      - "Explain positional encoding — attention is order-blind, so add a per-position signal: sinusoidal 'clocks' (absolute) or RoPE (relative — encode the gap)"
+      - "Explain that a token's CONTEXT is a blend of the values, and that cross-attention lets a decoder read the encoder's K,V — its memory of the input (Quiz 8 Q1–Q2)"
+      - "Tell the three families apart — encoder-only reads (BERT), encoder–decoder reads→writes via cross-attention (T5/Flan-T5, Casanovo), decoder-only writes (GPT, LLaMA)"
+      - "Pick a tokenization for MS data — patches, a CNN front-end, or peak-as-token (Quiz 8 Q3) — and choose fine-tune vs. from-scratch (Quiz 8 Q4)"
+    callout: {kind: plain, text: "You have now worked every item on Quiz 8 live — context is the values (Q1), the encoder's K,V is the cross-attention context (Q2), match the tokenizations (Q3), and the fine-tune call (Q4). Keep the sheet — Lab 3 fine-tunes a real pretrained transformer next hour."}
     notes: >
       Recap = the Lecture 8 outcomes, each already a you-do this hour tied to a
-      Quiz 8 item: Q1 the four-block label, Q2 the tokenization matches, Q3 the
-      fine-tune-vs-scratch call, Q4 which-norm-averages-what. The encoder-vs-decoder
-      (BERT vs. GPT) distinction is taught this hour but is not a separate quiz
-      item — so it rides alongside the Q1 block-labeling bullet without its own tag. Note the sheet was
-      done out of numeric order (Q4 first, at the norm slide) — that's fine, it's a
-      distributed worksheet, not a test block. There is no separate quiz block;
-      they've done all four across the hour. Have them keep the sheet as the on-ramp
-      to Lab 3, then the closing bridge.
+      Quiz 8 item: Q1 context = a blend of values, Q2 the encoder's K,V as the
+      cross-attention context (both on the cross-attention slide), Q3 the
+      tokenization matches, Q4 the fine-tune-vs-scratch call. Positional encoding
+      (sinusoidal + RoPE), layer norm, and the three architecture families are
+      taught with live do-it-together / pair / decide beats but are not separate
+      quiz items this hour. There is no end-of-class quiz block; they've done all
+      four across the hour. Have them keep the sheet as the on-ramp to Lab 3, then
+      the closing bridge.
 
   - type: bullets
     eyebrow: "Lecture 8 · over to your lab"

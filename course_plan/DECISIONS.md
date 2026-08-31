@@ -301,3 +301,20 @@ draft → critique → revise pipeline (fresh disk-reading subagent per artifact
 Pre-class human TODOs (out of scope for the build): one real-T4 dry run for Lab 3
 (confirm the ~65% fine-tuned vs ~33% scratch gap and 6–9 min budget) and the
 repo-wide `RAW_BASE '<ORG>/<REPO>'` fill-in across lab02/04/05 before Colab publish.
+
+## 2026-08-31 — Casanovo: keep, but introduce before referencing
+
+Reversed an in-progress wholesale removal of the "Casanovo" (de novo peptide
+sequencing) reference. Decision: **keep** Casanovo as the concrete MS anchor for
+encoder–decoder / peak-as-token, but never name it "silently" before it is
+introduced. Concretely: (1) Lecture 7 (which precedes Lecture 8) no longer names
+Casanovo — its two forward mentions are now generic ("peptide-sequencing
+transformers we build in Lecture 8" / plain "peak-as-token"); (2) Lecture 8 now
+introduces it on first use — the first student-visible mention (BERT-vs-GPT
+figure) reads "Casanovo — a spectrum→peptide model (de novo); deep-dive soon,"
+so the later three-families / tokenization references and the dedicated
+"spectrum in, peptide out" intro slide all land after a real gloss. Downstream
+references (Lecture 10/13, quizzes, worksheet, reading list) are unchanged since
+they follow the Lecture 8 introduction. A fuller Casanovo mini-session remains a
+possible future addition (candidate home: Lecture 8, where the encoder–decoder
+machinery lives).

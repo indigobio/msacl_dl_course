@@ -3569,9 +3569,209 @@ def bert_vs_gpt(name="fig_bert_vs_gpt.png"):
                 arrowprops=dict(arrowstyle="-|>", color=AMBER, lw=1.6))
     ax.text(3, 0.62, "generates one token at a time, left to right → generate",
             ha="center", va="top", fontsize=10, color=INK_SOFT)
-    ax.text(3, 0.18, "MS: de novo peptide — predict the next residue (Casanovo)",
-            ha="center", va="top", fontsize=10, color=RED, fontweight="bold")
+    ax.text(3, 0.18, "MS: Casanovo — a spectrum→peptide model (de novo); deep-dive soon",
+            ha="center", va="top", fontsize=9, color=RED, fontweight="bold")
     fig.subplots_adjust(wspace=0.12)
+    _save(fig, name)
+
+
+def positional_encoding_heatmap(name="fig_posenc_heatmap.png"):
+    """Where the per-position signals come from (rule 6/9): sine/cosine waves at
+    geometrically-spaced frequencies. Left: three example dimensions are 'clocks'
+    at different speeds. Right: the full absolute positional-encoding matrix
+    (position x dimension) as a heat map — each ROW is one position's unique
+    fingerprint, and neighbouring rows look alike, so nearby positions get
+    similar codes. This is the classic sinusoidal PE picture (Vaswani 2017)."""
+    from matplotlib.colors import LinearSegmentedColormap
+    N, D = 16, 16
+    posv = np.arange(N)[:, None]
+    iv = np.arange(D)[None, :]
+    div = np.power(10000.0, (2 * (iv // 2)) / D)
+    ang = posv / div
+    PE = np.where(iv % 2 == 0, np.sin(ang), np.cos(ang))
+    cmap = LinearSegmentedColormap.from_list("teal_amber", [TEAL, WHITE, AMBER])
+    fig, axes = plt.subplots(1, 2, figsize=(12.2, 4.9),
+                             gridspec_kw={"width_ratios": [1.02, 1.0]})
+    # ---- left: three clocks at different speeds ----
+    ax = axes[0]
+    p = np.linspace(0, N - 1, 400)
+    for dim, lab, col in [(0, "dim 0 · fast", TEAL),
+                          (4, "dim 4 · medium", ROI_INK),
+                          (8, "dim 8 · slow", RED)]:
+        d = np.power(10000.0, (2 * (dim // 2)) / D)
+        ax.plot(p, np.sin(p / d), color=col, lw=2.4)
+        ax.text(N - 1 + 0.2, np.sin((N - 1) / d), lab, color=col,
+                fontsize=10.5, fontweight="bold", va="center")
+    ax.set_xlim(0, N - 1 + 3.0); ax.set_ylim(-1.3, 1.3)
+    ax.set_xlabel("position along the sequence", fontsize=11, color=INK_SOFT)
+    ax.set_title("each dimension is a clock at a different speed",
+                 fontsize=12.5, color=INK, fontweight="bold", pad=8)
+    ax.axhline(0, color=HAIRLINE, lw=1.0, zorder=0)
+    for s in ("top", "right"):
+        ax.spines[s].set_visible(False)
+    ax.spines["left"].set_color(HAIRLINE); ax.spines["bottom"].set_color(HAIRLINE)
+    ax.tick_params(colors=INK_SOFT, labelsize=9); ax.set_yticks([-1, 0, 1])
+    # ---- right: the PE matrix as a heat map ----
+    ax = axes[1]
+    im = ax.imshow(PE, aspect="auto", cmap=cmap, vmin=-1, vmax=1)
+    ax.set_xlabel("dimension   (fast clocks → slow clocks)", fontsize=11,
+                  color=INK_SOFT)
+    ax.set_ylabel("position", fontsize=11, color=INK_SOFT)
+    ax.set_title("positional-encoding matrix · each row = one position",
+                 fontsize=12.5, color=INK, fontweight="bold", pad=8)
+    ax.set_xticks([0, 4, 8, 12]); ax.set_yticks([0, 4, 8, 12])
+    ax.tick_params(colors=INK_SOFT, labelsize=9)
+    # subtle highlight: two neighbouring positions look nearly identical
+    ax.add_patch(plt.Rectangle((-0.5, 1.5), D, 2.0, fill=False,
+                 edgecolor=INK, lw=2.2, zorder=5))
+    cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.03)
+    cbar.set_ticks([-1, 0, 1]); cbar.ax.tick_params(labelsize=8, colors=INK_SOFT)
+    fig.subplots_adjust(wspace=0.32)
+    _save(fig, name)
+
+
+def rope_relative(name="fig_rope.png"):
+    """Absolute vs. relative position — the RoPE intuition (rule 9, no matrices).
+    Absolute sinusoidal PE tags each seat; RoPE instead ROTATES each token's
+    query/key by an angle proportional to its position, so the dot product ends
+    up depending only on the GAP (m - n) between the two tokens — which is why it
+    generalizes to sequences longer than it trained on (LLaMA, GPT-NeoX)."""
+    fig, ax = plt.subplots(figsize=(11.8, 5.6))
+    ax.set_xlim(0, 12); ax.set_ylim(0, 6.2); ax.axis("off")
+    ax.set_aspect("equal")
+    ax.text(6, 6.0, "Absolute tags the SEAT · RoPE encodes the GAP",
+            ha="center", fontsize=15, color=INK, fontweight="bold")
+    # left reminder: absolute = add a per-seat signal (last slide)
+    ax.text(2.0, 5.15, "Absolute (sinusoidal)", ha="center", fontsize=12,
+            color=TEAL, fontweight="bold")
+    ax.text(2.0, 3.7,
+            "add a fixed\nposition-7 signal\nto the token\n→ 'you are in\nseat 7'",
+            ha="center", va="center", fontsize=11, color=INK_SOFT,
+            linespacing=1.4,
+            bbox=dict(boxstyle="round,pad=0.6", fc=TEAL_SOFT, ec=TEAL, lw=1.8))
+    ax.plot([3.7, 3.7], [1.2, 5.0], color=HAIRLINE, lw=1.4)
+    # right: RoPE = rotate q and k by position angle
+    ax.text(8.0, 5.15, "Relative (RoPE) — rotate by the position angle",
+            ha="center", fontsize=12, color=RED, fontweight="bold")
+    th = np.deg2rad(30)
+
+    def clock(cx, cy, r, ang_deg, col, lab):
+        ax.add_patch(plt.Circle((cx, cy), r, fill=False, edgecolor=HAIRLINE,
+                     lw=1.6))
+        a = np.deg2rad(ang_deg)
+        ax.annotate("", xy=(cx + r * np.cos(a), cy + r * np.sin(a)),
+                    xytext=(cx, cy),
+                    arrowprops=dict(arrowstyle="-|>", color=col, lw=2.6))
+        ax.text(cx, cy - r - 0.32, lab, ha="center", va="top", fontsize=10.5,
+                color=col, fontweight="bold")
+    clock(6.4, 3.4, 0.95, 150, TEAL, "query · position m=5\nrotate by 5θ = 150°")
+    clock(9.6, 3.4, 0.95, 60, AMBER, "key · position n=2\nrotate by 2θ = 60°")
+    ax.text(8.0, 1.35, "angle between them = (5−2)θ = 3θ  —  only the GAP survives",
+            ha="center", fontsize=11, color=INK, fontweight="bold")
+    ax.text(6, 0.42,
+            "rotate q and k by position×θ; the dot product then depends on the relative distance (m−n), "
+            "not the seat — so it extrapolates to longer sequences (LLaMA, GPT-NeoX)",
+            ha="center", va="center", fontsize=10.5, color=MUTED, style="italic")
+    _save(fig, name)
+
+
+def cross_attention(name="fig_cross_attention.png"):
+    """How an encoder-decoder actually connects (rule 9): the encoder reads the
+    whole input and exposes a set of KEY/VALUE vectors (its 'memory'); the
+    decoder, writing one token at a time, sends a QUERY from the current step
+    into that encoder K/V via CROSS-attention, on top of masked self-attention
+    over what it has written so far. Anchored on Casanovo (spectrum -> peptide)."""
+    fig, ax = plt.subplots(figsize=(12.0, 6.0))
+    ax.set_xlim(0, 12); ax.set_ylim(0, 7); ax.axis("off")
+    # ---- encoder (left) ----
+    for i, c in enumerate([2.6, 6.2, 4.4]):
+        _chip(ax, 0.9 + i * 0.9, 0.9, 0.7, 0.5, "", TEAL_SOFT, edge=TEAL, lw=1.2)
+    ax.text(1.95, 0.35, "spectrum peaks", ha="center", fontsize=9.5,
+            color=MUTED)
+    ax.text(2.4, 4.55, "Encoder\nreads all peaks\n(self-attention)", ha="center",
+            va="center", fontsize=11.5, color=INK, fontweight="bold",
+            linespacing=1.4,
+            bbox=dict(boxstyle="round,pad=0.6", fc=TEAL_SOFT, ec=TEAL, lw=2.2))
+    ax.annotate("", xy=(2.4, 3.55), xytext=(2.4, 1.25),
+                arrowprops=dict(arrowstyle="-|>", color=TEAL, lw=2.0))
+    ax.text(2.4, 6.05, "Encoder  K, V\n(the read spectrum — its memory)",
+            ha="center", va="center", fontsize=11, color=ROI_INK,
+            fontweight="bold", linespacing=1.3,
+            bbox=dict(boxstyle="round,pad=0.5", fc=AMBER_SOFT, ec=AMBER, lw=2.2))
+    ax.annotate("", xy=(2.4, 5.5), xytext=(2.4, 5.05),
+                arrowprops=dict(arrowstyle="-|>", color=AMBER, lw=2.0))
+    # ---- decoder (right) ----
+    ax.text(8.7, 6.4, "Decoder · writing residue 3", ha="center",
+            fontsize=12, color=RED, fontweight="bold")
+    ax.text(8.7, 5.0, "② cross-attention\nquery from decoder · K,V from ENCODER",
+            ha="center", va="center", fontsize=11, color=INK, fontweight="bold",
+            linespacing=1.35,
+            bbox=dict(boxstyle="round,pad=0.55", fc=AMBER_SOFT, ec=AMBER, lw=2.4))
+    ax.text(8.7, 3.2, "① masked self-attention\nlook only at residues written so far",
+            ha="center", va="center", fontsize=11, color=INK_SOFT,
+            linespacing=1.35,
+            bbox=dict(boxstyle="round,pad=0.55", fc="#F7E4E3", ec=RED, lw=2.0))
+    for i, t in enumerate(["A", "C"]):
+        _chip(ax, 7.9 + i * 0.9, 1.35, 0.7, 0.55, t, "#F7E4E3", txt=INK,
+              fs=13, edge=RED, lw=1.3)
+    _chip(ax, 9.7, 1.35, 0.7, 0.55, "D", WHITE, txt=INK, fs=13, edge=AMBER, lw=1.6)
+    ax.text(9.0, 0.7, "→ next residue: D", ha="center", fontsize=10.5,
+            color=ROI_INK, fontweight="bold")
+    ax.annotate("", xy=(8.7, 4.25), xytext=(8.7, 3.9),
+                arrowprops=dict(arrowstyle="-|>", color=INK_SOFT, lw=1.8))
+    ax.annotate("", xy=(8.7, 2.55), xytext=(8.7, 1.75),
+                arrowprops=dict(arrowstyle="-|>", color=INK_SOFT, lw=1.8))
+    # ---- the cross-attention bridge ----
+    ax.annotate("", xy=(6.65, 5.0), xytext=(3.75, 6.05),
+                arrowprops=dict(arrowstyle="-|>", color=AMBER, lw=3.0,
+                                connectionstyle="arc3,rad=-0.15"))
+    ax.text(5.2, 6.15, "cross-attention", ha="center", fontsize=11,
+            color=ROI_INK, fontweight="bold", rotation=-12)
+    ax.text(6, 0.12,
+            "every residue the decoder writes sends a query into the encoder's K,V — so each output token "
+            "can look back at the whole spectrum; repeat until the peptide ends",
+            ha="center", va="center", fontsize=10, color=MUTED, style="italic")
+    _save(fig, name)
+
+
+def arch_families(name="fig_arch_families.png"):
+    """The three transformer families side by side (rule 9), each built from the
+    same block: encoder-only (reads -> label/embedding), encoder-decoder (reads
+    -> writes a different sequence via cross-attention), decoder-only (continues
+    text, next-token). Real model names + a 'good for' line so the room can pick
+    a family for a task (decide beat)."""
+    fig, ax = plt.subplots(figsize=(12.2, 5.8))
+    ax.set_xlim(0, 12); ax.set_ylim(0, 6.4); ax.axis("off")
+    cols = [
+        (2.05, TEAL, TEAL_SOFT, "Encoder-only", "reads ↔ the whole input",
+         "BERT · DistilBERT · ESM-2",
+         "classify / embed\ne.g. spectrum → resistant / susceptible"),
+        (6.1, AMBER, AMBER_SOFT, "Encoder–decoder", "reads → writes (cross-attn)",
+         "T5 · Flan-T5 · Casanovo",
+         "seq → different seq\ne.g. spectrum → peptide, translate, summarize"),
+        (10.15, RED, "#F7E4E3", "Decoder-only", "writes →→ (next-token)",
+         "GPT · LLaMA",
+         "generate / chat\neverything as next-token text"),
+    ]
+    for cx, col, soft, name_, wiring, examples, goodfor in cols:
+        ax.text(cx, 5.75, name_, ha="center", va="center", fontsize=13.5,
+                color=WHITE, fontweight="bold",
+                bbox=dict(boxstyle="round,pad=0.5", fc=col, ec=col))
+        ax.text(cx, 4.75, wiring, ha="center", va="center", fontsize=10.5,
+                color=INK, fontweight="bold",
+                bbox=dict(boxstyle="round,pad=0.45", fc=soft, ec=col, lw=1.8))
+        ax.text(cx, 3.5, "Examples", ha="center", fontsize=9.5, color=MUTED,
+                fontweight="bold")
+        ax.text(cx, 3.05, examples, ha="center", va="center", fontsize=10.5,
+                color=INK, fontweight="bold")
+        ax.text(cx, 2.2, "Good for", ha="center", fontsize=9.5, color=MUTED,
+                fontweight="bold")
+        ax.text(cx, 1.45, goodfor, ha="center", va="center", fontsize=10,
+                color=INK_SOFT, linespacing=1.4)
+    ax.text(6, 0.35,
+            "reads only → encoder-only    ·    reads then writes a NEW sequence → encoder–decoder    ·    "
+            "continues text → decoder-only",
+            ha="center", va="center", fontsize=10.5, color=INK, fontweight="bold")
     _save(fig, name)
 
 
@@ -4118,11 +4318,14 @@ def _lecture10_figures():
 
 def _lecture8_figures():
     positional_encoding()
+    positional_encoding_heatmap()
+    rope_relative()
     norm_axes("ido", "fig_norm_axes.png")
     norm_axes("youdo", "fig_norm_youdo.png")
     transformer_block(True, "fig_transformer_block.png")
-    transformer_block(False, "fig_transformer_block_youdo.png")
     bert_vs_gpt()
+    cross_attention()
+    arch_families()
     tokenization_strategies()
     tokenization_decision("ido", "fig_tokenization_decision.png")
     tokenization_decision("youdo", "fig_tokenization_youdo.png")
@@ -6099,7 +6302,6 @@ FUNCS = {
     ),
     "transformer_block": lambda: (
         transformer_block(True, "fig_transformer_block.png"),
-        transformer_block(False, "fig_transformer_block_youdo.png"),
     ),
     "bert_vs_gpt": bert_vs_gpt,
     "tokenization": lambda: (

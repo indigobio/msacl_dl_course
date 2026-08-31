@@ -62,14 +62,14 @@
 
 \begin{center}
 {\Large \textbf{Quiz 8 --- The Transformer, Assembled}}\\[2pt]
-{\normalsize Label the blocks, match a spectrum to its tokens, fine-tune or not, and which norm averages what}
+{\normalsize Context is the keys and values, match a spectrum to its tokens, and fine-tune or not}
 \end{center}
 
 \vspace{-2pt}
 \begin{center}
 \fbox{\parbox{0.92\textwidth}{\small
-\textbf{Instructions:}\; Answer all four questions --- every part is answerable from the diagrams and
-rules on the slides. Intuition first; the only arithmetic is a mean. No calculators needed.%
+\textbf{Instructions:}\; Answer all four questions --- every part is answerable from the ideas and
+diagrams on the slides. Intuition first; no calculators needed.%
 \ifsolution\else\\[4pt]\textbf{Name:}\ \blk{6cm}\hfill\textbf{Date:}\ \blk{3.5cm}\fi
 }}
 \end{center}
@@ -77,51 +77,57 @@ rules on the slides. Intuition first; the only arithmetic is a mean. No calculat
 \vspace{-2pt}\hrule\vspace{5pt}
 
 % =========================== Q1 ===========================
-\textbf{1. Label the four transformer blocks.}\; {\small Below is one transformer (encoder) block,
-read bottom to top --- the same block you labelled on the slides, now blank. Write the name of each
-numbered block on the line beside it, using the word bank.}
+\textbf{1. Context is a blend of values.}\; {\small In attention, a token's output is a weighted average
+of the other tokens' vectors --- and that output \emph{is} the ``context'' it gathers. The three roles: the
+\textbf{query} asks, the \textbf{keys} set the weights, the \textbf{values} carry the content.}
 
 \vspace{4pt}
-\begin{center}
-\begin{tikzpicture}[x=1cm, y=1cm, line join=round,
-    blk/.style={rounded corners=3pt, draw, line width=1.1pt, minimum width=5.4cm,
-                minimum height=0.95cm, align=center, font=\small\bfseries},
-    ar/.style={-{Latex[length=2mm]}, line width=1pt, inksoft}]
-  \node[blk, fill=tealsoft, draw=teal]   (b1) at (0,0)   {\large\textbf{\textcircled{1}}};
-  \node[blk, fill=ambersoft, draw=amber] (b2) at (0,1.6) {\large\textbf{\textcircled{2}}};
-  \node[blk, fill=white, draw=inksoft]   (b3) at (0,3.2) {\large\textbf{\textcircled{3}}};
-  \node[blk, fill=redsoft, draw=redd]    (b4) at (0,4.8) {\large\textbf{\textcircled{4}}};
-  \draw[ar] ($(b1.south)+(0,-0.55)$) -- (b1.south);
-  \draw[ar] (b1.north) -- (b2.south);
-  \draw[ar] (b2.north) -- (b3.south);
-  \draw[ar] (b3.north) -- (b4.south);
-  \draw[ar] (b4.north) -- ($(b4.north)+(0,0.55)$);
-  \node[font=\scriptsize\itshape, inksoft] at (0,-0.85) {input tokens};
-  \node[font=\scriptsize\itshape, inksoft] at (0,5.65) {to the next block $\rightarrow$ output};
-  % answer lines to the right of each block
-  \node[right, font=\small] at (3.0,0)   {1: \rb{Positional encoding}{4.2cm}};
-  \node[right, font=\small] at (3.0,1.6) {2: \rb{Multi-head self-attention}{4.2cm}};
-  \node[right, font=\small] at (3.0,3.2) {3: \rb{Add \& Norm (layer norm)}{4.2cm}};
-  \node[right, font=\small] at (3.0,4.8) {4: \rb{Feed-forward network}{4.2cm}};
-\end{tikzpicture}
-\end{center}
+\textbf{(a)} Which of \textbf{query}, \textbf{key}, or \textbf{value} carries the actual content that ends up
+in a token's output --- its context?\hfill $\rightarrow$\;\rb{value}{3.0cm}
 
-\vspace{2pt}
-\begin{center}
-{\small \textbf{Word bank:}\;\; Feed-forward network \;$\cdot$\; Multi-head self-attention \;$\cdot$\;
-Add \& Norm (layer norm) \;$\cdot$\; Positional encoding}
-\end{center}
+\vspace{3pt}
+\textbf{(b)} A peak attends over four peaks with weights $0.1,\ 0.7,\ 0.15,\ 0.05$. Its new context vector is
+built mostly from which peak's value?\hfill $\rightarrow$\;\rb{peak 2 (weight 0.7)}{3.8cm}
 
-\keybox{Bottom to top: \textbf{1 = Positional encoding} (added to the input embeddings so attention can
-see order), \textbf{2 = Multi-head self-attention} (the query/key/value weighted-average lookup),
-\textbf{3 = Add \& Norm} (the residual skip plus layer normalization), \textbf{4 = Feed-forward network}
-(a small per-token MLP). Attention comes before the feed-forward: attention mixes information \emph{across}
-tokens, then the feed-forward refines each token on its own.}
+\work{0.4cm}
+
+\keybox{(a) The \textbf{value}. The query and keys only decide \emph{how much} of each token to take; the
+\textbf{values} are the content that is actually blended into the output, so the ``context'' a token ends up
+with is a weighted sum of \emph{values}. (b) \textbf{Peak 2} --- its weight $0.7$ is larger than all the
+others combined, so it dominates the blend. Weights are just the mixing proportions.}
 
 \vspace{2pt}\hrule\vspace{5pt}
 
 % =========================== Q2 ===========================
-\textbf{2. Match each data type to a tokenization strategy.}\; {\small A transformer eats a sequence of
+\textbf{2. Cross-attention: the encoder's K,V \emph{is} the context.}\; {\small In an encoder--decoder
+(e.g.\ Casanovo: spectrum in, peptide out) the \textbf{encoder} reads the whole spectrum once and turns it
+into a set of \textbf{keys and values} --- its memory of the spectrum. The \textbf{decoder} then writes the
+peptide one residue at a time, each step sending a query into that encoder K,V (\emph{cross-attention}).}
+
+\vspace{4pt}
+\textbf{(a)} As the decoder writes residue 1, then 2, then 3, \dots, is the encoder's K,V \emph{recomputed
+every step} or \emph{computed once and held fixed}? What does it represent?
+
+\work{0.95cm}
+\ifsolution\else\blk{\linewidth}\fi
+
+\vspace{3pt}
+\textbf{(b)} Suppose that halfway through writing the peptide you \textbf{swap in the K,V from a different
+patient's spectrum}. What happens to the rest of the peptide, and why?
+
+\work{0.95cm}
+\ifsolution\else\blk{\linewidth}\fi
+
+\keybox{(a) \textbf{Computed once and held fixed} for the whole decode --- it is the model's \textbf{context /
+memory of the spectrum}. Every residue the decoder writes queries the \emph{same} encoder K,V, which is how
+each output token can look back at the whole spectrum. (b) The remaining residues would be sequenced against
+the \textbf{wrong spectrum}, giving a \textbf{wrong / incoherent peptide} --- because the encoder's K,V \emph{is}
+the context the output is grounded in. Change the context and you change what the decoder is ``reading.''}
+
+\vspace{2pt}\hrule\vspace{5pt}
+
+% =========================== Q3 ===========================
+\textbf{3. Match each data type to a tokenization strategy.}\; {\small A transformer eats a sequence of
 vectors, so MS data must be turned into tokens. Match each data type to the one strategy that fits it
 best (each used once), using the decision chart from the slides.}
 
@@ -151,8 +157,8 @@ tokens; each peak becomes one token carrying its $m/z$ and intensity, exactly ho
 
 \vspace{2pt}\hrule\vspace{5pt}
 
-% =========================== Q3 ===========================
-\textbf{3. Fine-tune, or train from scratch?}\; {\small You need a classifier for a new MS assay. You have
+% =========================== Q4 ===========================
+\textbf{4. Fine-tune, or train from scratch?}\; {\small You need a classifier for a new MS assay. You have
 \textbf{800 labeled spectra}, and access to a transformer someone \textbf{pretrained on 2 million spectra}.}
 
 \vspace{3pt}
@@ -171,45 +177,6 @@ learning rate). (b) \textbf{800 labels are far too few to train a transformer's 
 scratch} --- it would overfit or collapse toward the majority class --- whereas \textbf{the pretrained body
 already learned general spectral features from the 2 million spectra}, so you only need to fit a small head,
 which 800 labels can do well. (Either reason earns full credit.)}
-
-\vspace{2pt}\hrule\vspace{5pt}
-
-% =========================== Q4 ===========================
-\textbf{4. Which norm averages over what?}\; {\small Batch norm and layer norm both recenter values by
-subtracting a mean --- but over \emph{different axes}. In the matrix below, \textbf{rows are tokens}
-(samples in the batch) and \textbf{columns are features}.}
-
-\vspace{4pt}
-\begin{center}
-\gr\begin{tabular}{r|G|G|G|}
-\multicolumn{1}{r}{} & \multicolumn{1}{c}{\small f1} & \multicolumn{1}{c}{\small f2} & \multicolumn{1}{c}{\small f3}\\\cline{2-4}
-\small tok1 & 2 & 4 & 6 \\\cline{2-4}
-\small tok2 & 4 & 6 & 8 \\\cline{2-4}
-\end{tabular}
-\end{center}
-
-\vspace{3pt}
-\textbf{(a)} \textbf{Layer norm} averages across \rb{a token's features (one row)}{5.0cm}.\;
-The layer-norm mean of \textbf{tok1} is\; $ (2+4+6)/3 = $ \rb{$4$}{1.6cm}
-
-\work{0.5cm}
-
-\textbf{(b)} \textbf{Batch norm} averages down \rb{a feature across the batch (one column)}{5.0cm}.\;
-The batch-norm mean of feature \textbf{f1} is\; $ (2+4)/2 = $ \rb{$3$}{1.6cm}
-
-\work{0.5cm}
-
-\textbf{(c)} Give one reason \emph{transformers use layer norm} rather than batch norm.
-
-\work{1.0cm}
-\ifsolution\else\blk{\linewidth}\fi
-
-\keybox{(a) Layer norm averages across \textbf{a token's own features (a row)} --- one mean per token ---
-so tok1's mean is $(2+4+6)/3=\mathbf{4}$. (b) Batch norm averages down \textbf{a feature across the batch
-(a column)} --- one mean per feature --- so f1's mean is $(2+4)/2=\mathbf{3}$. (c) \textbf{Layer norm needs
-no batch statistics}: it looks only within a single token, so it is stable at batch size 1 and with
-variable-length sequences (whereas batch norm's mean depends on the other samples in the batch) --- which
-is exactly why transformers, whose inputs are ragged sequences, use it.}
 
 \vspace{4pt}\hrule\vspace{3pt}
 {\small\itshape \ifsolution Answer key.\else Keep this sheet --- Lab 3 fine-tunes a real pretrained
