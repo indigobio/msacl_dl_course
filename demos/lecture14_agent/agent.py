@@ -16,12 +16,23 @@ import sys
 from llm import make_llm
 from tools import REACT_SYSTEM, has_action, parse_action, run_tool
 
-SYSTEM_CHAT = "You are a helpful mass-spec QC lab assistant."
+SYSTEM_CHAT = (
+    "You are a mass-spec QC lab assistant. Answer the user's questions directly "
+    "and concisely. Give your best specific answer; don't tell the user to go "
+    "look it up in another system."
+)
 
+# Three turns chosen so each stage fails at a DIFFERENT, visible point:
+#   Q1 plants the run id + asks a concept  -> every stage answers well
+#   Q2 tests MEMORY                        -> stage 1 (no memory) forgets
+#   Q3 tests GROUNDING                     -> stage 2 invents an in-spec number
+#                                             for a run that actually FAILS;
+#                                             stage 3 reads the file and flags it
 QUESTIONS = [
-    "What does it mean if a QC run is out of spec?",       # concept — no data needed
-    "In today's run, which QC sample is out of spec, and by how much?",  # needs the data
-    "So what should we do about that run?",                # follow-up — needs memory
+    "We're starting morning QC and the run in question is QC-04. "
+    "First: what does it mean for a run to be 'out of spec'?",
+    "Which run did I just say we're reviewing today?",
+    "What is QC-04's mass error, and does it pass QC?",
 ]
 
 

@@ -4,14 +4,19 @@ A framework-free demo (no LangChain) that shows, step by step, what turns a
 chatbot into a trustworthy agent. **One loop, two switches** — flip them and
 watch the behaviour change.
 
-| stage | `memory` | `tools` | what the room sees |
-|-------|----------|---------|--------------------|
-| 1 · chatbot        | off | off | forgets between turns; **can't see the data** |
-| 2 · + memory       | on  | off | stays coherent, but **invents QC numbers** (hallucination) |
-| 3 · + tools (ReAct)| on  | on  | **reads the data** → grounded answer, hallucination gone |
+The demo asks the **same three turns** at each stage; watch where each one breaks:
 
-Same QC table as your follow-along handout: run **QC-04** (`+5.6 ppm / 22,300 /
-3.1`) breaks all three limits.
+| turn | asks for… | stage 1 (chatbot) | stage 2 (+memory) | stage 3 (+tools) |
+|------|-----------|-------------------|-------------------|------------------|
+| Q1 | a concept | ✅ good answer | ✅ good answer | ✅ good answer |
+| Q2 | **memory** ("which run did I say?") | ❌ **forgets** | ✅ "QC-04" | ✅ "QC-04" |
+| Q3 | **the data** ("does QC-04 pass?") | makes it up | **"+0.8 ppm — passes"** (confident & WRONG) | reads file → **"+5.6 ppm — OUT OF SPEC"** |
+
+The punchline: the memory-only chatbot (stage 2) **passes a QC run that actually
+fails all three limits** — the very run the agent (stage 3) catches. Same QC table
+as your follow-along handout; run **QC-04** (`+5.6 ppm / 22,300 / 3.1`) is the
+sole failure. Each step up the ladder adds exactly one thing: Q2 shows what
+*memory* buys, Q3 shows what *tools* buy.
 
 ## Run it
 
@@ -37,19 +42,19 @@ offline demo (`python3 agent.py 3`) — it needs no key and never hits the netwo
 
 ## What to say at each stage
 
-- **Stage 1 — "the raw LLM is a stateless text function."** Ask the concept
-  question: it answers fine. Ask *which* run is out of spec: it makes up a run
-  and numbers (it has never seen your file). Ask a follow-up: it has already
-  forgotten — no memory.
-- **Stage 2 — "memory ≠ knowledge."** Now the follow-up works — it remembers the
-  conversation. But it *still* can't see the data, so it confidently repeats and
-  builds on the **fabricated** QC-02 numbers. Fluent and consistent is not the
-  same as correct. (Tie to Quiz 14 Q1b / Q4: hallucination.)
-- **Stage 3 — "tools ground it."** Same loop, but now the model can act: it
+- **Stage 1 — "the raw LLM is a stateless text function."** Q1 answers fine. Then
+  Q2 — "which run did I just say?" — and it has already **forgotten**: no memory,
+  every turn starts from nothing. It'll still cheerfully guess at Q3.
+- **Stage 2 — "memory ≠ knowledge."** Now Q2 works — it remembers we're on QC-04.
+  But Q3 exposes a scarier failure: with no way to *see* the data it invents a
+  clean number and **passes a run that is actually out of spec**. Fluent and
+  confident is not the same as correct. A chatbot here would have released a bad
+  batch. (Tie to Quiz 14 Q1b / Q4: hallucination.)
+- **Stage 3 — "tools ground it."** Same loop, but now the model can act:
   `load_csv` → `check_limits` → `draft_summary`, each result fed back as an
-  `Observation:`, and answers with the **real** QC-04 values. The hallucination
-  disappears because every number now comes from an observation, and it hands
-  off to a human. (Tie to Q3.)
+  `Observation:`. It answers with the **real** QC-04 values and correctly flags
+  it OUT OF SPEC — then hands off to a human. Every number now traces to an
+  observation. (Tie to Q3.)
 
 The one thing to point at on screen: **the model only ever produces text.** When
 it wants to act it writes `Action: check_limits`; *our* loop parses that line and

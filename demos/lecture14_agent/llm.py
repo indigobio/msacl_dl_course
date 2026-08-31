@@ -28,7 +28,7 @@ def make_llm(backend):
 def anthropic_chat(messages, retries=4):
     base = os.environ.get("ANTHROPIC_BASE_URL", "https://api.anthropic.com").rstrip("/")
     key = os.environ.get("ANTHROPIC_API_KEY", "")
-    model = os.environ.get("ANTHROPIC_MODEL", "claude-3-5-haiku-latest")
+    model = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-5")
     if not key:
         raise SystemExit("Set ANTHROPIC_API_KEY (and optionally ANTHROPIC_MODEL / ANTHROPIC_BASE_URL).")
 
@@ -84,10 +84,12 @@ _CONCEPT = ("An out-of-spec QC run means a control sample fell outside its "
             "acceptance limits (mass accuracy, resolution, or signal), so results "
             "from that batch aren't trustworthy until it's investigated and re-run.")
 
-# The hallucination: confident, fluent, and WRONG (wrong run, invented numbers).
-_FABRICATED = ("Today QC-02 is the outlier: its mass error is about +3.4 ppm "
-               "(just past \u00b12) and its resolution slipped to ~28,500. The rest "
-               "look fine \u2014 I'd recalibrate and re-run QC-02.")
+# The dangerous hallucination: fluent, confident, and WRONG in the worst way —
+# it PASSES a run that actually fails all three limits. No data, so it guesses.
+_FABRICATED = ("QC-04's mass error is about +0.8 ppm — comfortably inside the "
+               "\u00b12 ppm limit — so it looks fine and passes QC.")
+
+_MEMORY_ANSWER = "You said we're reviewing QC-04 this morning."
 
 
 def offline_chat(messages):
@@ -98,14 +100,19 @@ def offline_chat(messages):
     kind = _intent(q)
     if kind == "concept":
         return _CONCEPT
+    if kind == "recall":
+        # THE memory test: with history it recalls; without, it has nothing.
+        if _has_memory(messages):
+            return _MEMORY_ANSWER
+        return ("I don't keep any memory between questions, so I've already lost "
+                "what you told me — which run did you mean?")
     if kind == "data":
-        return _FABRICATED                        # no tools -> it makes numbers up
+        return _FABRICATED                        # no tools -> it makes a number up
     # follow-up: with memory it stays consistent with its story; without, it's lost.
     if _has_memory(messages):
-        return ("For QC-02, recalibrate, repeat the QC, and if the mass error "
-                "stays high check the ion source before releasing results.")
-    return ("I don't keep memory between questions, so I've lost the earlier "
-            "context \u2014 which run do you mean, and what were its numbers?")
+        return ("Recalibrate and re-run it, then repeat the QC before releasing "
+                "any results.")
+    return "I've lost the earlier context — which run do you mean?"
 
 
 def _offline_react(messages):
@@ -113,6 +120,9 @@ def _offline_react(messages):
     kind = _intent(q)
     if kind == "concept":
         return "Thought: General question; I can answer directly.\nAnswer: " + _CONCEPT
+    if kind == "recall":
+        return ("Thought: The run id came from our conversation, not the data file.\n"
+                "Answer: " + _MEMORY_ANSWER)
     if kind == "followup":
         return ("Thought: I already read the data earlier, so I can answer from that.\n"
                 "Answer: Recalibrate and re-run QC-04, then repeat the QC before releasing "
@@ -145,11 +155,13 @@ def _has_memory(messages):
 
 def _intent(q):
     ql = q.lower()
-    if any(w in ql for w in ("what does", "what is", "what's", "mean", "explain", "why do")):
+    if any(w in ql for w in ("did i", "which run did", "reviewing today", "what did i say")):
+        return "recall"                          # a memory test, not a data lookup
+    if any(w in ql for w in ("what does", "definition", "mean", "explain", "why do")):
         return "concept"
     if any(w in ql for w in ("do about", "should we", "recommend", "that run", "next step", "re-run")):
         return "followup"
-    return "data"
+    return "data"                                # anything asking for a value/verdict
 
 
 def _obs_since_last_user(messages):
