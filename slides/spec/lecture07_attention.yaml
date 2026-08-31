@@ -10,13 +10,14 @@ slides:
       Monday morning, the first hour of Segment 3 — we leave images behind and
       pick up SEQUENCES: chromatograms in time, QC across runs, peptides as
       strings of amino acids. The promise of the hour: by the end you can read an
-      attention heat map and compute an attention output by hand — a weighted
-      average, nothing harder than multiply-and-add. Same interactive spine as
+      attention heat map and run one attention head by hand — score with a dot
+      product, soften with softmax, blend the values. Same interactive spine as
       Lectures 1, 2, 4 and 5: every worked example (I-do) is followed by one you
       do yourself (you-do), and every you-do IS a Quiz 7 item. Hand out Quiz 7
       now, blank — the room fills it in across the hour, so by the recap the whole
-      sheet is done. Quiz 7 has exactly three items and we hit all three live:
-      read a heat map (Q1), one weighted average (Q2), match the Q/K/V roles (Q3).
+      sheet is done. Quiz 7 has two items and we hit both live: read a heat map
+      (Q1) and run one whole attention head end to end (Q2). The query/key/value
+      roles are defined rigorously and then exercised inside Q2's computation.
       This hour sets up Lecture 8, where we assemble the full transformer on top
       of this same lookup.
 
@@ -26,14 +27,14 @@ slides:
     bullets:
       - {text: "Why order matters — sequence data, and RNN/LSTM in pictures (and their limits)", time: "12 min"}
       - {text: "Tokens & embeddings — a peptide is a sentence; words become coordinates", time: "13 min"}
-      - {text: "Self-attention — a soft lookup: query / key / value, heat maps, one weighted average", time: "23 min"}
+      - {text: "Self-attention — a soft lookup: query / key / value, heat maps, one full attention head by hand", time: "23 min"}
       - {text: "Why attention won — parallel + long-range — setting up the transformer", time: "7 min"}
     notes: >
       Signpost the four stops so people can pace themselves. The middle two blocks
       are the heart of the hour: tokens/embeddings, then self-attention, which is
-      where all three Quiz 7 items live. The self-attention block alone is ~23
-      minutes because it carries the numeric mechanic (the weighted average) plus
-      the two heat-map reads. Keep the first block brisk — RNNs are context and a
+      where both Quiz 7 items live. The self-attention block alone is ~23
+      minutes because it carries the numeric mechanic (one whole attention head)
+      plus the two heat-map reads. Keep the first block brisk — RNNs are context and a
       contrast, not the destination. Nothing here needs more than multiply-add;
       the only new symbol is Σ, and it just means "add up the terms."
 
@@ -147,39 +148,28 @@ slides:
 
   - type: image
     eyebrow: "Self-attention · the lookup · I-do"
-    title: "A soft lookup: query, key, value"
+    title: "Query, key, value: three learned projections"
     image: img/fig_qkv_ido.png
-    img_h: 3.7
-    callout: {kind: plain, text: "Every token carries three things. QUERY = what I'm looking for. KEY = what I contain, so others can decide if I'm relevant to them. VALUE = what I actually give you once you've decided I'm relevant. Match my query against every key → scores → softmax → weights → blend the values."}
+    img_h: 4.0
+    callout: {kind: plain, text: "Each token is projected into three vectors by trained matrices: query q=x·W_Q, key k=x·W_K, value v=x·W_V. Define each by the operation it does: the QUERY is dotted against every KEY to score relevance (query·key = a compatibility score); softmax turns the scores into weights; the output is Σ weight × VALUE. It is a soft database lookup — match one query to all keys, read back a blend of the values."}
     notes: >
-      Self-attention is a SOFT lookup — like a dictionary lookup, but instead of
-      matching one exact key you match ALL of them a little. Three roles per
-      token, in plain language: the Query is the question this token is asking
-      ("what am I looking for?"); the Key is the advertisement each token puts out
-      ("here's what I contain — decide if I'm relevant"); the Value is the content
-      a token hands over once it's judged relevant. Mechanically: take one token's
-      query, compare it against every token's key to get a compatibility SCORE,
-      softmax the scores into WEIGHTS that sum to 1, then output a weighted average
-      of the VALUES. The heat map on the next slides IS the query-vs-keys step;
-      the weighted average is the value-mixing step. Next slide the room states
-      the three roles themselves (Quiz 7 Q3).
-
-  - type: image
-    eyebrow: "Self-attention · your turn (you-do = Q3)"
-    title: "Match each phrase to its role"
-    image: img/fig_qkv_youdo.png
-    img_h: 3.7
-    callout: {kind: check, text: "Your turn → Quiz 7, Q3. Match each plain-language phrase to Query, Key, or Value (each used once): 'what I'm looking for' · 'what I contain, so others can decide if I'm relevant' · 'what I actually give you once relevant'. Worked answer in the notes."}
-    notes: >
-      YOU-DO = Quiz 7 Q3 (the same three phrases, now matched by the room; it
-      assesses the query/key/value outcome). Answer: "what I'm looking for" →
-      QUERY (the question a token asks); "what I contain, so others can decide if
-      I'm relevant" → KEY (the advertisement matched against every query); "what I
-      actually give you once you've decided I'm relevant" → VALUE (the content
-      handed over after a query–key match). Tie it back so it isn't rote: the heat
-      map coming up is Query matched against every Key; the weighted average after
-      it is the Value-mixing step. Take one match from the floor, then have them
-      fill Q3.
+      This replaces the old vague "what I'm looking for" wording with the rigorous
+      definition (Vaswani et al. 2017; d2l.ai). The one thing to say clearly:
+      query, key, and value are not three different things a token "has" — they
+      are three LEARNED linear projections of the same token vector, q = x·W_Q,
+      k = x·W_K, v = x·W_V, and the network learns the three weight matrices.
+      Define each by its job in the computation, not by a feeling: the QUERY is
+      the vector this token dots against every other token's KEY; that dot product
+      query·key is a compatibility / relevance score (bigger = more relevant);
+      softmax turns the row of scores into weights that sum to 1; the output is
+      the sum of the VALUE vectors, each weighted by its attention weight. The
+      honest analogy is a database key-value lookup made soft: a hard lookup
+      returns the one value whose key matches; attention returns a weighted blend
+      of ALL values, weighted by how well each key matched the query. Real
+      attention also divides the scores by √d_k before softmax so they don't blow
+      up (we skip that in the hand example). The heat map next IS the query-vs-keys
+      scoring step; the weighted average after it is the value-mixing step — and
+      Quiz 7 Q2 has you run one whole head end to end.
 
   - type: image
     eyebrow: "Self-attention · heat map · I-do"
@@ -219,7 +209,7 @@ slides:
     title: "The attention output, in two steps"
     image: img/fig_attn_formula.png
     img_h: 3.6
-    callout: {kind: plain, text: "Written before you use it (so every number is computable): 1) weights = softmax(scores) — the Lecture 4 softmax, turning scores into weights that sum to 1. 2) output = Σ weightᵢ × valueᵢ — a weighted average of the values. That Σ just means 'add the terms.'"}
+    callout: {kind: plain, text: "Written before you use it (so every number is computable): 0) score sᵢ = q·kᵢ — the dot product of the query with each key (multiply matching components, add). 1) weights = softmax(scores) — the SAME softmax you defined in Lecture 4, turning scores into weights that sum to 1. 2) output = Σ weightᵢ × valueᵢ — a weighted average of the values. That Σ just means 'add the terms.'"}
     notes: >
       State both rules explicitly before any exercise asks for a number (rule 3).
       Step 1 is softmax — the exact function from Lecture 4, which we already used
@@ -233,38 +223,39 @@ slides:
 
   - type: image
     eyebrow: "Self-attention · the mechanic · I-do"
-    title: "One attention output, worked end to end"
-    image: img/fig_attn_weightedavg_ido.png
-    img_h: 4.0
-    callout: {kind: plain, text: "Three tokens, scores 1, 2, 0. softmax(1,2,0) ≈ 0.24, 0.67, 0.09 (sum 1). Values 5, 10, 0. output = 0.24·5 + 0.67·10 + 0.09·0 = 1.2 + 6.7 + 0 = 7.9. The output leans to token 2 — biggest weight (0.67), value 10 — exactly as a weighted average should."}
+    title: "One attention head, worked end to end"
+    image: img/fig_attn_head_ido.png
+    img_h: 4.2
+    callout: {kind: plain, text: "Query q=(1,1). Score each token by the dot product q·k: (1,1)·(1,1)=2, (1,1)·(1,0)=1, (1,1)·(2,-2)=0. Softmax(2,1,0) with e²=7.39, e¹=2.72, e⁰=1.00 (sum 11.11) → weights 0.67, 0.24, 0.09. Values 10, 4, 1. output = 0.67·10 + 0.24·4 + 0.09·1 = 7.75 — pulled toward token 1, the highest-weight token."}
     notes: >
-      The centerpiece, worked cell by cell. Scores s = (1, 2, 0) go through softmax
-      to weights ≈ (0.24, 0.67, 0.09): e¹=2.72, e²=7.39, e⁰=1.00, sum 11.11, so
-      2.72/11.11=0.24, 7.39/11.11=0.67, 1.00/11.11=0.09 — and they sum to 1.00.
-      (Softmax needs e^x, so we read those weights off; the WEIGHTED AVERAGE is the
-      exact part we do by hand.) With values v = (5, 10, 0): output = 0.24·5 +
-      0.67·10 + 0.09·0 = 1.2 + 6.7 + 0 = 7.9. Emphasize the intuition: the answer
-      sits close to token 2's value (10) because token 2 got most of the weight —
-      that's all "paying attention" means, blend the values and trust the
-      high-weight tokens. Next slide the room does one where the weights are handed
-      to them (Quiz 7 Q2).
+      The centerpiece, worked cell by cell — a whole attention head, not just the
+      blend. Step 0, scores are DOT PRODUCTS of the query against each key:
+      q·k₁=(1)(1)+(1)(1)=2, q·k₂=(1)(1)+(1)(0)=1, q·k₃=(1)(2)+(1)(-2)=0. Step 1 is
+      the Lecture 4 softmax on s=(2,1,0): e²=7.39, e¹=2.72, e⁰=1.00, sum 11.11, so
+      7.39/11.11=0.67, 2.72/11.11=0.24, 1.00/11.11=0.09 (sum 1.00) — the e^x table
+      is on the slide so it is fully hand-computable. Step 2, the weighted average
+      of the values v=(10,4,1): 0.67·10 + 0.24·4 + 0.09·1 = 6.7 + 0.96 + 0.09 =
+      7.75. Intuition: token 1 scored highest (2) → got the most weight (0.67) →
+      the output sits near its value (10). That is all "paying attention" is.
+      Next slide the room runs a whole head themselves with a new set of keys
+      (Quiz 7 Q2).
 
   - type: image
     eyebrow: "Self-attention · the mechanic · your turn (you-do = Q2)"
-    title: "Your attention output — weights given, just blend"
-    image: img/fig_attn_weightedavg_youdo.png
-    img_h: 4.0
-    callout: {kind: check, text: "Your turn → Quiz 7, Q2. The weights are given (0.5, 0.3, 0.2 — they sum to 1) and the values are v₁=4, v₂=10, v₃=1. Compute output = 0.5·4 + 0.3·10 + 0.2·1. Worked answer in the notes."}
+    title: "Your turn — run a whole head, start to finish"
+    image: img/fig_attn_head_youdo.png
+    img_h: 4.2
+    callout: {kind: check, text: "Your turn → Quiz 7, Q2. Same query q=(1,1), new keys. (a) Score each token, sᵢ = q·kᵢ. (b) Softmax the three scores into weights — use e⁰=1.00, e¹=2.72, e²=7.39. (c) output = Σ wᵢ·vᵢ with values 4, 9, 1. Worked answer in the notes."}
     notes: >
-      YOU-DO = Quiz 7 Q2 (the same weighted average, weights handed over so no
-      softmax needed — purely multiply-add, fully exact). Answer: output = 0.5·4 +
-      0.3·10 + 0.2·1 = 2 + 3 + 0.2 = 5.2. Read the three contributions: v₂=10
-      contributes the most to the sum (3.0) even though token 1 has the largest
-      weight (0.5 on v₁=4 → 2.0), because a weighted average balances weight
-      against value. This number is
-      identical to the Quiz 7 Q2 key. Give the room ~90 seconds, take the answer
-      from a volunteer, then have them fill Q2. That is all three Quiz 7 items now
-      worked live.
+      YOU-DO = Quiz 7 Q2 — a whole head, the same shape as the I-do with new keys.
+      (a) Scores are dot products with q=(1,1): q·(-1,1)=0, q·(1,1)=2, q·(1,0)=1,
+      so s=(0,2,1). (b) Softmax with the e^x table: e⁰=1.00, e²=7.39, e¹=2.72,
+      sum 11.11 → weights 1.00/11.11=0.09, 7.39/11.11=0.67, 2.72/11.11=0.24 (sum
+      1.00). (c) Values v=(4,9,1): output = 0.09·4 + 0.67·9 + 0.24·1 = 0.36 +
+      6.03 + 0.24 = 6.63 — pulled toward token 2 (value 9), the highest-weight
+      token. Matches the Quiz 7 Q2 key. Give the room ~3 minutes (this is the
+      whole head), take scores then weights then output from volunteers, then have
+      them fill Q2. That is both Quiz 7 items now worked live.
 
   - type: image
     eyebrow: "Self-attention · more heads"
@@ -312,16 +303,18 @@ slides:
     bullets:
       - "Say why order matters for sequence data, and what RNNs/LSTMs did — a memory passed along the sequence — and their two limits (slow, forgetful)"
       - "Explain tokens and embeddings — a peptide is a sentence; each token becomes learned coordinates where similar things sit near each other"
-      - "Read an attention heat map and name the biggest attention (Quiz 7 Q1), and match the query/key/value lookup roles (Quiz 7 Q3)"
-      - "Compute an attention output by hand — a weighted average of the values (Quiz 7 Q2)"
-    callout: {kind: plain, text: "You have now worked every item on Quiz 7 live — the heat-map read (Q1), the weighted average (Q2), and the Q/K/V match (Q3). Keep the sheet — Lecture 8 builds the full transformer directly on top of this same lookup."}
+      - "Define query, key and value rigorously — three learned projections, where query·key is a relevance score — and read an attention heat map (Quiz 7 Q1)"
+      - "Run one attention head by hand — dot-product scores → softmax → weighted sum of the values (Quiz 7 Q2)"
+    callout: {kind: plain, text: "You have now worked both items on Quiz 7 live — the heat-map read (Q1) and one full attention head, scores → softmax → weighted values (Q2). The query/key/value roles you exercised inside Q2 are exactly what Lecture 8 assembles into the full transformer."}
     notes: >
       Recap = the Lecture 7 outcomes, and each was already a you-do this hour that
       maps to a Quiz 7 item: Q1 the heat-map read (which residue K attends to most,
-      and why), Q2 the weighted-average computation (output = Σ weight×value = 5.2),
-      Q3 the query/key/value role match. There is no separate quiz block — they've
-      done all three across the hour. Have them keep the sheet; it's the on-ramp to
-      Lecture 8. Then the closing bridge on the last slide.
+      and why), and Q2 the full attention head (scores = query·key, softmax to
+      weights, output = Σ weight×value = 6.63). The query/key/value roles are
+      defined rigorously on the lookup slide and then exercised inside Q2, so
+      there is no separate role-match item. There is no end-of-class quiz block —
+      they've done both across the hour. Have them keep the sheet; it's the on-ramp
+      to Lecture 8. Then the closing bridge on the last slide.
 
   - type: bullets
     eyebrow: "Lecture 7 · next"

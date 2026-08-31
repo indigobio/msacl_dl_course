@@ -68,12 +68,16 @@ slides:
 
   - type: image
     eyebrow: "Part 1 · loss · step 1 · probabilities"
-    title: "A classifier outputs probabilities that sum to 1"
+    title: "Softmax turns raw scores into probabilities that sum to 1"
     image: img/fig_softmax_bars.png
-    img_h: 3.7
-    callout: {kind: ms, text: "Softmax squashes the raw class scores into probabilities — all positive, adding to 1. Now 'the answer' is a CONFIDENCE in each class, not a single number. Any number of classes works the same way: 2 here, or 30 for species ID from a spectrum — just more terms in the sum."}
+    img_h: 4.2
+    callout: {kind: ms, text: "The definition, once: softmax(s)ᵢ = e^{sᵢ} / Σⱼ e^{sⱼ} — exponentiate every class score (forces it positive), then divide by the total (forces the sum to 1). Scores R=2.0, S=0.5 → e²·⁰=7.39, e⁰·⁵=1.65, sum 9.04 → 0.82, 0.18. 'The answer' is now a CONFIDENCE per class. Remember this function — attention (Lecture 7) is built on the very same softmax."}
     notes: >
-      Keep this light — softmax is a mechanism, not the star. The final layer
+      This is the FORMAL definition of softmax — worth stating cleanly here
+      because Lecture 7's attention is built directly on it (weights =
+      softmax(scores)). Walk the worked numbers on the slide: exponentiate each
+      score, e^2.0 = 7.39 and e^0.5 = 1.65, sum to 9.04, then each probability is
+      its exponential over that sum — 7.39/9.04 = 0.82, 1.65/9.04 = 0.18. The final layer
       gives a raw score per class (here R = 2.0, S = 0.5). Softmax exponentiates
       each score (which forces it positive) and divides by the sum of all the
       exponentials (the normalizer that forces the total to 1), landing near

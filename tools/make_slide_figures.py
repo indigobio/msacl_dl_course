@@ -1306,32 +1306,45 @@ def random_weights_net(name="fig_random_weights.png"):
 
 # ---- Part 1 · softmax: scores -> probabilities -----------------------------
 def softmax_bars(name="fig_softmax_bars.png"):
-    """Raw class scores squashed by softmax into probabilities that sum to 1.
-    The MALDI R/S example: scores 2.0, 0.5 -> 0.82, 0.18."""
+    """FORMAL definition of softmax (the foundation reused by attention in
+    Lecture 7): softmax_i = e^{s_i} / sum_j e^{s_j}, worked on the MALDI R/S
+    scores 2.0, 0.5 -> e^2.0=7.39, e^0.5=1.65, sum 9.04 -> 0.82, 0.18."""
     labels = ["R (resistant)", "S (susceptible)"]
     probs = [0.82, 0.18]
     colors = [TEAL, AMBER]
-    fig, ax = plt.subplots(figsize=(9.4, 3.6))
+    fig, ax = plt.subplots(figsize=(10.2, 4.8))
     ax.set_xlim(0, 1.0)
-    ax.set_ylim(-0.6, 1.6)
+    ax.set_ylim(-2.4, 1.7)
+    # --- formal formula + worked exponentials (the definition) ---
+    ax.text(0.5, 1.5,
+            r"$\mathrm{softmax}(s)_i=\dfrac{e^{\,s_i}}{\sum_j e^{\,s_j}}$",
+            ha="center", va="center", color=INK, fontsize=23)
+    ax.text(0.5, 0.78,
+            "exponentiate every score (makes it positive), then divide by the total",
+            ha="center", va="center", color=MUTED, fontsize=12.5, style="italic")
+    # bars
     for i, (lab, p, c) in enumerate(zip(labels, probs, colors)):
-        yy = 1.0 - i
-        ax.add_patch(FancyBboxPatch((0, yy - 0.28), 1.0, 0.56,
+        yy = 0.05 - i * 0.72
+        ax.add_patch(FancyBboxPatch((0, yy - 0.24), 1.0, 0.48,
                     boxstyle="round,pad=0.005,rounding_size=0.03",
                     facecolor="#F1F1EC", edgecolor=HAIRLINE, lw=1.2, zorder=1))
-        ax.add_patch(FancyBboxPatch((0, yy - 0.28), max(p, 0.02), 0.56,
+        ax.add_patch(FancyBboxPatch((0, yy - 0.24), max(p, 0.02), 0.48,
                     boxstyle="round,pad=0.005,rounding_size=0.03",
                     facecolor=c, edgecolor="none", zorder=2))
         ax.text(-0.02, yy, lab, ha="right", va="center", color=INK_SOFT,
-                fontsize=15, fontweight="bold")
+                fontsize=14, fontweight="bold")
         ax.text(p + 0.03, yy, f"{p:.2f}", ha="left", va="center", color=c,
-                fontsize=16, fontweight="bold")
-    ax.text(0.5, 1.42, "raw scores  R = 2.0,  S = 0.5   \u2192   softmax   \u2192   probabilities (sum to 1)",
-            ha="center", va="center", color=INK, fontsize=14.5,
+                fontsize=15, fontweight="bold")
+    # worked arithmetic line beneath the bars
+    ax.text(0.5, -1.55,
+            r"scores $R=2.0,\ S=0.5$:   "
+            r"$e^{2.0}=7.39,\ e^{0.5}=1.65$   (sum $=9.04$)",
+            ha="center", va="center", color=INK_SOFT, fontsize=13.5)
+    ax.text(0.5, -2.02,
+            r"$\Rightarrow\ \frac{7.39}{9.04}=0.82,\ \ \frac{1.65}{9.04}=0.18$"
+            "      \u201c82% sure it\u2019s resistant\u201d",
+            ha="center", va="center", color=TEAL, fontsize=14.5,
             fontweight="bold")
-    ax.text(0.5, -0.48, "\u201c82% sure it\u2019s resistant\u201d  \u2014  any number of classes works the same way",
-            ha="center", va="center", color=MUTED, fontsize=13,
-            style="italic")
     ax.axis("off")
     _save(fig, name)
 
@@ -2964,53 +2977,48 @@ def selfattn_all_to_all(name="fig_selfattn_alltoall.png"):
 
 
 def qkv_lookup(reveal=True, name="fig_qkv.png"):
-    """The query/key/value soft-lookup analogy. Three role cards carry the
-    plain-language phrases; a one-line pipeline shows how they combine. When
-    reveal=False the Q/K/V names are blanked ('?') — the you-do match (Quiz 7
-    Q3)."""
+    """Query/Key/Value defined RIGOROUSLY (not 'what I'm looking for'): each is a
+    learned linear projection of the token (q=x·W_Q, k=x·W_K, v=x·W_V), and each
+    is defined by the OPERATION it takes part in — query·key is a relevance score,
+    softmax makes weights, output is the weight-blended sum of values. Framed as
+    the soft database key-value lookup of Vaswani et al. 2017 / d2l.ai."""
     roles = [
-        ("Query", "what I'm looking for", TEAL),
-        ("Key", "what I contain, so others\ncan decide if I'm relevant", AMBER),
-        ("Value", "what I give you once\nyou've decided I'm relevant", RED),
+        ("Query", "q = x\u00b7W_Q",
+         "the vector a token sends out\nto search — dotted with every\nkey to score how relevant\nthat token is to it", TEAL),
+        ("Key", "k = x\u00b7W_K",
+         "the vector a token exposes\nto be searched — query\u00b7key\nis its relevance score to\nthe querying token", AMBER),
+        ("Value", "v = x\u00b7W_V",
+         "the content a token offers —\nthe output is the sum of\nvalues, each weighted by\nits attention weight", RED),
     ]
-    if not reveal:
-        # You-do (Quiz 7 Q3): neutralize the box colors and shuffle the phrase
-        # order so the match is on the LANGUAGE, not the palette or position —
-        # the I-do reveal (teal/amber/red in Q/K/V order) must not telegraph it.
-        roles = [
-            ("Value", roles[2][1], MUTED),
-            ("Query", roles[0][1], MUTED),
-            ("Key",   roles[1][1], MUTED),
-        ]
-    fig, ax = plt.subplots(figsize=(11.6, 4.6))
-    ax.set_xlim(0, 12); ax.set_ylim(0, 5); ax.axis("off")
-    cx = [2.2, 6.0, 9.8]
-    for (role, phrase, color), x in zip(roles, cx):
-        ax.add_patch(FancyBboxPatch((x - 1.7, 2.3), 3.4, 2.2,
-                    boxstyle="round,pad=0.02,rounding_size=0.08",
-                    facecolor=WHITE, edgecolor=color, lw=2.4, zorder=2))
-        ax.add_patch(FancyBboxPatch((x - 1.7, 3.85), 3.4, 0.65,
-                    boxstyle="round,pad=0.02,rounding_size=0.08",
-                    facecolor=color, edgecolor=color, lw=2.4, zorder=3))
-        head = role if reveal else "?"
-        ax.text(x, 4.16, head, ha="center", va="center", color=WHITE,
-                fontsize=18, fontweight="bold", zorder=4)
-        ax.text(x, 3.05, phrase, ha="center", va="center", color=INK_SOFT,
-                fontsize=13, zorder=4)
-    # one-line pipeline of how they combine (role names hidden in the you-do so
-    # the match isn't given away)
-    pipe = ("score = Query · Key   →   softmax → weights   →   output = Σ weight × Value"
-            if reveal else
-            "compare, then blend:   score →   softmax → weights   →   output = Σ weight × (what a token gives)")
-    ax.text(6, 1.5, pipe, ha="center", va="center", color=INK, fontsize=14,
-            fontweight="bold")
-    ax.text(6, 0.7,
-            "a soft lookup: match my query against every key, then blend the values by how well they matched",
-            ha="center", va="center", color=MUTED, fontsize=11.5,
+    fig, ax = plt.subplots(figsize=(11.8, 5.4))
+    ax.set_xlim(0, 12); ax.set_ylim(0, 5.9); ax.axis("off")
+    ax.text(6, 5.62,
+            "three learned projections of the same token  —  W_Q, W_K, W_V are trained",
+            ha="center", va="center", color=INK_SOFT, fontsize=12.5,
             style="italic")
-    if not reveal:
-        ax.text(6, 4.85, "match each phrase to Query · Key · Value",
-                ha="center", color=ROI_INK, fontsize=12.5, fontweight="bold")
+    cx = [2.2, 6.0, 9.8]
+    for (role, proj, phrase, color), x in zip(roles, cx):
+        ax.add_patch(FancyBboxPatch((x - 1.75, 2.15), 3.5, 3.0,
+                    boxstyle="round,pad=0.02,rounding_size=0.06",
+                    facecolor=WHITE, edgecolor=color, lw=2.4, zorder=2))
+        ax.add_patch(FancyBboxPatch((x - 1.75, 4.45), 3.5, 0.7,
+                    boxstyle="round,pad=0.02,rounding_size=0.06",
+                    facecolor=color, edgecolor=color, lw=2.4, zorder=3))
+        ax.text(x, 4.78, role, ha="center", va="center", color=WHITE,
+                fontsize=18, fontweight="bold", zorder=4)
+        ax.text(x, 4.02, proj, ha="center", va="center", color=color,
+                fontsize=13.5, fontweight="bold", family="monospace", zorder=4)
+        ax.text(x, 3.0, phrase, ha="center", va="center", color=INK_SOFT,
+                fontsize=11.5, zorder=4, linespacing=1.35)
+    ax.text(6, 1.42,
+            "score = query \u00b7 key   →   softmax → weights   →   output = \u03a3 weight \u00d7 value",
+            ha="center", va="center", color=INK, fontsize=14,
+            fontweight="bold")
+    ax.text(6, 0.62,
+            "a soft database lookup: compare one query against every key, then read back a\n"
+            "blend of the values — weighted by how well each key matched  (Vaswani et al. 2017)",
+            ha="center", va="center", color=MUTED, fontsize=11.5,
+            style="italic", linespacing=1.3)
     _save(fig, name)
 
 
@@ -3168,6 +3176,86 @@ def attention_weighted_avg(weights, values, output, name,
     _save(fig, name)
 
 
+def attention_full_head(q, keys, values, name, reveal=True, tokens=None):
+    """ONE attention head, end to end and hand-computable (rule 6): from a query
+    and per-token keys, score s_i = q·k_i (dot product), soften into weights with
+    the Lecture 4 softmax (an e^x table is given), then output = sum w_i*v_i.
+    reveal=False blanks scores/weights/output for the you-do (= Quiz 7 Q2).
+    Displayed weights are rounded to 2 dp and the output is computed from those
+    rounded weights, so every number on the slide is internally exact."""
+    import math
+    n = len(values)
+    tokens = tokens or [f"token {i+1}" for i in range(n)]
+    scores = [sum(a * b for a, b in zip(q, k)) for k in keys]
+    exps = [math.exp(s) for s in scores]
+    Z = sum(exps)
+    weights = [round(e / Z, 2) for e in exps]
+    output = round(sum(w * v for w, v in zip(weights, values)), 2)
+    xs = np.linspace(4.7, 10.2, n)
+    fig, ax = plt.subplots(figsize=(11.8, 6.4))
+    ax.set_xlim(0, 12); ax.set_ylim(0, 6.7); ax.axis("off")
+
+    def rowlabel(y, txt):
+        ax.text(0.25, y, txt, ha="left", va="center", fontsize=12.5,
+                color=INK_SOFT, fontweight="bold")
+    # query (top-left) and e^x table (top-right) — the givens
+    ax.add_patch(FancyBboxPatch((0.25, 5.98), 3.5, 0.6,
+                boxstyle="round,pad=0.02,rounding_size=0.05",
+                facecolor=TEAL_SOFT, edgecolor=TEAL, lw=1.4))
+    ax.text(2.0, 6.28, f"query  q = ({', '.join(f'{v:g}' for v in q)})",
+            ha="center", va="center", fontsize=14, color=TEAL,
+            fontweight="bold", family="monospace")
+    ax.add_patch(FancyBboxPatch((7.55, 5.98), 4.2, 0.6,
+                boxstyle="round,pad=0.02,rounding_size=0.05",
+                facecolor="#F1F1EC", edgecolor=HAIRLINE, lw=1.3))
+    ax.text(9.65, 6.28, "e\u2070=1.00   e\u00b9=2.72   e\u00b2=7.39",
+            ha="center", va="center", fontsize=13, color=INK_SOFT,
+            family="monospace")
+    # token headers
+    for i, t in enumerate(tokens):
+        ax.text(xs[i], 5.5, t, ha="center", va="center", fontsize=12,
+                color=MUTED)
+    y_key, y_score, y_w, y_v = 4.95, 3.95, 2.75, 1.75
+    # keys
+    rowlabel(y_key, "key  k")
+    for i, k in enumerate(keys):
+        _chip(ax, xs[i] - 0.6, y_key, 1.2, 0.55,
+              f"({', '.join(f'{v:g}' for v in k)})", "#F1F1EC", txt=INK_SOFT,
+              fs=13, edge=HAIRLINE, lw=1.2)
+    # scores = q . k
+    rowlabel(y_score, "score  s = q\u00b7k")
+    for i, s in enumerate(scores):
+        _chip(ax, xs[i] - 0.5, y_score, 1.0, 0.55, f"{s:g}" if reveal else "?",
+              INK_SOFT if reveal else "#F1F1EC", txt=("white" if reveal else MUTED),
+              fs=15, edge=INK_SOFT, lw=1.2)
+    ax.text(2.3, (y_score + y_w) / 2, "softmax  \u2193", ha="center",
+            color=TEAL, fontsize=12.5, fontweight="bold", style="italic")
+    # weights = softmax(scores)
+    rowlabel(y_w, "weight  w")
+    for i, w in enumerate(weights):
+        _chip(ax, xs[i] - 0.5, y_w, 1.0, 0.55,
+              f"{w:.2f}" if reveal else "?", TEAL if reveal else "#F1F1EC",
+              txt=("white" if reveal else MUTED), fs=14,
+              edge=TEAL, lw=1.3)
+    # values
+    rowlabel(y_v, "value  v")
+    for i, v in enumerate(values):
+        _chip(ax, xs[i] - 0.5, y_v, 1.0, 0.55, f"{v:g}", AMBER, txt="white",
+              fs=15)
+    # output box
+    terms = "  +  ".join(f"{w:.2f}\u00b7{v:g}" for w, v in zip(weights, values))
+    comp = (f"output = \u03a3 w\u1d62\u00b7v\u1d62 = {terms} = {output:g}"
+            if reveal else "output = \u03a3 w\u1d62\u00b7v\u1d62 = ?")
+    ax.add_patch(FancyBboxPatch((0.4, 0.5), 11.2, 0.85,
+                boxstyle="round,pad=0.02,rounding_size=0.04",
+                facecolor=TEAL_SOFT if reveal else "#F1F1EC",
+                edgecolor=TEAL if reveal else HAIRLINE, lw=1.6))
+    ax.text(6.0, 0.92, comp, ha="center", va="center",
+            color=INK if reveal else INK_SOFT, fontsize=13.5,
+            fontweight="bold", family="monospace")
+    _save(fig, name)
+
+
 def rnn_vs_attention(name="fig_rnn_vs_attention.png"):
     """Why attention beat recurrence, in one comparison. Left: recurrence passes
     a hidden state token by token — sequential (slow) and the earliest token
@@ -3229,22 +3317,21 @@ def _lecture7_figures():
     embedding_space()
     selfattn_all_to_all()
     qkv_lookup(reveal=True, name="fig_qkv_ido.png")
-    qkv_lookup(reveal=False, name="fig_qkv_youdo.png")
     attention_heatmap("sentence", "fig_attn_heatmap_ido.png")
     attention_heatmap("peptide", "fig_attn_heatmap_youdo.png")
     attention_formula()
-    # I-do: scores [1,2,0] -> softmax weights [0.24,0.67,0.09]; values [5,10,0]
-    #  output = 0.24·5 + 0.67·10 + 0.09·0 = 1.2 + 6.7 + 0 = 7.9
-    attention_weighted_avg([0.24, 0.67, 0.09], [5, 10, 0], 7.9,
-                           "fig_attn_weightedavg_ido.png",
-                           scores=[1, 2, 0], reveal=True,
-                           tokens=["token 1", "token 2", "token 3"])
-    # you-do = Quiz 7 Q2: weights [0.5,0.3,0.2] given, values [4,10,1]
-    #  output = 0.5·4 + 0.3·10 + 0.2·1 = 2 + 3 + 0.2 = 5.2
-    attention_weighted_avg([0.5, 0.3, 0.2], [4, 10, 1], 5.2,
-                           "fig_attn_weightedavg_youdo.png",
-                           scores=None, reveal=False,
-                           tokens=["token 1", "token 2", "token 3"])
+    # I-do = ONE full head: q=(1,1); keys (1,1),(1,0),(2,-2) -> scores (2,1,0)
+    #  softmax(2,1,0)=(0.67,0.24,0.09); values (10,4,1)
+    #  output = 0.67·10 + 0.24·4 + 0.09·1 = 6.7 + 0.96 + 0.09 = 7.75
+    attention_full_head((1, 1), [(1, 1), (1, 0), (2, -2)], [10, 4, 1],
+                        "fig_attn_head_ido.png", reveal=True,
+                        tokens=["token 1", "token 2", "token 3"])
+    # you-do = Quiz 7 Q2: q=(1,1); keys (-1,1),(1,1),(1,0) -> scores (0,2,1)
+    #  softmax(0,2,1)=(0.09,0.67,0.24); values (4,9,1)
+    #  output = 0.09·4 + 0.67·9 + 0.24·1 = 0.36 + 6.03 + 0.24 = 6.63
+    attention_full_head((1, 1), [(-1, 1), (1, 1), (1, 0)], [4, 9, 1],
+                        "fig_attn_head_youdo.png", reveal=False,
+                        tokens=["token 1", "token 2", "token 3"])
     rnn_vs_attention()
 
 
@@ -5988,22 +6075,19 @@ FUNCS = {
     "selfattn": selfattn_all_to_all,
     "qkv": lambda: (
         qkv_lookup(reveal=True, name="fig_qkv_ido.png"),
-        qkv_lookup(reveal=False, name="fig_qkv_youdo.png"),
     ),
     "attn_heatmap": lambda: (
         attention_heatmap("sentence", "fig_attn_heatmap_ido.png"),
         attention_heatmap("peptide", "fig_attn_heatmap_youdo.png"),
     ),
     "attn_formula": attention_formula,
-    "attn_weightedavg": lambda: (
-        attention_weighted_avg([0.24, 0.67, 0.09], [5, 10, 0], 7.9,
-                               "fig_attn_weightedavg_ido.png",
-                               scores=[1, 2, 0], reveal=True,
-                               tokens=["token 1", "token 2", "token 3"]),
-        attention_weighted_avg([0.5, 0.3, 0.2], [4, 10, 1], 5.2,
-                               "fig_attn_weightedavg_youdo.png",
-                               scores=None, reveal=False,
-                               tokens=["token 1", "token 2", "token 3"]),
+    "attn_head": lambda: (
+        attention_full_head((1, 1), [(1, 1), (1, 0), (2, -2)], [10, 4, 1],
+                            "fig_attn_head_ido.png", reveal=True,
+                            tokens=["token 1", "token 2", "token 3"]),
+        attention_full_head((1, 1), [(-1, 1), (1, 1), (1, 0)], [4, 9, 1],
+                            "fig_attn_head_youdo.png", reveal=False,
+                            tokens=["token 1", "token 2", "token 3"]),
     ),
     "rnn_vs_attn": rnn_vs_attention,
     # ---- Lecture 8 ----

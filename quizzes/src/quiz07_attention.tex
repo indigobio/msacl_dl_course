@@ -48,13 +48,13 @@
 
 \begin{center}
 {\Large \textbf{Quiz 7 --- Sequence Models and Attention}}\\[2pt]
-{\normalsize A mini attention heat map, one weighted average by hand, and the Q/K/V lookup}
+{\normalsize A mini attention heat map and one full attention head by hand}
 \end{center}
 
 \vspace{-2pt}
 \begin{center}
 \fbox{\parbox{0.92\textwidth}{\small
-\textbf{Instructions:}\; Answer all three questions. Intuition first --- read the picture, then do
+\textbf{Instructions:}\; Answer both questions. Intuition first --- read the picture, then do
 one small calculation. No calculators needed.%
 \ifsolution\else\\[4pt]\textbf{Name:}\ \blk{6cm}\hfill\textbf{Date:}\ \blk{3.5cm}\fi
 }}
@@ -107,63 +107,48 @@ the acidic residues nearby is a sensible pattern, not a random one.}
 \vspace{2pt}\hrule\vspace{5pt}
 
 % =========================== Q2 ===========================
-\textbf{2. One weighted average, by hand.}\; {\small Attention's output is just a weighted average
-of the token values, using the attention weights. Three tokens carry these (simplified to one
-number each) values:}
+\textbf{2. One attention head, start to finish.}\; {\small Run one token through one self-attention
+head. The \emph{query} is $q=(1,1)$. Three tokens each carry a \emph{key} vector and a (one-number)
+\emph{value}:}
 
-\vspace{4pt}
+\vspace{3pt}
 \begin{center}
-$v_1 = 4 \qquad v_2 = 10 \qquad v_3 = 1$
+\begin{tabular}{lccc}
+ & token 1 & token 2 & token 3\\[2pt]
+key $k$ & $(-1,\,1)$ & $(1,\,1)$ & $(1,\,0)$\\[2pt]
+value $v$ & $4$ & $9$ & $1$\\
+\end{tabular}
 \end{center}
 
-{\small The query's attention weights onto these three tokens (already summing to 1) are:}
-
-\vspace{2pt}
-\begin{center}
-$w_1 = 0.5 \qquad w_2 = 0.3 \qquad w_3 = 0.2$
-\end{center}
+{\small Use this table of exponentials for the softmax: $e^{0}=1.00,\ \ e^{1}=2.72,\ \ e^{2}=7.39$.}
 
 \vspace{4pt}
-\textbf{Compute the attention output:}\; $\text{output} = w_1 v_1 + w_2 v_2 + w_3 v_3 = $
+\textbf{(a)} Score each token by the dot product $s_i = q\cdot k_i$ (multiply matching components, add):
 
-\work{1.2cm}
+\work{0.9cm}
 \ifsolution\else\blk{\linewidth}\fi
 
-\keybox{$\text{output} = (0.5)(4) + (0.3)(10) + (0.2)(1) = 2 + 3 + 0.2 = \mathbf{5.2}$. Notice the
-output leans toward $v_2=10$: its contribution ($0.3\times10=3.0$) is the largest of the three,
-even though $v_1$ carries the biggest weight ($0.5\times4=2.0$) --- that's all attention is:
-blend the values, weighing each by its attention weight.}
+\textbf{(b)} Turn the scores into weights with softmax, $w_i = e^{s_i}/\sum_j e^{s_j}$ (round to 2 dp):
+
+\work{0.9cm}
+\ifsolution\else\blk{\linewidth}\fi
+
+\textbf{(c)} Blend the values: $\text{output} = \sum_i w_i v_i =$
+
+\work{0.9cm}
+\ifsolution\else\blk{\linewidth}\fi
+
+\keybox{(a) $s_1 = (1)(-1)+(1)(1) = \mathbf{0}$, \ $s_2 = (1)(1)+(1)(1) = \mathbf{2}$, \
+$s_3 = (1)(1)+(1)(0) = \mathbf{1}$. \ (b) $\sum_j e^{s_j} = 1.00 + 7.39 + 2.72 = 11.11$, so
+$w_1 = 1.00/11.11 = \mathbf{0.09}$, \ $w_2 = 7.39/11.11 = \mathbf{0.67}$, \ $w_3 = 2.72/11.11 =
+\mathbf{0.24}$ (sum $1.00$). \ (c) $\text{output} = (0.09)(4) + (0.67)(9) + (0.24)(1) = 0.36 + 6.03 +
+0.24 = \mathbf{6.63}$. The output is pulled toward token 2's value ($9$) because token 2 scored
+highest, so softmax gave it the most weight ($0.67$) --- that is all ``paying attention'' means:
+score by query$\cdot$key, soften into weights, blend the values.}
 
 \vspace{2pt}\hrule\vspace{5pt}
 
-% =========================== Q3 ===========================
-\textbf{3. Match the lookup roles.}\; {\small Self-attention is a soft lookup with three pieces per
-token. Match each plain-language description to \textbf{Query}, \textbf{Key}, or \textbf{Value}
-(each used once).}
-
-\vspace{4pt}
-\textbf{(a)} ``What I'm \emph{looking for}.''\hfill $\rightarrow$\;\rb{Query}{2.2cm}
-
-\vspace{3pt}
-\textbf{(b)} ``What I \emph{contain}, so others can decide if I'm relevant to them.''\hfill
-$\rightarrow$\;\rb{Key}{2.2cm}
-
-\vspace{3pt}
-\textbf{(c)} ``What I actually \emph{give you} once you've decided I'm relevant.''\hfill
-$\rightarrow$\;\rb{Value}{2.2cm}
-
-\vspace{4pt}
-\begin{center}
-{\small \textbf{Word bank:}\;\; Query \;$\cdot$\; Key \;$\cdot$\; Value}
-\end{center}
-
-\keybox{(a) \textbf{Query} --- the question a token is asking. (b) \textbf{Key} --- the advertisement
-a token puts out about itself, matched against every query. (c) \textbf{Value} --- the actual content
-handed over once a query--key match says ``pay attention to me.'' \emph{The heat map in Q1 is
-exactly Query(K) matched against every token's Key; Q2's weighted average is exactly the Value
-mixing step.}}
-
-\vspace{4pt}\hrule\vspace{3pt}
+\vspace{2pt}\hrule\vspace{3pt}
 {\small\itshape \ifsolution Answer key.\else Keep this sheet --- Lecture 8 builds the full
 transformer directly on top of this Q/K/V lookup.\fi}
 
