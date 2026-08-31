@@ -202,7 +202,7 @@ more/varied data + early stopping; **dropout (visualized)**; **L2 = weight decay
 
 **Outcomes** — participant can:
 - State the three reasons CNNs fit images and spectra (patterns are local; the same pattern recurs in different positions; subsampling preserves identity).
-- Execute a 2D convolution by hand on a small numeric grid — slide a 3×3 filter across a 6×6 image, apply stride and zero padding, and fill in feature-map values.
+- Execute a 2D convolution by hand on a small numeric grid — slide a 3×3 filter across a 5×5 image, apply stride and zero padding, and fill in feature-map values.
 - Compute max pooling on a feature map and the output size of a convolutional layer.
 - Explain filters → channels, the whole-CNN assembly (conv → pool, repeated → flatten → fully connected), and what a ResNet skip connection fixes.
 - Transfer the same machinery to 1D spectra/chromatograms, and describe how object detection frames peak picking (boxes + scores).
@@ -211,7 +211,7 @@ more/varied data + early stopping; **dropout (visualized)**; **L2 = weight decay
 2D-first, in the style of the reference deck (`Supplements/Deep_learning_in_1day.pptx`,
 CNN section ≈ slides 150–170: numeric grids computed cell by cell).
 - 0:00–0:08 Why CNN for images: the three properties ("beak detector" logic), each immediately restated for MS: a peak shape is local, appears anywhere on the m/z axis, and survives downsampling.
-- 0:08–0:26 **Convolution mechanics on a numeric grid**: 6×6 binary image, 3×3 ±1 filter slid step by step with the feature map filled in live; stride 1 vs. stride 2 on the same grid; zero padding; a second filter → the channel idea. Participants compute two feature-map cells along the way (live checkpoint).
+- 0:08–0:26 **Convolution mechanics on a numeric grid**: 5×5 binary image, 3×3 ±1 filter slid step by step with the feature map filled in live; stride 1 vs. stride 2 on the same grid; zero padding; a second filter → the channel idea. Participants compute two feature-map cells along the way (live checkpoint).
 - 0:26–0:34 Max pooling computed on the just-built feature maps; the whole-CNN assembly diagram; output-size arithmetic (one worked count with and without padding).
 - 0:34–0:40 The same machinery in 1D: the filter now slides along a spectrum — "the same peak detector everywhere on the m/z axis"; chromatograms likewise. 💬 *"Which of your data would a 1D CNN read? A 2D CNN?"*
 - 0:40–0:46 Architecture story in brief: LeNet → AlexNet → VGG → ResNet; the skip connection as a gradient highway (calls back to Lecture 4's vanishing gradients).

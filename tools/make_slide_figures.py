@@ -1972,6 +1972,562 @@ def class_imbalance(name="fig_imbalance.png"):
     _save(fig, name)
 
 
+# =====================================================================
+#  Lecture 5 · Convolutional Networks (why conv, the conv mechanic cell-
+#  by-cell in the Hung-yi-Lee style, stride, padding, output size,
+#  pooling, 1D on spectra, detection). One function per figure, course
+#  palette, rules 6/9. Every number here is recomputed exact so the deck,
+#  the slide notes, and the Quiz 5 key all agree (rule 3).
+# =====================================================================
+
+def _cellgrid(ax, data, x0, ytop, cell, reveal=None, hi=None,
+              face=WHITE, edge=HAIRLINE, txt=INK, fontsize=17,
+              hi_face=AMBER_SOFT, hi_edge=AMBER, na="?"):
+    """Draw a grid of numeric cells with row 0 at the TOP (top-left origin).
+    reveal: set of (r,c) to show a value; cells not in reveal show `na` (?).
+            None means reveal everything. hi: set of (r,c) drawn amber.
+    Returns (left, top, right, bottom) in data coords."""
+    rows, cols = len(data), len(data[0])
+    hi = hi or set()
+    for r in range(rows):
+        for c in range(cols):
+            cx = x0 + c * cell
+            cy = ytop - r * cell
+            on = (r, c) in hi
+            ax.add_patch(FancyBboxPatch(
+                (cx, cy - cell), cell * 0.92, cell * 0.92,
+                boxstyle="round,pad=0.02,rounding_size=0.05",
+                facecolor=hi_face if on else face,
+                edgecolor=hi_edge if on else edge,
+                lw=2.6 if on else 1.3, zorder=3))
+            shown = (reveal is None) or ((r, c) in reveal)
+            v = data[r][c]
+            vtxt = (f"{v:g}" if isinstance(v, (int, float)) else str(v)) if shown else na
+            ax.text(cx + cell * 0.46, cy - cell * 0.46, vtxt,
+                    ha="center", va="center",
+                    color=(ROI_INK if on else txt) if shown else AMBER,
+                    fontsize=fontsize, fontweight="bold" if on or not shown else "normal",
+                    zorder=4, family="monospace")
+    return (x0, ytop, x0 + cols * cell, ytop - rows * cell)
+
+
+def _prodstr(win, filt):
+    """Spelled-out multiply-add string for one window (rule 6/3): every product
+    written out, then the sum. Uses unicode dot and minus."""
+    k = len(filt)
+    terms = []
+    for i in range(k):
+        for j in range(k):
+            b = filt[i][j]
+            bstr = f"{b}" if b >= 0 else f"({b})"
+            terms.append(f"{win[i][j]}\u00b7{bstr}")
+    return "  +  ".join(terms).replace("-", "\u2212")
+
+
+def _convmap(image, filt, stride):
+    n, k = len(image), len(filt)
+    o = (n - k) // stride + 1
+    return [[sum(image[r * stride + i][c * stride + j] * filt[i][j]
+                 for i in range(k) for j in range(k))
+             for c in range(o)] for r in range(o)], o
+
+
+def conv_walk(image, filt, stride=1, window=None, reveal=None, calc="none",
+              name="fig_conv.png", filt_note="", map_label="feature map",
+              note=None, calc_text=None):
+    """The Hung-yi-Lee sliding-window walkthrough, computed cell by cell:
+    image (n\u00d7n)  \u2217  filter (k\u00d7k)  =  feature map (o\u00d7o).
+    window=(r,c): highlight that output cell + its receptive field in the image.
+    reveal: set of output (r,c) to fill; None = all; empty set = all '?'.
+    calc in {'full','short','rule','none'}: what to print under the grids."""
+    n, k = len(image), len(filt)
+    M, o = _convmap(image, filt, stride)
+    reveal = set(reveal) if reveal is not None else None
+
+    fig, ax = plt.subplots(figsize=(12.6, 5.3))
+    ax.set_xlim(0, 15.2)
+    ax.set_ylim(0, 7)
+    ax.axis("off")
+    cell = 0.66
+
+    # receptive-field cells in the image for the current window
+    hi_img = set()
+    if window is not None:
+        wr, wc = window
+        for i in range(k):
+            for j in range(k):
+                hi_img.add((wr * stride + i, wc * stride + j))
+
+    # image grid (left)
+    ix0, iytop = 0.4, 6.15
+    _cellgrid(ax, image, ix0, iytop, cell, hi=hi_img, fontsize=16)
+    ax.text(ix0 + n * cell / 2, iytop + 0.32, f"image  {n}\u00d7{n}",
+            ha="center", color=INK_SOFT, fontsize=14, fontweight="bold")
+    if window is not None:
+        wr, wc = window
+        rx = ix0 + wc * stride * cell
+        rtop = iytop - wr * stride * cell
+        ax.add_patch(FancyBboxPatch((rx - 0.03, rtop - k * cell - 0.03),
+                    k * cell + 0.06, k * cell + 0.06,
+                    boxstyle="round,pad=0.01,rounding_size=0.04",
+                    fill=False, edgecolor=AMBER, lw=3.0, zorder=6))
+
+    # star
+    ax.text(ix0 + n * cell + 0.42, 4.5, "\u2217", ha="center", va="center",
+            fontsize=30, color=INK_SOFT)
+
+    # filter grid (middle)
+    fx0, fytop = ix0 + n * cell + 0.95, 5.55
+    _cellgrid(ax, filt, fx0, fytop, cell, txt=TEAL, edge=TEAL,
+              fontsize=16)
+    ax.text(fx0 + k * cell / 2, fytop + 0.32, f"filter  {k}\u00d7{k}",
+            ha="center", color=TEAL, fontsize=14, fontweight="bold")
+    if filt_note:
+        ax.text(fx0 + k * cell / 2, fytop - k * cell - 0.28, filt_note,
+                ha="center", color=MUTED, fontsize=12, style="italic")
+
+    # equals
+    ax.text(fx0 + k * cell + 0.5, 4.5, "=", ha="center", va="center",
+            fontsize=28, color=INK_SOFT)
+
+    # feature map (right)
+    mx0, mytop = fx0 + k * cell + 1.05, 5.55
+    hi_map = {window} if window is not None else set()
+    _cellgrid(ax, M, mx0, mytop, cell, reveal=reveal, hi=hi_map, fontsize=17)
+    ax.text(mx0 + o * cell / 2, mytop + 0.32, f"{map_label}  {o}\u00d7{o}",
+            ha="center", color=INK_SOFT, fontsize=14, fontweight="bold")
+
+    # calc / note line(s)
+    if calc_text is not None:
+        line = calc_text
+    elif calc == "full" and window is not None:
+        wr, wc = window
+        win = [[image[wr * stride + i][wc * stride + j] for j in range(k)]
+               for i in range(k)]
+        line = f"{_prodstr(win, filt)}   =   {M[wr][wc]:g}"
+    elif calc == "short" and window is not None:
+        wr, wc = window
+        line = f"overlay \u00b7 multiply \u00b7 add  =  {M[wr][wc]:g}"
+    elif calc == "rule":
+        line = "overlay the filter on the window  \u00b7  multiply matching cells  \u00b7  add the products  \u2192  one output cell"
+    else:
+        line = ""
+    if line:
+        fam = "monospace" if calc == "full" else "sans-serif"
+        ax.text(7.6, 1.5, line, ha="center", va="center", color=INK,
+                fontsize=13 if calc == "full" else 14.5, fontweight="bold",
+                family=fam)
+    if note:
+        ax.text(7.6, 0.75, note, ha="center", va="center", color=MUTED,
+                fontsize=12.5, style="italic")
+    _save(fig, name)
+
+
+def maxpool_grid(mp, stride=2, reveal=True, name="fig_maxpool.png",
+                 note=None):
+    """Max pooling on a 4\u00d74 map: 2\u00d72 non-overlapping windows, keep each
+    window's strongest response \u2192 a 2\u00d72 output. reveal=False leaves the
+    pooled cells as '?' for the you-do; the four windows are always colour-coded
+    so the drill is self-evident."""
+    m = len(mp)
+    k = stride
+    o = m // k
+    out = [[max(mp[r * k + i][c * k + j] for i in range(k) for j in range(k))
+            for c in range(o)] for r in range(o)]
+    block_face = [TEAL_SOFT, AMBER_SOFT, "#EDE7F3", "#F2E6E6"]
+    block_edge = [TEAL, AMBER, "#7C6BA8", RED]
+
+    fig, ax = plt.subplots(figsize=(11.5, 4.8))
+    ax.set_xlim(0, 14)
+    ax.set_ylim(0, 6)
+    ax.axis("off")
+    cell = 0.72
+    ix0, iytop = 0.6, 5.1
+    # draw the 4x4 with each 2x2 block shaded by its colour
+    for r in range(m):
+        for c in range(m):
+            b = (r // k) * o + (c // k)
+            cx = ix0 + c * cell
+            cy = iytop - r * cell
+            ax.add_patch(FancyBboxPatch(
+                (cx, cy - cell), cell * 0.92, cell * 0.92,
+                boxstyle="round,pad=0.02,rounding_size=0.05",
+                facecolor=block_face[b], edgecolor=block_edge[b],
+                lw=1.6, zorder=3))
+            ax.text(cx + cell * 0.46, cy - cell * 0.46, f"{mp[r][c]:g}",
+                    ha="center", va="center", color=INK, fontsize=17,
+                    zorder=4, family="monospace")
+    ax.text(ix0 + m * cell / 2, iytop + 0.34, f"feature map  {m}\u00d7{m}",
+            ha="center", color=INK_SOFT, fontsize=14, fontweight="bold")
+
+    ax.annotate("", xy=(ix0 + m * cell + 1.5, 3.4),
+                xytext=(ix0 + m * cell + 0.35, 3.4),
+                arrowprops=dict(arrowstyle="-|>", color=INK_SOFT, lw=2.2))
+    ax.text(ix0 + m * cell + 0.93, 3.75, f"max-pool\n{k}\u00d7{k}", ha="center",
+            va="bottom", color=INK_SOFT, fontsize=12, fontweight="bold")
+
+    # output 2x2
+    ox0, oytop = ix0 + m * cell + 2.0, 4.4
+    ocell = 0.86
+    for r in range(o):
+        for c in range(o):
+            b = r * o + c
+            cx = ox0 + c * ocell
+            cy = oytop - r * ocell
+            ax.add_patch(FancyBboxPatch(
+                (cx, cy - ocell), ocell * 0.92, ocell * 0.92,
+                boxstyle="round,pad=0.02,rounding_size=0.05",
+                facecolor=block_face[b], edgecolor=block_edge[b],
+                lw=2.4, zorder=3))
+            txt = f"{out[r][c]:g}" if reveal else "?"
+            ax.text(cx + ocell * 0.46, cy - ocell * 0.46, txt,
+                    ha="center", va="center",
+                    color=AMBER if not reveal else INK,
+                    fontsize=22, fontweight="bold", zorder=4,
+                    family="monospace")
+    ax.text(ox0 + o * ocell / 2, oytop + 0.34, f"pooled  {o}\u00d7{o}",
+            ha="center", color=INK_SOFT, fontsize=14, fontweight="bold")
+
+    footer = (note if note else
+              "each colour = one 2\u00d72 window \u00b7 keep its MAX \u00b7 half the size, strongest response preserved")
+    ax.text(7, 0.5, footer, ha="center", color=MUTED, fontsize=12.5,
+            style="italic")
+    _save(fig, name)
+
+
+def padding_grid(n=5, name="fig_conv_padding.png"):
+    """Zero padding: a ring of zeros around an n\u00d7n image makes an
+    (n+2)\u00d7(n+2) input, so a 3\u00d73 stride-1 conv returns a map the SAME size
+    as the original \u2014 and edge cells get looked at as often as the middle."""
+    fig, ax = plt.subplots(figsize=(11.5, 5.0))
+    ax.set_xlim(0, 14)
+    ax.set_ylim(0, 6)
+    ax.axis("off")
+    cell = 0.62
+    P = n + 2
+    ix0, iytop = 0.7, 5.3
+    for r in range(P):
+        for c in range(P):
+            edge_ring = (r == 0 or c == 0 or r == P - 1 or c == P - 1)
+            cx = ix0 + c * cell
+            cy = iytop - r * cell
+            ax.add_patch(FancyBboxPatch(
+                (cx, cy - cell), cell * 0.92, cell * 0.92,
+                boxstyle="round,pad=0.02,rounding_size=0.05",
+                facecolor=AMBER_SOFT if edge_ring else WHITE,
+                edgecolor=AMBER if edge_ring else HAIRLINE,
+                lw=1.8 if edge_ring else 1.2, zorder=3))
+            val = "0" if edge_ring else "\u00b7"
+            ax.text(cx + cell * 0.46, cy - cell * 0.46, val, ha="center",
+                    va="center", color=ROI_INK if edge_ring else MUTED,
+                    fontsize=15, fontweight="bold" if edge_ring else "normal",
+                    zorder=4, family="monospace")
+    ax.text(ix0 + P * cell / 2, iytop + 0.34,
+            f"image padded to {P}\u00d7{P}  (amber ring = added zeros)",
+            ha="center", color=INK_SOFT, fontsize=14, fontweight="bold")
+
+    ax.text(9.3, 4.0,
+            f"3\u00d73 filter, stride 1, padding 1:\n\n"
+            f"({n} \u2212 3 + 2\u00b71) / 1 + 1  =  {n}",
+            ha="left", va="center", color=INK, fontsize=16, fontweight="bold")
+    ax.text(9.3, 1.9,
+            "output map is the SAME size as the\noriginal \u2014 edges stay in play",
+            ha="left", va="center", color=MUTED, fontsize=13, style="italic")
+    _save(fig, name)
+
+
+def output_size(mode="ido", name="fig_output_size.png"):
+    """The one formula of the hour: out = (n \u2212 k + 2p) / s + 1, drawn with a
+    labelled 1D strip so every letter is concrete before it is used (rule 3:
+    the rule is on the deck before the exercise). mode='ido' shows three worked
+    counts on the 5\u00d75 grid; mode='youdo' poses the Quiz 5 Q3 scenario blank."""
+    fig, ax = plt.subplots(figsize=(11.6, 4.6))
+    ax.set_xlim(0, 12)
+    ax.set_ylim(0, 6)
+    ax.axis("off")
+    ax.text(6, 5.4, "out  =  ( n \u2212 k + 2p ) / s  +  1", ha="center",
+            va="center", fontsize=26, color=INK, fontweight="bold",
+            family="monospace")
+    # labelled strip: n cells (white), a padding cell each side (amber dashed),
+    # one filter window (teal) of width k
+    cell = 0.62
+    n_disp = 5
+    y = 3.4
+    x0 = 6 - (n_disp + 2) * cell / 2
+    # padding left
+    for idx, kind in enumerate(["p"] + ["n"] * n_disp + ["p"]):
+        cx = x0 + idx * cell
+        pad = kind == "p"
+        ax.add_patch(FancyBboxPatch((cx, y - cell / 2), cell * 0.9, cell,
+                    boxstyle="round,pad=0.01,rounding_size=0.04",
+                    facecolor=AMBER_SOFT if pad else WHITE,
+                    edgecolor=AMBER if pad else INK_SOFT,
+                    lw=1.6, ls=(0, (3, 2)) if pad else "solid", zorder=3))
+    # filter window over first k cells (teal)
+    kk = 3
+    ax.add_patch(FancyBboxPatch((x0 + cell, y - cell / 2 - 0.08),
+                kk * cell, cell + 0.16,
+                boxstyle="round,pad=0.01,rounding_size=0.04", fill=False,
+                edgecolor=TEAL, lw=2.8, zorder=6))
+    ax.text(x0 + cell + kk * cell / 2, y + cell / 2 + 0.34, "k",
+            ha="center", color=TEAL, fontsize=15, fontweight="bold")
+    ax.text(x0 + cell + n_disp * cell / 2, y - cell / 2 - 0.42, "n",
+            ha="center", color=INK, fontsize=15, fontweight="bold")
+    ax.text(x0 + cell / 2, y - cell / 2 - 0.42, "p", ha="center",
+            color=ROI_INK, fontsize=13, fontweight="bold")
+    ax.text(x0 + (n_disp + 1.5) * cell, y - cell / 2 - 0.42, "p", ha="center",
+            color=ROI_INK, fontsize=13, fontweight="bold")
+
+    if mode == "ido":
+        ax.text(6, 1.55,
+                "our stride-1 walk:   (5 \u2212 3 + 0) / 1 + 1  =  3   \u2713",
+                ha="center", color=INK, fontsize=15, fontweight="bold",
+                family="monospace")
+        ax.text(6, 0.95,
+                "stride 2:   (5 \u2212 3 + 0) / 2 + 1  =  2      "
+                "padding 1:   (5 \u2212 3 + 2) / 1 + 1  =  5",
+                ha="center", color=INK_SOFT, fontsize=14,
+                family="monospace")
+    else:
+        ax.text(6, 1.35,
+                "Quiz 5 Q3:   n = 7,  k = 3,  p = 1,  s = 1   \u2192   out = ?",
+                ha="center", color=ROI_INK, fontsize=16, fontweight="bold",
+                family="monospace")
+        ax.text(6, 0.7, "plug into the formula above \u2014 what length comes out?",
+                ha="center", color=MUTED, fontsize=13, style="italic")
+    _save(fig, name)
+
+
+def dense_explosion(name="fig_dense_explosion.png"):
+    """Why a fully-connected layer doesn't scale to images/spectra: wiring every
+    pixel to every neuron explodes the weight count, versus a conv filter that
+    reuses 9 shared weights slid everywhere."""
+    fig, axes = plt.subplots(1, 2, figsize=(11.4, 4.2))
+    # left: dense
+    axL = axes[0]
+    axL.set_xlim(0, 10)
+    axL.set_ylim(0, 8)
+    axL.axis("off")
+    axL.set_title("fully connected", color=RED, fontsize=15,
+                  fontweight="bold")
+    # small pixel block
+    for r in range(4):
+        for c in range(4):
+            axL.add_patch(FancyBboxPatch((0.5 + c * 0.5, 5.5 - r * 0.5), 0.44,
+                        0.44, boxstyle="round,pad=0.01,rounding_size=0.04",
+                        facecolor="#F1F1EC", edgecolor=HAIRLINE, lw=1.0))
+    neurons = [(7.6, 6.2), (7.6, 5.2), (7.6, 4.2), (7.6, 3.2)]
+    for (nx, ny) in neurons:
+        for r in range(4):
+            for c in range(4):
+                axL.plot([0.94 + c * 0.5, nx - 0.28], [5.72 - r * 0.5, ny],
+                         color=RED, lw=0.4, alpha=0.25, zorder=1)
+    for (nx, ny) in neurons:
+        axL.add_patch(Circle((nx, ny), 0.28, facecolor=WHITE, edgecolor=INK_SOFT,
+                             lw=1.8, zorder=3))
+    axL.text(2.5, 2.4, "100\u00d7100\u00d73 pixels \u2192 1,000 neurons",
+             ha="center", color=INK_SOFT, fontsize=12)
+    axL.text(2.5, 1.5, "= 30,000,000 weights", ha="center", color=RED,
+             fontsize=17, fontweight="bold")
+    axL.text(2.5, 0.7, "in ONE layer \u2014 each needs data to learn",
+             ha="center", color=MUTED, fontsize=11.5, style="italic")
+    # right: conv
+    axR = axes[1]
+    axR.set_xlim(0, 10)
+    axR.set_ylim(0, 8)
+    axR.axis("off")
+    axR.set_title("one convolution filter", color=TEAL, fontsize=15,
+                  fontweight="bold")
+    for r in range(3):
+        for c in range(3):
+            axR.add_patch(FancyBboxPatch((3.7 + c * 0.6, 6.0 - r * 0.6), 0.52,
+                        0.52, boxstyle="round,pad=0.01,rounding_size=0.04",
+                        facecolor=TEAL_SOFT, edgecolor=TEAL, lw=1.8))
+    axR.text(5.2, 6.7, "3\u00d73 window", ha="center", color=TEAL, fontsize=12,
+             fontweight="bold")
+    axR.annotate("", xy=(7.4, 4.6), xytext=(6.6, 5.0),
+                 arrowprops=dict(arrowstyle="-|>", color=AMBER, lw=2.0))
+    axR.text(5.0, 2.4, "9 shared weights", ha="center", color=TEAL,
+             fontsize=17, fontweight="bold")
+    axR.text(5.0, 1.5, "slid across the WHOLE image", ha="center",
+             color=INK_SOFT, fontsize=12)
+    axR.text(5.0, 0.7, "local windows + weight sharing", ha="center",
+             color=MUTED, fontsize=11.5, style="italic")
+    _save(fig, name)
+
+
+def conv_real_filters(name="fig_conv_real_filters.png"):
+    """Rule 7 payoff: REAL convolutions of the sparrow photo with named 3\u00d73
+    kernels (Sobel x / Sobel y / Laplacian / box blur) \u2014 the maps were
+    computed, not illustrated. A CNN learns kernels like these on its own."""
+    panels = [
+        ("sparrow_gray.jpg", "input (grayscale)"),
+        ("sparrow_vedge.jpg", "vertical edges"),
+        ("sparrow_hedge.jpg", "horizontal edges"),
+        ("sparrow_blob.jpg", "blobs / spots"),
+        ("sparrow_blur.jpg", "smoothing (blur)"),
+    ]
+    pw, ph, bar, gap = 240, 300, 40, 12
+    W = pw * len(panels) + gap * (len(panels) + 1)
+    H = ph + bar + gap * 2
+    canvas = Image.new("RGB", (W, H), (251, 251, 248))
+    draw = ImageDraw.Draw(canvas)
+    font = _font(24)
+    x = gap
+    for fn, label in panels:
+        photo = _fit_fill(Image.open(IMG / fn), pw, ph)
+        canvas.paste(photo, (x, gap))
+        draw.rectangle([x, gap + ph, x + pw, gap + ph + bar], fill=INK)
+        tb = draw.textbbox((0, 0), label, font=font)
+        draw.text((x + (pw - (tb[2] - tb[0])) / 2,
+                   gap + ph + (bar - (tb[3] - tb[1])) / 2 - tb[1]),
+                  label, fill=(255, 255, 255), font=font)
+        x += pw + gap
+    canvas.save(IMG / name)
+    _downscale(IMG / name)
+    print(f"  wrote {name}")
+
+
+def _spectrum(xg):
+    """A clean synthetic MALDI-style spectrum (deterministic) with a few
+    Gaussian peaks on a low baseline \u2014 used for the 1D conv walkthrough."""
+    peaks = [(1.6, 1.0, 0.05), (3.0, 0.55, 0.05), (5.2, 0.85, 0.05),
+             (6.1, 0.4, 0.04), (8.0, 0.65, 0.05)]
+    y = 0.05 + 0.02 * np.sin(xg * 1.3)
+    for mu, a, w in peaks:
+        y = y + a * np.exp(-((xg - mu) ** 2) / (2 * w))
+    return y
+
+
+def conv1d_spectrum(name="fig_conv1d_spectrum.png"):
+    """The same overlay-multiply-add, one dimension: a short filter window slides
+    along a spectrum's m/z axis, and the feature map below lights up where the
+    peak SHAPE is found. Deletes one dimension from the 2D drill."""
+    xg = np.linspace(0, 10, 800)
+    sp = _spectrum(xg)
+    # a peak-shape matched filter response (normalized cross-correlation-ish):
+    # slide a small Gaussian template and score the local match
+    tmpl = np.exp(-((np.linspace(-1, 1, 61)) ** 2) / (2 * 0.12))
+    tmpl = tmpl - tmpl.mean()
+    fmap = np.convolve(sp - sp.mean(), tmpl[::-1], mode="same")
+    fmap = np.clip(fmap, 0, None)
+    fmap = fmap / fmap.max()
+
+    fig, (axs, axf) = plt.subplots(2, 1, figsize=(10.5, 5.0), sharex=True,
+                                   gridspec_kw={"height_ratios": [1.1, 1]})
+    axs.plot(xg, sp, color=INK, lw=2.0, zorder=3)
+    # the filter window box over one peak
+    axs.add_patch(FancyBboxPatch((4.7, -0.02), 1.0, sp.max() * 0.9 + 0.05,
+                boxstyle="round,pad=0.01,rounding_size=0.02", fill=True,
+                facecolor=AMBER_SOFT, edgecolor=AMBER, lw=2.2, alpha=0.8,
+                zorder=2))
+    axs.text(5.2, sp.max() + 0.06, "filter window (k bins)", ha="center",
+             color=ROI_INK, fontsize=12, fontweight="bold")
+    axs.annotate("slides along m/z \u2192", xy=(7.2, sp.max() * 0.6),
+                 xytext=(2.0, sp.max() * 0.92), color=MUTED, fontsize=12,
+                 style="italic",
+                 arrowprops=dict(arrowstyle="-|>", color=MUTED, lw=1.4))
+    axs.set_ylabel("spectrum", fontsize=12)
+    axs.set_yticks([])
+    axs.set_ylim(-0.05, sp.max() + 0.2)
+    for spn in ("top", "right"):
+        axs.spines[spn].set_visible(False)
+
+    axf.plot(xg, fmap, color=TEAL, lw=2.2, zorder=3)
+    axf.fill_between(xg, fmap, color=TEAL, alpha=0.12)
+    axf.set_ylabel('feature map\n"peak here"', fontsize=11)
+    axf.set_yticks([])
+    axf.set_ylim(0, 1.15)
+    axf.set_xlabel("m/z  \u2192", fontsize=12)
+    axf.set_xticks([])
+    for spn in ("top", "right"):
+        axf.spines[spn].set_visible(False)
+    fig.text(0.5, -0.01,
+             "one detector \u00b7 a handful of weights \u00b7 every position on the axis \u2014 the 2D drill with one dimension deleted",
+             ha="center", color=INK_SOFT, fontsize=12, style="italic")
+    fig.subplots_adjust(hspace=0.12)
+    _save(fig, name)
+
+
+def conv1d_code(name="fig_conv1d_code.png"):
+    """nn.Conv1d + MaxPool1d with every argument annotated back to a by-hand
+    dial, plus the output-length check via the formula."""
+    rows = [
+        {"code": "nn.Conv1d(", "dim": True},
+        {"code": "    in_channels=1,", "comment": "# one raw spectrum"},
+        {"code": "    out_channels=8,", "comment": "# 8 filters \u2192 8 maps"},
+        {"code": "    kernel_size=15,", "comment": "# window k = 15 bins"},
+        {"code": "    stride=1, padding=7,", "comment": "# keep length 6000"},
+        {"code": ")", "dim": True},
+        {"code": "nn.MaxPool1d(2)", "comment": "# halve: 6000 \u2192 3000"},
+    ]
+    _code_figure(rows, name, figsize=(11, 3.9), comment_x=0.52)
+
+
+def detection_grid(name="fig_detection_grid.png"):
+    """Object detection = boxes + confidence scores from the SAME conv backbone;
+    only the output head changes. Two objects, two amber boxes, two scores."""
+    fig, ax = plt.subplots(figsize=(7.6, 5.0))
+    ax.set_xlim(0, 10)
+    ax.set_ylim(0, 6.6)
+    ax.axis("off")
+    ax.add_patch(FancyBboxPatch((0.4, 0.4), 9.2, 5.8,
+                boxstyle="round,pad=0.02,rounding_size=0.05",
+                facecolor="#F1F1EC", edgecolor=MUTED, lw=1.2))
+    from matplotlib.patches import Ellipse
+    ax.add_patch(Ellipse((3.0, 3.5), 2.4, 1.7, facecolor=TEAL, alpha=0.28))
+    ax.add_patch(Ellipse((7.0, 4.4), 1.9, 1.4, facecolor=RED, alpha=0.25))
+    ax.add_patch(FancyBboxPatch((1.6, 2.5), 2.9, 2.1, fill=False,
+                edgecolor=AMBER, lw=3.0, boxstyle="square,pad=0"))
+    ax.add_patch(FancyBboxPatch((5.9, 3.5), 2.3, 1.8, fill=False,
+                edgecolor=AMBER, lw=3.0, boxstyle="square,pad=0"))
+    ax.text(1.7, 4.75, "cell \u00b7 0.94", color=ROI_INK, fontsize=14,
+            fontweight="bold", family="monospace")
+    ax.text(6.0, 5.45, "debris \u00b7 0.71", color=ROI_INK, fontsize=14,
+            fontweight="bold", family="monospace")
+    ax.text(5.0, 0.0, "one CNN pass \u2192 every BOX (where) + every SCORE (how sure)",
+            ha="center", color=INK_SOFT, fontsize=12.5, style="italic")
+    _save(fig, name)
+
+
+def peak_detection(reveal=True, name="fig_peak_detection.png"):
+    """A chromatogram is an image whose objects are peaks: the bounding box is the
+    retention-time integration window, the score is reviewer confidence. The
+    manual 'peak review' step is a detection problem a CNN already solves.
+    reveal=False blanks the box/score labels for the Quiz 5 Q4 you-do."""
+    t = np.linspace(0, 10, 800)
+    peaks = [(3.0, 1.0, 0.10), (6.6, 0.62, 0.13)]
+    y = 0.04 + 0.015 * np.sin(t * 1.1)
+    for mu, a, w in peaks:
+        y = y + a * np.exp(-((t - mu) ** 2) / (2 * w))
+    fig, ax = plt.subplots(figsize=(10.5, 4.3))
+    ax.plot(t, y, color=INK, lw=2.2, zorder=3)
+    ax.fill_between(t, y, color=TEAL, alpha=0.08)
+    boxes = [(2.15, 3.85, 1.12, "peak", "0.97"),
+             (5.75, 7.45, 0.72, "peak", "0.83")]
+    for x0, x1, top, lab, score in boxes:
+        ax.add_patch(FancyBboxPatch((x0, 0.0), x1 - x0, top + 0.08,
+                    boxstyle="round,pad=0.005,rounding_size=0.02", fill=False,
+                    edgecolor=AMBER, lw=3.0, zorder=5))
+        tag = f"{lab} \u00b7 {score}" if reveal else "box = ?  \u00b7  score = ?"
+        ax.text((x0 + x1) / 2, top + 0.2, tag, ha="center", color=ROI_INK,
+                fontsize=13, fontweight="bold", family="monospace")
+    ax.set_xlim(0, 10)
+    ax.set_ylim(0, 1.45)
+    ax.set_xlabel("retention time  \u2192", fontsize=13)
+    ax.set_yticks([])
+    ax.set_xticks([])
+    for spn in ("top", "right"):
+        ax.spines[spn].set_visible(False)
+    footer = ("object \u2192 peak  \u00b7  bounding box \u2192 RT integration window  \u00b7  score \u2192 how sure it's a real peak"
+              if reveal else
+              "name the two boxed peaks as a detector would: what is the BOX? what is the SCORE?")
+    ax.text(0.5, -0.22, footer, transform=ax.transAxes, ha="center",
+            color=INK_SOFT, fontsize=12, style="italic")
+    fig.subplots_adjust(bottom=0.2)
+    _save(fig, name)
+
+
 # ---- runner -----------------------------------------------------------------
 def build_all():
     print("figures:")
@@ -2064,6 +2620,71 @@ def build_all():
     dropout_panels()
     weight_decay()
     class_imbalance()
+    # ---- Lecture 5 ----
+    _lecture5_figures()
+
+
+# deck I-do convolution (5x5 image, 3x3 diagonal detector) and the matched
+# Quiz 5 you-do (5x5 image, 3x3 X-detector) — different numbers, same drill.
+CONV_IMG_IDO = [
+    [1, 0, 0, 1, 0],
+    [0, 1, 0, 0, 1],
+    [0, 0, 1, 0, 0],
+    [1, 0, 0, 1, 0],
+    [0, 1, 0, 0, 1],
+]
+CONV_FILT_IDO = [[1, -1, -1], [-1, 1, -1], [-1, -1, 1]]  # diagonal detector
+CONV_IMG_QUIZ = [
+    [1, 1, 0, 1, 0],
+    [0, 1, 1, 0, 1],
+    [1, 0, 1, 0, 0],
+    [0, 1, 0, 1, 1],
+    [1, 0, 1, 0, 1],
+]
+CONV_FILT_QUIZ = [[1, 0, 1], [0, 1, 0], [1, 0, 1]]  # X / corner+centre detector
+MAXPOOL_IDO = [[3, 1, 2, 4], [0, 2, 5, 1], [6, 0, 1, 3], [2, 4, 2, 0]]
+MAXPOOL_QUIZ = [[1, 3, 2, 0], [4, 2, 1, 5], [0, 1, 6, 2], [2, 3, 1, 4]]
+
+
+def _lecture5_figures():
+    dense_explosion()
+    conv_walk(CONV_IMG_IDO, CONV_FILT_IDO, stride=1, window=(0, 0),
+              reveal=set(), calc="rule", name="fig_conv_setup.png",
+              filt_note="hunts diagonals",
+              note="the 9 filter values are learned weights \u2014 today we hand-pick them so we can compute")
+    conv_walk(CONV_IMG_IDO, CONV_FILT_IDO, stride=1, window=(0, 0),
+              reveal={(0, 0)}, calc="full", name="fig_conv_ido1.png",
+              filt_note="hunts diagonals",
+              note="nine products \u2014 six are zero, three 1\u00b71 hits = a strong diagonal match")
+    conv_walk(CONV_IMG_IDO, CONV_FILT_IDO, stride=1, window=(0, 1),
+              reveal={(0, 0), (0, 1)}, calc="full", name="fig_conv_ido2.png",
+              filt_note="hunts diagonals",
+              note="same 9 weights, new window \u2014 that reuse IS weight sharing")
+    conv_walk(CONV_IMG_IDO, CONV_FILT_IDO, stride=1, window=None,
+              reveal=None, calc="none", name="fig_conv_map.png",
+              filt_note="hunts diagonals",
+              calc_text="9 window sums \u2192 a 3\u00d73 map \u00b7 large value = 'diagonal found here' \u00b7 only 9 weights",
+              note="the feature map is itself an image \u2014 so another conv can stack on top")
+    conv_walk(CONV_IMG_IDO, CONV_FILT_IDO, stride=2, window=(0, 0),
+              reveal=None, calc="none", name="fig_conv_stride2.png",
+              filt_note="hunts diagonals", map_label="feature map",
+              calc_text="stride 2: the window jumps 2 \u2014 (5 \u2212 3)/2 + 1 = 2 \u2192 a 2\u00d72 map (a quarter of the outputs)")
+    conv_walk(CONV_IMG_QUIZ, CONV_FILT_QUIZ, stride=1, window=(0, 0),
+              reveal=set(), calc="rule", name="fig_conv_youdo.png",
+              filt_note="corners + centre",
+              note="your turn \u2014 same overlay-multiply-add, new image and filter (Quiz 5 Q1)")
+    padding_grid(n=5)
+    output_size(mode="ido", name="fig_output_size.png")
+    output_size(mode="youdo", name="fig_output_size_youdo.png")
+    conv_real_filters()
+    maxpool_grid(MAXPOOL_IDO, reveal=True, name="fig_maxpool_ido.png")
+    maxpool_grid(MAXPOOL_QUIZ, reveal=False, name="fig_maxpool_youdo.png",
+                 note="your turn \u2014 keep each 2\u00d72 window's MAX (Quiz 5 Q2)")
+    conv1d_spectrum()
+    conv1d_code()
+    detection_grid()
+    peak_detection(reveal=True, name="fig_peak_detection.png")
+    peak_detection(reveal=False, name="fig_peak_detection_youdo.png")
 
 
 FUNCS = {
@@ -2153,6 +2774,16 @@ FUNCS = {
     "dropout": dropout_panels,
     "weight_decay": weight_decay,
     "imbalance": class_imbalance,
+    # ---- Lecture 5 ----
+    "cnn": _lecture5_figures,
+    "dense_explosion": dense_explosion,
+    "conv_real_filters": conv_real_filters,
+    "conv1d": lambda: (conv1d_spectrum(), conv1d_code()),
+    "detection": lambda: (
+        detection_grid(),
+        peak_detection(reveal=True, name="fig_peak_detection.png"),
+        peak_detection(reveal=False, name="fig_peak_detection_youdo.png"),
+    ),
 }
 
 

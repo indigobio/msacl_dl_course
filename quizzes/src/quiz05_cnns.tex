@@ -1,0 +1,218 @@
+% =====================================================================
+%  MSACL DS301 Deep Learning · Quiz 5 · Convolutional Networks
+%  Academic problem-set style (single-source, \ifsolution toggle)
+%  SINGLE SOURCE — produces BOTH the student quiz and the answer key.
+%
+%  ANSWER TOGGLE
+%  -------------
+%  Student version (answers HIDDEN) — the default:
+%       pdflatex quiz05_cnns.tex
+%  Answer key (answers SHOWN):
+%       pdflatex "\def\showsolutions{}\input{quiz05_cnns.tex}"
+%  (or, to flip by hand, change \solutionfalse to \solutiontrue below.)
+% =====================================================================
+\documentclass[11pt]{article}
+
+\newif\ifsolution
+\ifdefined\showsolutions \solutiontrue \else \solutionfalse \fi
+% \solutiontrue   % <-- uncomment to hard-code the ANSWER KEY build
+
+\usepackage[letterpaper, margin=0.6in, top=0.7in, bottom=0.5in]{geometry}
+\usepackage{amsmath, amssymb}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{tikz}
+\usepackage{fancyhdr}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textbf{MSACL DS301 --- Deep Learning}}
+\fancyhead[R]{\small\textbf{Quiz 5: Convolutional Networks\ifsolution\ \textmd{(Answer Key)}\fi}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\newcommand{\blk}[1]{\underline{\hspace{#1}}}
+% Reveal-or-blank: shows the answer in the key, a blank rule on the student sheet.
+\newcommand{\rb}[2]{\ifsolution\textbf{#1}\else\blk{#2}\fi}
+% Boxed answer (key only) and blank writing space (student only).
+\newcommand{\keybox}[1]{\ifsolution\par\vspace{2pt}%
+  \fbox{\parbox{0.965\textwidth}{\small\textbf{Answer.}\; #1}}\par\fi}
+\newcommand{\work}[1]{\ifsolution\else\vspace{#1}\fi}
+
+% ---- numeric grids (course palette) --------------------------------------
+\definecolor{ink}{HTML}{1B2025}
+\definecolor{teal}{HTML}{0E7C7B}
+\definecolor{amber}{HTML}{E09E2F}
+% square, centred, monospace cells for the numeric grids
+\newcolumntype{G}{>{\centering\arraybackslash\ttfamily}p{6.5mm}}
+\newcommand{\gr}{\renewcommand{\arraystretch}{1.5}}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{3pt}
+\setlength{\abovedisplayskip}{5pt}
+\setlength{\belowdisplayskip}{5pt}
+
+\begin{document}
+
+\begin{center}
+{\Large \textbf{Quiz 5 --- Convolutional Networks}}\\[2pt]
+{\normalsize Convolution by hand, stride, max pooling, output size, and peak-picking as detection}
+\end{center}
+
+\vspace{-2pt}
+\begin{center}
+\fbox{\parbox{0.92\textwidth}{\small
+\textbf{Instructions:}\; Answer all four questions --- the same overlay--multiply--add drill you
+did on the slides, new numbers. Intuition first; no calculators needed.%
+\ifsolution\else\\[4pt]\textbf{Name:}\ \blk{6cm}\hfill\textbf{Date:}\ \blk{3.5cm}\fi
+}}
+\end{center}
+
+\vspace{-2pt}\hrule\vspace{5pt}
+
+% =========================== Q1 ===========================
+\textbf{1. Convolution by hand --- stride 1 and stride 2.}\; {\small \emph{The rule:} lay the
+$3\times3$ filter on a $3\times3$ window of the image, multiply each pair of matching cells, and add
+the nine products --- that number is one feature-map cell. \emph{Stride} is how far the window jumps;
+with a $5\times5$ image and a $3\times3$ filter the map is $(5-3)/s+1$ cells per side.}
+
+\vspace{4pt}
+\begin{center}
+\begin{minipage}[c]{0.40\linewidth}\centering
+{\small image \textbf{5$\times$5}}\\[3pt]
+\gr\begin{tabular}{|G|G|G|G|G|}\hline
+1 & 1 & 0 & 1 & 0 \\\hline
+0 & 1 & 1 & 0 & 1 \\\hline
+1 & 0 & 1 & 0 & 0 \\\hline
+0 & 1 & 0 & 1 & 1 \\\hline
+1 & 0 & 1 & 0 & 1 \\\hline
+\end{tabular}
+\end{minipage}%
+\begin{minipage}[c]{0.30\linewidth}\centering
+{\small filter \textbf{3$\times$3}}\\[3pt]
+{\color{teal}\gr\begin{tabular}{|G|G|G|}\hline
+1 & 0 & 1 \\\hline
+0 & 1 & 0 \\\hline
+1 & 0 & 1 \\\hline
+\end{tabular}}\\[3pt]
+{\scriptsize (corners + centre)}
+\end{minipage}
+\end{center}
+
+\vspace{3pt}
+\textbf{(a)} At \emph{stride 1}, the output map is $3\times3$. The cell at output position $(r,c)$ uses
+the window whose top-left corner sits at image row $r$, column $c$. Compute the \emph{top row}:
+
+\vspace{2pt}
+\quad $(1,1) = $ \rb{$4$}{1.6cm} \hfill $(1,2) = $ \rb{$3$}{1.6cm} \hfill
+$(1,3) = $ \rb{$1$}{1.6cm} \hspace*{1.2cm}
+
+\work{1.1cm}
+
+\textbf{(b)} At \emph{stride 2} the map is $2\times2$ (windows start at image rows/cols $1$ and $3$).
+Compute its \emph{bottom-right} cell (window top-left at image row $3$, column $3$): \rb{$4$}{1.6cm}
+
+\work{1.0cm}
+
+\keybox{Overlay the filter, multiply, add --- with this filter each cell is just the sum of the four
+\emph{corners} and the \emph{centre} of the window.\\[3pt]
+(a) $(1,1)$: window rows 1--3, cols 1--3 $=\!\begin{smallmatrix}1&1&0\\0&1&1\\1&0&1\end{smallmatrix}$,
+corners+centre $=1+0+1+1+1=\mathbf{4}$.\;
+$(1,2)$: cols 2--4 $=\!\begin{smallmatrix}1&0&1\\1&1&0\\0&1&0\end{smallmatrix}$,
+$=1+1+0+0+1=\mathbf{3}$.\;
+$(1,3)$: cols 3--5 $=\!\begin{smallmatrix}0&1&0\\1&0&1\\1&0&0\end{smallmatrix}$,
+$=0+0+1+0+0=\mathbf{1}$.\\[3pt]
+(b) Bottom-right stride-2 cell: window rows 3--5, cols 3--5
+$=\!\begin{smallmatrix}1&0&0\\0&1&1\\1&0&1\end{smallmatrix}$, corners+centre $=1+0+1+1+1=\mathbf{4}$.
+\emph{Stride 2 just samples every other window, so its cells are a subset of the stride-1 map's
+values.}}
+
+\vspace{2pt}\hrule\vspace{5pt}
+
+% =========================== Q2 ===========================
+\textbf{2. Max pooling.}\; {\small Split the $4\times4$ feature map into non-overlapping $2\times2$
+windows (stride 2) and keep each window's \emph{largest} value, giving a $2\times2$ pooled map.}
+
+\vspace{4pt}
+\begin{center}
+\begin{minipage}[c]{0.40\linewidth}\centering
+{\small feature map \textbf{4$\times$4}}\\[3pt]
+\gr\begin{tabular}{|G|G|G|G|}\hline
+1 & 3 & 2 & 0 \\\hline
+4 & 2 & 1 & 5 \\\hline
+0 & 1 & 6 & 2 \\\hline
+2 & 3 & 1 & 4 \\\hline
+\end{tabular}
+\end{minipage}%
+\begin{minipage}[c]{0.06\linewidth}\centering $\rightarrow$ \end{minipage}%
+\begin{minipage}[c]{0.30\linewidth}\centering
+{\small pooled \textbf{2$\times$2}}\\[3pt]
+\renewcommand{\arraystretch}{1.7}%
+\begin{tabular}{|>{\centering\arraybackslash\ttfamily\bfseries}p{9mm}|>{\centering\arraybackslash\ttfamily\bfseries}p{9mm}|}\hline
+\rb{4}{6mm} & \rb{5}{6mm} \\\hline
+\rb{3}{6mm} & \rb{6}{6mm} \\\hline
+\end{tabular}
+\end{minipage}
+\end{center}
+
+\work{0.5cm}
+
+\keybox{Top-left window $\{1,3,4,2\}\rightarrow\mathbf{4}$;\; top-right $\{2,0,1,5\}\rightarrow\mathbf{5}$;\;
+bottom-left $\{0,1,2,3\}\rightarrow\mathbf{3}$;\; bottom-right $\{6,2,1,4\}\rightarrow\mathbf{6}$. So the
+pooled map is $\left(\begin{smallmatrix}4&5\\3&6\end{smallmatrix}\right)$. Pooling has no weights ---
+it just keeps each region's strongest response, halving the size while a peak that wobbles one cell
+over still gives the same answer.}
+
+\vspace{2pt}\hrule\vspace{5pt}
+
+% =========================== Q3 ===========================
+\textbf{3. Output size, with padding.}\; {\small A convolution layer's output size is
+$\text{out}=(n-k+2p)/s+1$, where $n$ = input size, $k$ = filter size, $p$ = zero-padding per side,
+$s$ = stride. A $3\times3$ filter ($k=3$) slides over a length-$7$ input ($n=7$) at stride $s=1$.}
+
+\vspace{3pt}
+\textbf{(a)} With padding $p=1$, the output length is\quad
+$(7-3+2\cdot1)/1+1=$ \rb{$7$}{2cm}
+
+\work{0.4cm}
+
+\textbf{(b)} With \emph{no} padding ($p=0$), the output length is\quad
+$(7-3+0)/1+1=$ \rb{$5$}{2cm}
+
+\work{0.6cm}
+
+\keybox{(a) $(7-3+2)/1+1 = 6+1 = \mathbf{7}$ --- padding~1 with a $3\times3$ filter keeps the length
+unchanged (``same'' convolution). (b) $(7-3+0)/1+1 = 4+1 = \mathbf{5}$ --- without padding the map
+\emph{shrinks} by two, and the edge positions get fewer looks. This is why we pad: to preserve length
+and keep the edges in play.}
+
+\vspace{2pt}\hrule\vspace{5pt}
+
+% =========================== Q4 ===========================
+\textbf{4. Peak picking as object detection.}\; {\small A CNN detector run over a chromatogram draws a
+\emph{bounding box} with a \emph{confidence score} around each object it finds --- exactly as it would
+around a cell in a photo.}
+
+\vspace{3pt}
+\textbf{(a)} For a peak on a chromatogram, what does the bounding \emph{box} correspond to?
+
+\work{0.9cm}
+\ifsolution\else\blk{\linewidth}\fi
+
+\textbf{(b)} What does the confidence \emph{score} mean?
+
+\work{0.9cm}
+\ifsolution\else\blk{\linewidth}\fi
+
+\keybox{(a) The \textbf{box} is the peak's \textbf{retention-time (or $m/z$) window} --- the start-to-end
+integration bounds that mark where the peak lies along the axis (its ``where''). (b) The \textbf{score}
+is the model's \textbf{confidence (0--1) that the boxed region is a real peak} rather than baseline
+noise or an artifact (its ``how sure''). So peak review --- deciding \emph{where} a peak is and
+\emph{whether} it is genuine --- is exactly the detection problem (boxes + scores) a CNN already
+solves; PeakOnly (2020) does this for real.}
+
+\vspace{4pt}\hrule\vspace{3pt}
+{\small\itshape \ifsolution Answer key.\else Keep this sheet --- the convolution, pooling, and
+output-size drills are your Lab 2 cheat-sheet.\fi}
+
+\end{document}
