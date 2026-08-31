@@ -1340,13 +1340,13 @@ def crossentropy_formula(name="fig_ce_formula.png"):
     ax.text(0.5, 0.68,
             r"truth is one-hot: the true class has $y=1$, every other class $y=0$",
             ha="center", va="center", fontsize=14, color=MUTED)
-    # reduction
-    ax.add_patch(FancyBboxPatch((0.20, 0.40), 0.60, 0.16,
-                boxstyle="round,pad=0.01,rounding_size=0.03",
-                facecolor="#F1F1EC", edgecolor=HAIRLINE, lw=1.3))
+    # reduction -- give the text its own auto-fitting box so it can never
+    # overflow (a fixed FancyBboxPatch was too narrow for the 22pt line).
     ax.text(0.5, 0.48,
             r"so only the TRUE class survives:  $\mathrm{CE}\;=\;-\log(p_{\mathrm{true}})$",
-            ha="center", va="center", fontsize=22, color=TEAL, fontweight="bold")
+            ha="center", va="center", fontsize=22, color=TEAL, fontweight="bold",
+            bbox=dict(boxstyle="round,pad=0.5", facecolor="#F1F1EC",
+                      edgecolor=HAIRLINE, linewidth=1.3))
     # worked substitution anchor
     ax.text(0.5, 0.20,
             r"e.g. truth is R and the model says $p_{\mathrm{true}}=0.90$:   "
@@ -3704,10 +3704,8 @@ def confusion_matrix(tp, fn, fp, tn, mode="ido", name="fig_confusion_ido.png",
             ("= ?" if blank else
              f"= {tn:g} / {neg:g} = {spec:.2f}  ({spec*100:.0f}%)"),
             ha="left", color=TEAL, fontsize=15, fontweight="bold")
-    # the accuracy trap box
-    ax.add_patch(FancyBboxPatch((fx - 0.25, 0.5), 5.7, 2.15,
-                boxstyle="round,pad=0.03,rounding_size=0.05",
-                facecolor="#F7E4E3", edgecolor=RED, lw=2.0))
+    # the accuracy trap box -- give the text its own auto-fitting box so the
+    # longest line can never poke past the edges (a fixed patch was too narrow).
     if blank:
         trap = ("accuracy = ?  — but a model that ALWAYS\n"
                 f"says “{negative}” scores {neg:g}/{total:g} = "
@@ -3719,7 +3717,9 @@ def confusion_matrix(tp, fn, fp, tn, mode="ido", name="fig_confusion_ido.png",
                 f"{always_neg*100:.0f}%\nand catches 0 of {pos:g} {positive}. "
                 "Accuracy lies under imbalance.")
     ax.text(fx + 2.6, 1.57, trap, ha="center", va="center", color=INK,
-            fontsize=10.5, fontweight="bold")
+            fontsize=10.5, fontweight="bold",
+            bbox=dict(boxstyle="round,pad=0.6", facecolor="#F7E4E3",
+                      edgecolor=RED, linewidth=2.0))
     _save(fig, name)
 
 
@@ -4495,13 +4495,14 @@ def dino_student_teacher(name="fig_dino.png"):
                  arrowprops=dict(arrowstyle="-|>", color=INK_SOFT, lw=1.8))
     axl.text(2.9, 4.05, "view 1", ha="center", color=INK_SOFT, fontsize=9.5)
     axl.text(2.9, 1.65, "view 2", ha="center", color=INK_SOFT, fontsize=9.5)
-    # match outputs
-    axl.add_patch(FancyBboxPatch((8.0, 2.35), 3.4, 1.0,
+    # match outputs (widened so the bold label clears both inner edges; the
+    # box is centred on the text at x=9.7, arrow still lands on the left edge)
+    axl.add_patch(FancyBboxPatch((7.6, 2.35), 4.2, 1.0,
                   boxstyle="round,pad=0.02,rounding_size=0.06",
                   facecolor=WHITE, edgecolor=INK_SOFT, lw=2.0))
     axl.text(9.7, 2.85, "make outputs MATCH", ha="center", va="center",
              color=INK, fontsize=11.5, fontweight="bold")
-    axl.annotate("", xy=(8.0, 2.95), xytext=(7.0, 3.7),
+    axl.annotate("", xy=(7.6, 2.95), xytext=(6.9, 3.7),
                  arrowprops=dict(arrowstyle="-|>", color=TEAL, lw=1.8))
     axl.annotate("", xy=(8.0, 2.75), xytext=(7.0, 1.75),
                  arrowprops=dict(arrowstyle="-|>", color=AMBER, lw=1.8))
@@ -5726,11 +5727,11 @@ def guardrails(mode="ido", name="fig_guardrails_ido.png"):
                         facecolor=col, edgecolor=col, lw=2.0))
             ax.text(7.4, y, guard, ha="center", va="center", color=WHITE,
                     fontsize=12.5, fontweight="bold")
-            ax.add_patch(FancyBboxPatch((9.4, y - 0.5), 3.3, 1.0,
+            ax.add_patch(FancyBboxPatch((9.25, y - 0.5), 3.6, 1.0,
                         boxstyle="round,pad=0.02,rounding_size=0.06",
                         facecolor=WHITE, edgecolor=col, lw=1.6))
             ax.text(11.05, y, does, ha="center", va="center", color=INK_SOFT,
-                    fontsize=9.5)
+                    fontsize=9.0)
         else:
             ax.add_patch(FancyBboxPatch((5.6, y - 0.5), 3.6, 1.0,
                         boxstyle="round,pad=0.02,rounding_size=0.06",
