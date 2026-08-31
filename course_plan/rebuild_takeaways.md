@@ -230,3 +230,18 @@ overlap still 0 FAIL, fractional-EMU 0, slide counts unchanged. Caveat: heuristi
 (no pptx->pixel rendering on this host), so eyeball worst slides once in PPT.
 Wire `check_text_overflow.py --all` into build/critique verification alongside the
 overlap checker.
+
+## Figure-baked text overflow FIXED (2026-08-31)
+
+Third overflow class, distinct from the two pptx-box fixes: text drawn INTO a
+matplotlib figure PNG spilling outside a hand-drawn box patch (fixed-size
+FancyBboxPatch/Rectangle with a wider `ax.text` on top). Invisible to the two
+pptx checkers. Example: ce_formula's "so only the TRUE class survives" — text
+748px in a fixed 509px patch (+119px each side). New rendering-based checker
+`tools/check_figure_overflow.py` monkeypatches `_save`, draws each figure via the
+Agg renderer, and flags any Text wider than its enclosing box (excludes auto-fit
+bboxes and full-axes-width background panels); 138 renders, 5 real overflows -> 0.
+Preferred fix: give the text its OWN auto-fitting `bbox=` instead of a separate
+fixed patch (ce_formula, confusion_matrix); else widen the patch / drop font
+(dino, guardrails). Run all THREE overflow checks in build/critique verification:
+check_pptx_overlap.py --all, check_text_overflow.py --all, check_figure_overflow.py.
