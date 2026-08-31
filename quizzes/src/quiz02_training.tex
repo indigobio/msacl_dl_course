@@ -214,28 +214,33 @@ and the loss rises; in (d) they shrink and the loss falls.}
 \vspace{2pt}\hrule\vspace{5pt}
 
 % =========================== Q4 ===========================
-\textbf{4. Put the training loop in order.}\; {\small Number these five lines \textbf{1--5} in the
-order they run each iteration (forward $\rightarrow$ loss $\rightarrow$ zero grad $\rightarrow$
-backward $\rightarrow$ step).}
+\textbf{4. Spot the bug.}\; {\small A colleague's training loop runs with no error, but the loss
+\emph{never drops} --- the weights never change at all. All five lines are present, in this order:}
 
 \vspace{4pt}
 \begin{center}
-\begin{tabular}{@{}c@{\quad}l@{\qquad}p{0.42\textwidth}@{}}
-\rb{$4$}{1cm} & \texttt{loss.backward()}        & {\small\itshape backprop the blame} \\[5pt]
-\rb{$1$}{1cm} & \texttt{pred = model(x)}         & {\small\itshape forward --- make a guess} \\[5pt]
-\rb{$5$}{1cm} & \texttt{optimizer.step()}        & {\small\itshape nudge every weight} \\[5pt]
-\rb{$2$}{1cm} & \texttt{loss = loss\_fn(pred, y)}& {\small\itshape how wrong?} \\[5pt]
-\rb{$3$}{1cm} & \texttt{optimizer.zero\_grad()}  & {\small\itshape clear old gradients} \\
+\begin{tabular}{@{}l@{\qquad}p{0.40\textwidth}@{}}
+\texttt{for x, y in loader:}        & {\small\itshape every batch} \\[4pt]
+\hspace{1em}\texttt{pred = model(x)}         & {\small\itshape forward} \\[4pt]
+\hspace{1em}\texttt{loss = loss\_fn(pred, y)} & {\small\itshape how wrong?} \\[4pt]
+\hspace{1em}\texttt{loss.backward()}          & {\small\itshape backprop the blame} \\[4pt]
+\hspace{1em}\texttt{optimizer.zero\_grad()}   & {\small\itshape clear gradients} \\[4pt]
+\hspace{1em}\texttt{optimizer.step()}         & {\small\itshape nudge every weight} \\
 \end{tabular}
 \end{center}
 
-\work{0.3cm}
+{\small (i) Which line is in the \textbf{wrong place}?}\; \rb{\texttt{optimizer.zero\_grad()}}{6cm}\\[4pt]
+{\small (ii) Why does that stop learning, and where should it go?}
 
-\keybox{Correct order: \textbf{1}~\texttt{pred = model(x)}; \textbf{2}~\texttt{loss =
-loss\_fn(pred, y)}; \textbf{3}~\texttt{optimizer.zero\_grad()}; \textbf{4}~\texttt{loss.backward()};
-\textbf{5}~\texttt{optimizer.step()}. The \texttt{zero\_grad()} step matters because PyTorch
-\emph{adds up} gradients --- without clearing them first, last iteration's gradients pile onto
-this one's and corrupt the step.}
+\work{0.5cm}
+
+\keybox{(i) \texttt{optimizer.zero\_grad()} is misplaced --- it runs \emph{after}
+\texttt{loss.backward()}. (ii) \texttt{backward()} computes this batch's gradients and stores them in
+each weight's \texttt{.grad}; \texttt{zero\_grad()} then immediately \textbf{erases} them, so
+\texttt{optimizer.step()} applies all-zero gradients and no weight moves --- the loss stays flat
+forever. Move \texttt{zero\_grad()} to \emph{before} \texttt{backward()} (correct order:
+\texttt{zero\_grad} $\rightarrow$ \texttt{backward} $\rightarrow$ \texttt{step}). Gradients live in
+\texttt{.grad} and must be cleared just \emph{before}, never just after, the backward sweep.}
 
 % =========================== Q5 ===========================
 \textbf{5. Looking ahead (discussion).}\; {\small A short thought question --- one or two sentences

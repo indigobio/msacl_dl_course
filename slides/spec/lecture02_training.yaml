@@ -305,16 +305,20 @@ slides:
 
   - type: image
     eyebrow: "Part four · your turn (you-do = Q4)"
-    title: "Put the training loop in order"
-    image: img/fig_loop_order.png
-    img_h: 3.5
-    callout: {kind: check, text: "Your turn → Quiz 2, Q4. Number these five lines 1–5 in the order they run each iteration (forward → loss → zero_grad → backward → step). Worked answer in the notes."}
+    title: "Spot the bug: why won't this net learn?"
+    image: img/fig_loop_bug.png
+    img_h: 3.6
+    callout: {kind: check, text: "Your turn → Quiz 2, Q4. This loop runs with no error, but the loss never drops — the weights never change. Which line is in the WRONG place, and why does that stop learning? Worked answer in the notes."}
     notes: >
-      YOU-DO = Quiz 2 Q4. Correct order: 1 pred = model(x); 2 loss =
-      loss_fn(pred, y); 3 optimizer.zero_grad(); 4 loss.backward(); 5
-      optimizer.step(). The zero_grad() step matters because PyTorch ADDS UP
-      gradients — without clearing them first, last iteration's gradients pile
-      onto this one's and corrupt the step. Have them fill Q4.
+      YOU-DO = Quiz 2 Q4 — spot-the-bug, NOT put-in-order. All five lines are
+      present; the bug is that optimizer.zero_grad() runs AFTER loss.backward().
+      backward() computes this batch's gradients and stores them in each weight's
+      .grad; zero_grad() then immediately ERASES them; so optimizer.step() applies
+      all-zero gradients and no weight moves — the loss sits flat forever. Fix:
+      move zero_grad() to BEFORE backward() (correct order zero_grad → backward →
+      step). Tie it back to the taught gotcha: gradients live in .grad and must be
+      cleared at the RIGHT moment — just before, never just after, the backward
+      sweep. Poll which line they'd move before revealing, then have them fill Q4.
 
   - type: image
     eyebrow: "Part four · watch it learn"

@@ -1050,6 +1050,22 @@ def training_code(name="fig_training_code.png"):
     _code_figure(rows, name, figsize=(11, 3.8), comment_x=0.50)
 
 
+def loop_bug(name="fig_loop_bug.png"):
+    """You-do = Quiz 2 Q4 (spot-the-bug): zero_grad() is misplaced AFTER
+    backward(), so it erases the fresh gradients and step() changes nothing.
+    All five lines are present and plausible -- the task is reasoning, not order."""
+    rows = [
+        {"code": "for x, y in loader:", "comment": "# every batch", "dim": True},
+        {"code": "    pred = model(x)", "comment": "# forward"},
+        {"code": "    loss = loss_fn(pred, y)", "comment": "# how wrong?"},
+        {"code": "    loss.backward()", "comment": "# backprop the blame"},
+        {"code": "    optimizer.zero_grad()", "comment": "# clear gradients"},
+        {"code": "    optimizer.step()", "comment": "# nudge every weight"},
+    ]
+    _code_figure(rows, name, figsize=(11, 3.8), comment_x=0.62)
+    return
+
+
 def loop_order(name="fig_loop_order.png"):
     """The five lines shuffled with blank number boxes (you-do = Quiz 2 Q4).
     Order matches the quiz exactly so the slide is a faithful cue."""
@@ -5882,6 +5898,7 @@ FUNCS = {
     "loop_cycle": training_loop_cycle,
     "training_code": training_code,
     "loop_order": loop_order,
+    "loop_bug": loop_bug,
     "autograd": autograd_check,
     "loss_fall": loss_fall,
     # ---- Lecture 4 ----
