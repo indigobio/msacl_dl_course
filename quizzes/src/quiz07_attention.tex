@@ -6,9 +6,9 @@
 %  ANSWER TOGGLE
 %  -------------
 %  Student version (answers HIDDEN) — the default:
-%       pdflatex quiz05_attention.tex
+%       pdflatex quiz07_attention.tex
 %  Answer key (answers SHOWN):
-%       pdflatex "\def\showsolutions{}\input{quiz05_attention.tex}"
+%       pdflatex "\def\showsolutions{}\input{quiz07_attention.tex}"
 %  (or, to flip by hand, change \solutionfalse to \solutiontrue below.)
 % =====================================================================
 \documentclass[11pt]{article}
@@ -130,8 +130,9 @@ $w_1 = 0.5 \qquad w_2 = 0.3 \qquad w_3 = 0.2$
 \ifsolution\else\blk{\linewidth}\fi
 
 \keybox{$\text{output} = (0.5)(4) + (0.3)(10) + (0.2)(1) = 2 + 3 + 0.2 = \mathbf{5.2}$. Notice the
-output leans toward $v_2=10$, the token with the biggest weight (0.3) --- that's all attention is:
-blend the values, trusting the highly-weighted tokens more.}
+output leans toward $v_2=10$: its contribution ($0.3\times10=3.0$) is the largest of the three,
+even though $v_1$ carries the biggest weight ($0.5\times4=2.0$) --- that's all attention is:
+blend the values, weighing each by its attention weight.}
 
 \vspace{2pt}\hrule\vspace{5pt}
 

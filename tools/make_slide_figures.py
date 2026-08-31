@@ -2622,6 +2622,8 @@ def build_all():
     class_imbalance()
     # ---- Lecture 5 ----
     _lecture5_figures()
+    # ---- Lecture 7 ----
+    _lecture7_figures()
 
 
 # deck I-do convolution (5x5 image, 3x3 diagonal detector) and the matched
@@ -2685,6 +2687,477 @@ def _lecture5_figures():
     detection_grid()
     peak_detection(reveal=True, name="fig_peak_detection.png")
     peak_detection(reveal=False, name="fig_peak_detection_youdo.png")
+
+
+# ============================================================================
+#  Lecture 7 · Sequence Models and Attention
+#  Hand-authored numeric mechanics (rule 6) + bespoke MS-anchored schematics
+#  (rule 9). Canonical published diagrams (RNN unfold, LSTM cell, multi-head)
+#  are REAL licensed images placed directly in the deck, not drawn here.
+# ============================================================================
+
+def _chip(ax, x, y, w, h, label, face, txt=WHITE, fs=16, edge="none", lw=1.4):
+    """A rounded token chip centred at (x + w/2, y)."""
+    ax.add_patch(FancyBboxPatch(
+        (x, y - h / 2), w, h,
+        boxstyle="round,pad=0.004,rounding_size=0.03",
+        facecolor=face, edgecolor=edge, lw=lw, zorder=3))
+    ax.text(x + w / 2, y, label, ha="center", va="center",
+            color=txt, fontsize=fs, fontweight="bold", zorder=4)
+
+
+def seq_order_matters(name="fig_seq_order.png"):
+    """Why order matters for sequence data (MS-first). Left: the SAME four amino
+    acids in two orders are two different peptides (same mass, different
+    sequence → different molecule). Right: a QC-drift trace across runs — the
+    signal you care about lives in the time order; shuffle it and the drift is
+    gone."""
+    fig, axes = plt.subplots(1, 2, figsize=(11.6, 4.2))
+    ax = axes[0]
+    ax.set_xlim(0, 1); ax.set_ylim(0, 1); ax.axis("off")
+    ax.text(0.5, 0.95, "a peptide is an ordered sequence", ha="center",
+            fontsize=14, color=INK, fontweight="bold")
+
+    def row(y, toks, color, cap):
+        n = len(toks); w = 0.15; gap = 0.025
+        total = n * w + (n - 1) * gap; x0 = 0.5 - total / 2
+        for i, t in enumerate(toks):
+            _chip(ax, x0 + i * (w + gap), y, w, 0.13, t, color, fs=17)
+        ax.text(0.5, y - 0.12, cap, ha="center", va="top",
+                fontsize=12, color=INK_SOFT)
+    row(0.66, ["S", "A", "G", "K"], TEAL, "peptide  SAGK")
+    row(0.30, ["G", "K", "A", "S"], RED, "shuffled  GKAS — a different peptide")
+    ax.annotate("", xy=(0.5, 0.40), xytext=(0.5, 0.50),
+                arrowprops=dict(arrowstyle="-|>", color=MUTED, lw=2))
+    ax.text(0.5, 0.06, "same four residues, same mass — order is the identity",
+            ha="center", fontsize=11.5, color=MUTED, style="italic")
+
+    ax = axes[1]
+    runs = np.arange(1, 9)
+    qc = np.array([100, 101, 103, 104, 106, 108, 109, 111], dtype=float)
+    ax.plot(runs, qc, "-o", color=TEAL, lw=2.6, ms=7, zorder=3,
+            solid_capstyle="round")
+    ax.annotate("drift", xy=(7.2, 110), xytext=(4.4, 111.4), color=RED,
+                fontsize=13, fontweight="bold",
+                arrowprops=dict(arrowstyle="-|>", color=RED, lw=2))
+    ax.set_xlim(0.5, 8.5); ax.set_ylim(98, 113)
+    ax.set_xlabel("run number (time order) →", fontsize=12)
+    ax.set_ylabel("QC value", fontsize=12)
+    ax.set_yticks([])
+    ax.set_xticks(runs)
+    ax.set_title("QC drift across runs", fontsize=14, color=INK,
+                 fontweight="bold")
+    for sp in ("top", "right"):
+        ax.spines[sp].set_visible(False)
+    ax.text(0.5, -0.22, "shuffle the runs and the drift vanishes — the\ninformation is in the order",
+            transform=ax.transAxes, ha="center", va="top",
+            fontsize=11.5, color=MUTED, style="italic")
+    fig.subplots_adjust(bottom=0.2, wspace=0.25)
+    _save(fig, name)
+
+
+def tokenize_peptide(name="fig_tokenize.png"):
+    """Tokenization by analogy: a sentence splits into word tokens; a peptide
+    splits into amino-acid tokens, each mapped to an integer ID from a fixed
+    vocabulary. 'A peptide is a sentence; amino acids are the words.'"""
+    fig, ax = plt.subplots(figsize=(11.6, 4.3))
+    ax.set_xlim(0, 1); ax.set_ylim(0, 1); ax.axis("off")
+
+    def strip(y, items, color, label, ids=None):
+        n = len(items); w = 0.135; gap = 0.02
+        total = n * w + (n - 1) * gap; x0 = 0.52 - total / 2
+        ax.text(0.06, y, label, ha="left", va="center", fontsize=13,
+                color=INK_SOFT, fontweight="bold")
+        for i, t in enumerate(items):
+            x = x0 + i * (w + gap)
+            _chip(ax, x, y, w, 0.12, t, color, fs=15)
+            if ids is not None:
+                ax.text(x + w / 2, y - 0.10, f"id {ids[i]}", ha="center",
+                        va="top", fontsize=10, color=MUTED, family="monospace")
+    strip(0.80, ["The", "assay", "flags", "MRSA"], INK_SOFT,
+          "sentence →")
+    ax.annotate("", xy=(0.52, 0.60), xytext=(0.52, 0.70),
+                arrowprops=dict(arrowstyle="-|>", color=MUTED, lw=2))
+    ax.text(0.60, 0.65, "same idea", ha="left", va="center",
+            fontsize=11, color=MUTED, style="italic")
+    strip(0.40, list("ACDEFG"), TEAL, "peptide →",
+          ids=[1, 2, 3, 4, 5, 6])
+    ax.text(0.5, 0.14,
+            "each token → an integer ID from a fixed vocabulary  ·  "
+            "a peptide is a sentence, amino acids are the words",
+            ha="center", fontsize=12, color=INK_SOFT)
+    ax.text(0.5, 0.04,
+            "modified residues (phospho-S, oxidised-M) just get their own token IDs",
+            ha="center", fontsize=10.5, color=MUTED, style="italic")
+    _save(fig, name)
+
+
+def embedding_space(name="fig_embedding.png"):
+    """Embeddings: each token becomes coordinates, and chemically similar
+    residues end up near each other — learned from data, not hand-set. Four
+    plain clusters (hydrophobic / acidic / basic / polar)."""
+    fig, ax = plt.subplots(figsize=(10.4, 5.0))
+    groups = {
+        "hydrophobic": (TEAL, [("A", 1.1, 1.3), ("V", 1.5, 1.9),
+                               ("L", 1.9, 1.4), ("I", 1.4, 1.0),
+                               ("F", 2.1, 1.9)]),
+        "acidic (−)": (RED, [("D", 4.5, 3.9), ("E", 4.9, 3.4)]),
+        "basic (+)": (AMBER, [("K", 4.4, 1.2), ("R", 4.9, 1.7),
+                              ("H", 4.2, 1.9)]),
+        "polar": (MUTED, [("S", 1.4, 3.8), ("T", 1.9, 3.4),
+                          ("N", 1.1, 3.1), ("Q", 2.0, 4.1)]),
+    }
+    for gname, (color, pts) in groups.items():
+        xs = [p[1] for p in pts]; ys = [p[2] for p in pts]
+        cx, cy = np.mean(xs), np.mean(ys)
+        ax.add_patch(plt.matplotlib.patches.Ellipse(
+            (cx, cy), max(np.ptp(xs), 0.8) + 1.2, max(np.ptp(ys), 0.8) + 1.2,
+            facecolor=color, alpha=0.10, edgecolor=color, lw=1.4,
+            zorder=1))
+        ax.text(cx, cy + max(np.ptp(ys), 0.8) / 2 + 0.75, gname, ha="center",
+                color=color, fontsize=12.5, fontweight="bold", zorder=2)
+        for lab, x, y in pts:
+            ax.scatter([x], [y], s=520, color=color, zorder=3,
+                       edgecolor=WHITE, linewidth=1.5)
+            ax.text(x, y, lab, ha="center", va="center", color=WHITE,
+                    fontsize=13, fontweight="bold", zorder=4)
+    ax.set_xlim(0, 6); ax.set_ylim(0, 5.4)
+    ax.set_xticks([]); ax.set_yticks([])
+    ax.set_xlabel("embedding dimension 1 →", fontsize=12)
+    ax.set_ylabel("embedding dimension 2 →", fontsize=12)
+    ax.set_title("each amino-acid token → coordinates; similar residues sit near each other",
+                 fontsize=13.5, color=INK, fontweight="bold")
+    ax.text(0.5, -0.12,
+            "the coordinates are LEARNED from data — the model discovers the chemistry, we don’t hand it in",
+            transform=ax.transAxes, ha="center", color=MUTED, fontsize=11.5,
+            style="italic")
+    fig.subplots_adjust(bottom=0.16)
+    _save(fig, name)
+
+
+def selfattn_all_to_all(name="fig_selfattn_alltoall.png"):
+    """The big idea: every token looks at every other token and decides what is
+    relevant. One query token's links to all tokens are highlighted; the rest
+    of the all-pairs mesh is faint."""
+    # Same 4-token sentence as the heat-map I-do (fig_attn_heatmap_ido) so the
+    # illustrative example is continuous slide-to-slide (no dropped "the").
+    toks = ["peptide", "eluted", "because", "it"]
+    n = len(toks)
+    xs = np.linspace(1.2, 10.8, n)
+    y = 1.4
+    fig, ax = plt.subplots(figsize=(11.6, 4.2))
+    ax.set_xlim(0, 12); ax.set_ylim(0, 4.4); ax.axis("off")
+    q = n - 1  # the query token "it" (last token)
+    # faint all-pairs mesh
+    for i in range(n):
+        for j in range(i + 1, n):
+            ax.plot([xs[i], xs[j]], [y, y], color=HAIRLINE, lw=1.0,
+                    zorder=1)
+    # highlighted arcs from the query to every token
+    for j in range(n):
+        if j == q:
+            continue
+        xm = (xs[q] + xs[j]) / 2
+        rad = 0.55 if xs[j] < xs[q] else 0.55
+        ax.annotate("", xy=(xs[j], y + 0.28), xytext=(xs[q], y + 0.28),
+                    arrowprops=dict(arrowstyle="-|>", color=TEAL, lw=2,
+                                    connectionstyle=f"arc3,rad={0.45 if xs[j]<xs[q] else -0.45}"),
+                    zorder=2)
+    for i, t in enumerate(toks):
+        face = AMBER if i == q else TEAL_SOFT
+        txt = WHITE if i == q else INK
+        _chip(ax, xs[i] - 0.55, y, 1.1, 0.5, t, face, txt=txt, fs=15,
+              edge=AMBER if i == q else HAIRLINE, lw=1.5)
+    ax.text(xs[q], 0.55, "query: “it” looks at every token", ha="center",
+            color=ROI_INK, fontsize=12.5, fontweight="bold")
+    ax.text(6, 3.9, "self-attention: every token looks at every other and decides what’s relevant",
+            ha="center", color=INK, fontsize=13.5, fontweight="bold")
+    _save(fig, name)
+
+
+def qkv_lookup(reveal=True, name="fig_qkv.png"):
+    """The query/key/value soft-lookup analogy. Three role cards carry the
+    plain-language phrases; a one-line pipeline shows how they combine. When
+    reveal=False the Q/K/V names are blanked ('?') — the you-do match (Quiz 7
+    Q3)."""
+    roles = [
+        ("Query", "what I'm looking for", TEAL),
+        ("Key", "what I contain, so others\ncan decide if I'm relevant", AMBER),
+        ("Value", "what I give you once\nyou've decided I'm relevant", RED),
+    ]
+    if not reveal:
+        # You-do (Quiz 7 Q3): neutralize the box colors and shuffle the phrase
+        # order so the match is on the LANGUAGE, not the palette or position —
+        # the I-do reveal (teal/amber/red in Q/K/V order) must not telegraph it.
+        roles = [
+            ("Value", roles[2][1], MUTED),
+            ("Query", roles[0][1], MUTED),
+            ("Key",   roles[1][1], MUTED),
+        ]
+    fig, ax = plt.subplots(figsize=(11.6, 4.6))
+    ax.set_xlim(0, 12); ax.set_ylim(0, 5); ax.axis("off")
+    cx = [2.2, 6.0, 9.8]
+    for (role, phrase, color), x in zip(roles, cx):
+        ax.add_patch(FancyBboxPatch((x - 1.7, 2.3), 3.4, 2.2,
+                    boxstyle="round,pad=0.02,rounding_size=0.08",
+                    facecolor=WHITE, edgecolor=color, lw=2.4, zorder=2))
+        ax.add_patch(FancyBboxPatch((x - 1.7, 3.85), 3.4, 0.65,
+                    boxstyle="round,pad=0.02,rounding_size=0.08",
+                    facecolor=color, edgecolor=color, lw=2.4, zorder=3))
+        head = role if reveal else "?"
+        ax.text(x, 4.16, head, ha="center", va="center", color=WHITE,
+                fontsize=18, fontweight="bold", zorder=4)
+        ax.text(x, 3.05, phrase, ha="center", va="center", color=INK_SOFT,
+                fontsize=13, zorder=4)
+    # one-line pipeline of how they combine (role names hidden in the you-do so
+    # the match isn't given away)
+    pipe = ("score = Query · Key   →   softmax → weights   →   output = Σ weight × Value"
+            if reveal else
+            "compare, then blend:   score →   softmax → weights   →   output = Σ weight × (what a token gives)")
+    ax.text(6, 1.5, pipe, ha="center", va="center", color=INK, fontsize=14,
+            fontweight="bold")
+    ax.text(6, 0.7,
+            "a soft lookup: match my query against every key, then blend the values by how well they matched",
+            ha="center", va="center", color=MUTED, fontsize=11.5,
+            style="italic")
+    if not reveal:
+        ax.text(6, 4.85, "match each phrase to Query · Key · Value",
+                ha="center", color=ROI_INK, fontsize=12.5, fontweight="bold")
+    _save(fig, name)
+
+
+def attention_heatmap(kind="sentence", name="fig_attn_heatmap.png"):
+    """Reading an attention heat map. kind='sentence' draws the full query×key
+    matrix for a 4-token sentence and rings the 'it' query row; kind='peptide'
+    draws the single query=K row over A-C-D-E-K — the exact numbers on Quiz 7
+    Q1 (weights 0.05, 0.05, 0.35, 0.45, 0.10), so figure and key agree."""
+    if kind == "sentence":
+        toks = ["peptide", "eluted", "because", "it"]
+        M = [[0.55, 0.20, 0.05, 0.20],
+             [0.30, 0.45, 0.10, 0.15],
+             [0.15, 0.30, 0.40, 0.15],
+             [0.60, 0.15, 0.10, 0.15]]
+        n = len(toks); cell = 1.0
+        fig, ax = plt.subplots(figsize=(8.6, 5.0))
+        ax.set_xlim(-2.4, n + 0.4); ax.set_ylim(-1.4, n + 0.6)
+        ax.axis("off")
+        for r in range(n):
+            for c in range(n):
+                w = M[r][c]
+                op = min(w * 1.7, 0.92)
+                x = c; yy = n - 1 - r
+                ax.add_patch(plt.Rectangle((x, yy), 0.94, 0.94,
+                             facecolor=TEAL, alpha=op, edgecolor=HAIRLINE,
+                             lw=1.0, zorder=2))
+                ax.text(x + 0.47, yy + 0.47, f"{w:.2f}", ha="center",
+                        va="center", fontsize=13,
+                        color=WHITE if op > 0.5 else INK_SOFT,
+                        fontweight="bold", zorder=3)
+            ax.text(-0.15, n - 1 - r + 0.47, toks[r], ha="right", va="center",
+                    fontsize=13, color=INK, fontweight="bold")
+        for c in range(n):
+            ax.text(c + 0.47, n + 0.12, toks[c], ha="center", va="bottom",
+                    fontsize=12, color=INK_SOFT, rotation=30)
+        # ring the query row for "it" (last token, bottom row)
+        ax.add_patch(plt.Rectangle((-0.03, -0.03), n * cell + 0.0, 0.94 + 0.06,
+                     fill=False, edgecolor=AMBER, lw=3.0, zorder=5))
+        ax.text(n + 0.25, 0.47, "query = “it”", ha="left", va="center",
+                color=ROI_INK, fontsize=12.5, fontweight="bold")
+        ax.text((n) / 2.0, -1.15,
+                "rows = query token · columns = key token · darker = more · each row sums to 1",
+                ha="center", fontsize=11.5, color=INK_SOFT)
+        _save(fig, name)
+    else:  # peptide single row — mirrors Quiz 7 Q1 exactly
+        toks = ["A", "C", "D", "E", "K"]
+        wts = [0.05, 0.05, 0.35, 0.45, 0.10]
+        n = len(toks)
+        fig, ax = plt.subplots(figsize=(10.4, 3.4))
+        ax.set_xlim(-0.4, n + 0.6); ax.set_ylim(-1.5, 1.9)
+        ax.axis("off")
+        for i, (t, w) in enumerate(zip(toks, wts)):
+            op = min(w * 1.8, 0.92)
+            ax.add_patch(plt.Rectangle((i, 0), 0.94, 0.94, facecolor=TEAL,
+                         alpha=op, edgecolor=HAIRLINE, lw=1.1, zorder=2))
+            ax.text(i + 0.47, 0.47, f"{w:.2f}", ha="center", va="center",
+                    fontsize=15, color=WHITE if op > 0.5 else INK_SOFT,
+                    fontweight="bold", zorder=3)
+            ax.text(i + 0.47, 1.25, t, ha="center", va="center", fontsize=18,
+                    color=INK, fontweight="bold")
+        ax.annotate("", xy=(n - 0.05, -0.15), xytext=(n - 0.94 + 0.05, -0.15),
+                    arrowprops=dict(arrowstyle="-", color=ROI_INK, lw=2))
+        ax.text(n - 0.5, -0.55, "query = K", ha="center", va="top",
+                color=ROI_INK, fontsize=13, fontweight="bold")
+        ax.text(n / 2.0, -1.25,
+                "how much the last token K attends to each residue  ·  darker = more  ·  weights sum to 1",
+                ha="center", fontsize=12, color=INK_SOFT)
+        _save(fig, name)
+
+
+def attention_formula(name="fig_attn_formula.png"):
+    """State the two rules BEFORE any slide asks a number of them (rule 3):
+    weights = softmax(scores)  and  output = Σ weight×value. The softmax formula
+    is a Lecture 4 callback; the weighted average is the new, hand-computable
+    step the quiz drills."""
+    fig, ax = plt.subplots(figsize=(10.8, 4.3))
+    ax.set_xlim(0, 1); ax.set_ylim(0, 1); ax.axis("off")
+    ax.text(0.5, 0.92, "attention output, in two steps", ha="center",
+            color=INK, fontsize=16, fontweight="bold")
+    ax.add_patch(FancyBboxPatch((0.08, 0.60), 0.84, 0.18,
+                boxstyle="round,pad=0.01,rounding_size=0.03",
+                facecolor="#F1F1EC", edgecolor=HAIRLINE, lw=1.3))
+    ax.text(0.5, 0.69,
+            r"1.  weights $=$ softmax(scores),   "
+            r"$\mathrm{softmax}_i=\dfrac{e^{s_i}}{\sum_j e^{s_j}}$",
+            ha="center", va="center", fontsize=17, color=INK_SOFT)
+    ax.text(0.5, 0.52, "(the Lecture 4 softmax — turns scores into weights that sum to 1)",
+            ha="center", va="center", fontsize=11.5, color=MUTED,
+            style="italic")
+    ax.add_patch(FancyBboxPatch((0.08, 0.26), 0.84, 0.18,
+                boxstyle="round,pad=0.01,rounding_size=0.03",
+                facecolor=TEAL_SOFT, edgecolor=TEAL, lw=1.6))
+    ax.text(0.5, 0.35,
+            r"2.  output $=\sum_i$ weight$_i\times$value$_i$",
+            ha="center", va="center", fontsize=20, color=TEAL,
+            fontweight="bold")
+    ax.text(0.5, 0.14,
+            "a weighted average of the values — trust the highly-weighted tokens more",
+            ha="center", va="center", fontsize=13, color=INK_SOFT)
+    _save(fig, name)
+
+
+def attention_weighted_avg(weights, values, output, name,
+                           scores=None, reveal=True, tokens=None):
+    """The centerpiece numeric mechanic (rule 6): scores → softmax → weights,
+    then output = Σ weight×value, worked cell by cell for 3 tokens.
+    scores=None hides the softmax step (the you-do gives weights directly,
+    matching Quiz 7 Q2). reveal=False leaves the output as '?'."""
+    n = len(values)
+    tokens = tokens or [f"token {i+1}" for i in range(n)]
+    xs = np.linspace(2.4, 9.6, n)
+    fig, ax = plt.subplots(figsize=(11.4, 5.0))
+    ax.set_xlim(0, 12); ax.set_ylim(0, 5.4); ax.axis("off")
+
+    def label(y, txt, color=INK_SOFT):
+        ax.text(0.5, y, txt, ha="left", va="center", fontsize=12.5,
+                color=color, fontweight="bold")
+    # token headers
+    for i, t in enumerate(tokens):
+        ax.text(xs[i], 5.05, t, ha="center", va="center", fontsize=12,
+                color=MUTED)
+    y_score, y_w, y_v = 4.4, 3.4, 2.4
+    if scores is not None:
+        label(y_score, "score  s")
+        for i, s in enumerate(scores):
+            _chip(ax, xs[i] - 0.5, y_score, 1.0, 0.55, f"{s:g}", INK_SOFT,
+                  fs=15)
+        ax.text(6, (y_score + y_w) / 2 + 0.02, "softmax  ↓", ha="center",
+                color=TEAL, fontsize=12.5, fontweight="bold", style="italic")
+    label(y_w, "weight  w")
+    for i, w in enumerate(weights):
+        _chip(ax, xs[i] - 0.5, y_w, 1.0, 0.55, f"{w:g}", TEAL, fs=15)
+    label(y_v, "value  v")
+    for i, v in enumerate(values):
+        _chip(ax, xs[i] - 0.5, y_v, 1.0, 0.55, f"{v:g}", AMBER, fs=15)
+    # computation line
+    terms = "  +  ".join(f"{w:g}·{v:g}" for w, v in zip(weights, values))
+    if reveal:
+        prods = [w * v for w, v in zip(weights, values)]
+        prodstr = "  +  ".join(f"{p:g}" for p in prods)
+        comp = f"output = {terms} = {prodstr} = {output:g}"
+    else:
+        comp = f"output = {terms} = ?"
+    ax.add_patch(FancyBboxPatch((0.4, 0.75), 11.2, 0.95,
+                boxstyle="round,pad=0.02,rounding_size=0.04",
+                facecolor=TEAL_SOFT if reveal else "#F1F1EC",
+                edgecolor=TEAL if reveal else HAIRLINE, lw=1.6))
+    ax.text(6, 1.22, comp, ha="center", va="center",
+            color=INK if reveal else INK_SOFT, fontsize=13.5,
+            fontweight="bold", family="monospace")
+    tag = ("blend the values, trusting the highly-weighted token most"
+           if reveal else "weights are given — just blend the values")
+    ax.text(6, 0.28, tag, ha="center", color=MUTED, fontsize=11.5,
+            style="italic")
+    _save(fig, name)
+
+
+def rnn_vs_attention(name="fig_rnn_vs_attention.png"):
+    """Why attention beat recurrence, in one comparison. Left: recurrence passes
+    a hidden state token by token — sequential (slow) and the earliest token
+    fades (forgetful). Right: self-attention links all pairs at once — parallel
+    and long-range (token 1 ↔ token 5 in one hop)."""
+    toks = ["t1", "t2", "t3", "t4", "t5"]
+    n = len(toks)
+    fig, axes = plt.subplots(1, 2, figsize=(11.8, 4.4))
+    xs = np.linspace(0.9, 5.1, n)
+    y = 2.3
+    # left: recurrence
+    ax = axes[0]
+    ax.set_xlim(0, 6); ax.set_ylim(0, 4.4); ax.axis("off")
+    ax.text(3, 4.1, "recurrence (RNN / LSTM)", ha="center", color=INK,
+            fontsize=14, fontweight="bold")
+    for i in range(n - 1):
+        ax.annotate("", xy=(xs[i + 1] - 0.4, y), xytext=(xs[i] + 0.4, y),
+                    arrowprops=dict(arrowstyle="-|>", color=INK_SOFT, lw=2))
+    for i, t in enumerate(toks):
+        _chip(ax, xs[i] - 0.4, y, 0.8, 0.6, t, TEAL_SOFT, txt=INK, fs=13,
+              edge=TEAL, lw=1.4)
+    # fading long-range arc t1 -> t5
+    ax.annotate("", xy=(xs[4], y + 0.5), xytext=(xs[0], y + 0.5),
+                arrowprops=dict(arrowstyle="-|>", color=RED, lw=1.4,
+                                alpha=0.4, connectionstyle="arc3,rad=-0.4"))
+    ax.text(3, y + 1.35, "early tokens fade (forgetful)", ha="center",
+            color=RED, fontsize=11.5, fontweight="bold")
+    ax.text(3, 0.7, "step 5 must wait for steps 1–4 (slow, one at a time)",
+            ha="center", color=MUTED, fontsize=11.5, style="italic")
+    # right: self-attention
+    ax = axes[1]
+    ax.set_xlim(0, 6); ax.set_ylim(0, 4.4); ax.axis("off")
+    ax.text(3, 4.1, "self-attention", ha="center", color=INK, fontsize=14,
+            fontweight="bold")
+    for i in range(n):
+        for j in range(i + 1, n):
+            rad = -0.25 * (j - i)
+            ax.annotate("", xy=(xs[j], y + 0.32), xytext=(xs[i], y + 0.32),
+                        arrowprops=dict(arrowstyle="-", color=TEAL, lw=1.0,
+                                        alpha=0.45,
+                                        connectionstyle=f"arc3,rad={rad}"),
+                        zorder=1)
+    for i, t in enumerate(toks):
+        _chip(ax, xs[i] - 0.4, y, 0.8, 0.6, t, TEAL_SOFT, txt=INK, fs=13,
+              edge=TEAL, lw=1.4)
+    ax.annotate("", xy=(xs[4], y + 0.55), xytext=(xs[0], y + 0.55),
+                arrowprops=dict(arrowstyle="-|>", color=TEAL, lw=2.2,
+                                connectionstyle="arc3,rad=-0.5"))
+    ax.text(3, y + 1.35, "token 1 ↔ token 5 in one hop (long-range)",
+            ha="center", color=TEAL, fontsize=11.5, fontweight="bold")
+    ax.text(3, 0.7, "all pairs computed at once (parallel, fast on a GPU)",
+            ha="center", color=MUTED, fontsize=11.5, style="italic")
+    _save(fig, name)
+
+
+def _lecture7_figures():
+    seq_order_matters()
+    tokenize_peptide()
+    embedding_space()
+    selfattn_all_to_all()
+    qkv_lookup(reveal=True, name="fig_qkv_ido.png")
+    qkv_lookup(reveal=False, name="fig_qkv_youdo.png")
+    attention_heatmap("sentence", "fig_attn_heatmap_ido.png")
+    attention_heatmap("peptide", "fig_attn_heatmap_youdo.png")
+    attention_formula()
+    # I-do: scores [1,2,0] -> softmax weights [0.24,0.67,0.09]; values [5,10,0]
+    #  output = 0.24·5 + 0.67·10 + 0.09·0 = 1.2 + 6.7 + 0 = 7.9
+    attention_weighted_avg([0.24, 0.67, 0.09], [5, 10, 0], 7.9,
+                           "fig_attn_weightedavg_ido.png",
+                           scores=[1, 2, 0], reveal=True,
+                           tokens=["token 1", "token 2", "token 3"])
+    # you-do = Quiz 7 Q2: weights [0.5,0.3,0.2] given, values [4,10,1]
+    #  output = 0.5·4 + 0.3·10 + 0.2·1 = 2 + 3 + 0.2 = 5.2
+    attention_weighted_avg([0.5, 0.3, 0.2], [4, 10, 1], 5.2,
+                           "fig_attn_weightedavg_youdo.png",
+                           scores=None, reveal=False,
+                           tokens=["token 1", "token 2", "token 3"])
+    rnn_vs_attention()
 
 
 FUNCS = {
@@ -2784,6 +3257,32 @@ FUNCS = {
         peak_detection(reveal=True, name="fig_peak_detection.png"),
         peak_detection(reveal=False, name="fig_peak_detection_youdo.png"),
     ),
+    # ---- Lecture 7 ----
+    "attention": _lecture7_figures,
+    "seq_order": seq_order_matters,
+    "tokenize": tokenize_peptide,
+    "embedding": embedding_space,
+    "selfattn": selfattn_all_to_all,
+    "qkv": lambda: (
+        qkv_lookup(reveal=True, name="fig_qkv_ido.png"),
+        qkv_lookup(reveal=False, name="fig_qkv_youdo.png"),
+    ),
+    "attn_heatmap": lambda: (
+        attention_heatmap("sentence", "fig_attn_heatmap_ido.png"),
+        attention_heatmap("peptide", "fig_attn_heatmap_youdo.png"),
+    ),
+    "attn_formula": attention_formula,
+    "attn_weightedavg": lambda: (
+        attention_weighted_avg([0.24, 0.67, 0.09], [5, 10, 0], 7.9,
+                               "fig_attn_weightedavg_ido.png",
+                               scores=[1, 2, 0], reveal=True,
+                               tokens=["token 1", "token 2", "token 3"]),
+        attention_weighted_avg([0.5, 0.3, 0.2], [4, 10, 1], 5.2,
+                               "fig_attn_weightedavg_youdo.png",
+                               scores=None, reveal=False,
+                               tokens=["token 1", "token 2", "token 3"]),
+    ),
+    "rnn_vs_attn": rnn_vs_attention,
 }
 
 
