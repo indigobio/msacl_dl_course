@@ -85,7 +85,28 @@ slides:
       flag it); in ML you show examples and the machine writes the rule itself
       (part 1). Part 5 is the one clinicians must never forget: performance is
       only real on data the model has NOT seen — hammered in Lecture 10 with
-      external validation.
+      external validation. Next slide is a 60-second do-it-together to pin down
+      the boundary before we go further.
+
+  - type: bullets
+    eyebrow: "What ML is · do-it-together (60 sec)"
+    title: "Is this machine learning? Vote 👍 / 👎"
+    bullets:
+      - "1 · `if peak_area > 500: flag as positive` — a threshold you wrote"
+      - "2 · Fit on 900 labeled spectra to predict resistant vs. susceptible"
+      - "3 · Average three replicate intensities into one cleaner number"
+    callout: {kind: check, text: "Thumbs up = machine learning, thumbs down = not. Vote on each — what's the deciding test? Answers in the notes."}
+    notes: >
+      DO-IT-TOGETHER, 60 seconds — the first hands-on beat of the course, run it
+      before the neuron math so the room is active early. The deciding test is
+      part 1 of the definition: did a RULE get LEARNED FROM EXAMPLES? (1) 👎 NOT
+      ML — you hand-wrote the threshold; no learning, no examples. (2) 👍 ML — the
+      resistant/susceptible rule is learned from 900 labeled spectra, exactly the
+      Lab 2 setup. (3) 👎 NOT ML — averaging is data processing; nothing is
+      learned and nothing predicts an unseen sample. Harvest one vote per item,
+      then name the test aloud: "learned from examples" is the line. This is the
+      same learned-vs-engineered idea Q4/Q5 assess later — no new quiz item
+      needed.
 
   - type: two-col
     eyebrow: "What ML is · statistics → ML → AI"
@@ -185,15 +206,19 @@ slides:
 
   - type: image
     eyebrow: "The neuron · your turn (you-do)"
-    title: "Name that activation"
-    image: img/fig_activations_quiz.png
-    callout: {kind: check, text: "Your turn → Quiz 1, Q1. Write the name under each curve — ReLU · Sigmoid · Linear. 45 seconds — answer in the notes."}
+    title: "Pick the activation — then compute one"
+    image: img/fig_activation_apply.png
+    callout: {kind: check, text: "Your turn → Quiz 1, Q1. Your MRSA classifier's FINAL neuron must output a 0–1 probability of resistant: which curve goes there? Then compute ReLU(−3) and sigmoid(0). 90 seconds — answers in the notes."}
     notes: >
-      YOU-DO = Quiz 1 Q1 (same three shapes as the I-do, re-ordered so it is real
-      practice, not copying). Answers: (a) Sigmoid — the S-curve squashing every
-      input into 0–1; (b) ReLU — flat at zero for negatives, then rising with
-      slope 1, i.e. max(0, z); (c) Linear — a straight diagonal, no nonlinearity
-      at all. Have them fill Q1 on the quiz sheet now.
+      YOU-DO = Quiz 1 Q1 — an apply/decide item, NOT naming. Three tasks: (i)
+      which activation belongs on the final neuron of a resistant-vs-susceptible
+      classifier? Answer: (a) the SIGMOID — it is the only curve whose output is
+      squeezed into (0, 1), so it reads as a probability; ReLU is unbounded above
+      and Linear is unbounded both ways, so neither can be a probability. (ii)
+      ReLU(−3) = max(0, −3) = 0 — the neuron is silent (the on/off idea again).
+      (iii) sigmoid(0) = 1/(1+e^0) = 0.5 — maximally uncertain, a coin flip. The
+      point: shape → range → job. Poll the room on (i) before revealing, then have
+      them fill Q1 on the sheet.
 
   - type: image
     eyebrow: "The neuron · worked by hand (I-do)"

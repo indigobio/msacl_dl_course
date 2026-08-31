@@ -132,6 +132,30 @@ def activations(labeled=True, name="fig_activations.png",
     _save(fig, name)
 
 
+def activation_apply(name="fig_activation_apply.png"):
+    """You-do (apply/decide): three LABELED curves + a scenario (which one gives a
+    0-1 probability?) and two concrete activation computations. Replaces the old
+    'name that activation' recall task with reasoning + arithmetic."""
+    names = {"relu": "ReLU", "sigmoid": "Sigmoid", "linear": "Linear"}
+    colors = {"relu": TEAL, "sigmoid": AMBER, "linear": RED}
+    order = ("sigmoid", "relu", "linear")
+    prompts = {"sigmoid": "sigmoid(0) = ?", "relu": "ReLU(\u22123) = ?", "linear": ""}
+    fig, axes = plt.subplots(1, 3, figsize=(11, 3.7))
+    tags = ["(a)", "(b)", "(c)"]
+    for i, (ax, kind) in enumerate(zip(axes, order)):
+        _draw_activation(ax, kind, colors[kind])
+        ax.set_title(f"{tags[i]}  {names[kind]}", color=INK, fontsize=20,
+                     fontweight="bold", pad=10)
+        if prompts[kind]:
+            ax.text(0.5, -0.13, prompts[kind], transform=ax.transAxes,
+                    ha="center", va="top", color=INK_SOFT, fontsize=16,
+                    fontweight="bold")
+    fig.suptitle("Which curve gives a 0\u20131 probability for the final neuron?",
+                 color=TEAL, fontsize=18, fontweight="bold", y=1.03)
+    fig.subplots_adjust(wspace=0.12, top=0.80, bottom=0.14)
+    _save(fig, name)
+
+
 # ---- one-neuron schematic ---------------------------------------------------
 def neuron_schematic(x1, x2, w1, w2, b, act, z_txt, y_txt, name):
     """Input nodes -> weighted edges -> sum node (z) -> activation -> output."""
@@ -5810,6 +5834,7 @@ FUNCS = {
     "activations": lambda: (
         activations(True, "fig_activations.png", ("relu", "sigmoid", "linear")),
         activations(False, "fig_activations_quiz.png", ("sigmoid", "relu", "linear")),
+        activation_apply("fig_activation_apply.png"),
     ),
     "neuron": lambda: (
         neuron_schematic(3, 2, 2, -1, 1, "ReLU", "5", "5", "fig_neuron_ido.png"),

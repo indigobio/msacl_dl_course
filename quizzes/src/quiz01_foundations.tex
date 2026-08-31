@@ -62,8 +62,9 @@ show your work on the blanks. No calculators needed.%
 \vspace{-2pt}\hrule\vspace{5pt}
 
 % =========================== Q1 ===========================
-\textbf{1. Name that activation.}\; {\small Write the correct name under each curve, using the
-word bank.}
+\textbf{1. Pick the activation, then compute.}\; {\small Your MRSA classifier's \emph{final} neuron
+must output a probability between $0$ and $1$ that the isolate is \emph{resistant}. The three
+activation shapes are below.}
 
 \vspace{3pt}
 \begin{center}
@@ -74,7 +75,7 @@ word bank.}
   \axes
   \draw[very thick, samples=80, domain=-1.5:1.85] plot (\x,{1.2/(1+exp(-4*\x))});
 \end{tikzpicture}\\[2pt]
-(a)\;\; \rb{Sigmoid}{2.1cm}
+(a) Sigmoid
 \end{minipage}\hfill
 %
 \begin{minipage}[t]{0.31\linewidth}\centering
@@ -82,7 +83,7 @@ word bank.}
   \axes
   \draw[very thick] (-1.5,0)--(0,0)--(1.35,1.35);
 \end{tikzpicture}\\[2pt]
-(b)\;\; \rb{ReLU}{2.1cm}
+(b) ReLU
 \end{minipage}\hfill
 %
 \begin{minipage}[t]{0.31\linewidth}\centering
@@ -90,18 +91,21 @@ word bank.}
   \axes
   \draw[very thick] (-1.4,-0.8)--(1.4,1.3);
 \end{tikzpicture}\\[2pt]
-(c)\;\; \rb{Linear}{2.1cm}
+(c) Linear
 \end{minipage}
 \end{center}
 
-\vspace{1pt}
-\begin{center}
-{\small \textbf{Word bank:}\;\; ReLU \;$\cdot$\; Sigmoid \;$\cdot$\; Linear (no activation)}
-\end{center}
+\vspace{4pt}
+{\small (i) Which curve --- (a), (b), or (c) --- belongs on that final neuron, and why?}\\[2pt]
+\hspace*{1.5em}\rb{(a) Sigmoid --- its output is squeezed into $(0,1)$, so it reads as a probability}{10.5cm}\\[6pt]
+{\small (ii) A hidden \textbf{ReLU} neuron receives weighted sum $z=-3$. Its output $=$}\;\; \rb{$0$}{1.6cm}\\[6pt]
+{\small (iii) The final \textbf{sigmoid} neuron receives $z=0$. The probability it reports $\approx$}\;\; \rb{$0.5$}{1.6cm}
 
-\keybox{(a) Sigmoid, (b) ReLU, (c) Linear. The sigmoid is the S-curve squashing every input
-into $(0,1)$; ReLU is flat at zero for negatives then rises with slope $1$, i.e.\ $\max(0,z)$;
-a straight diagonal through the origin applies no nonlinearity at all.}
+\keybox{(i) Curve \textbf{(a), the sigmoid} --- it is the only activation whose output is bounded
+to $(0,1)$, so it can be read as a probability; ReLU is unbounded above and the linear line is
+unbounded both ways, so neither can report a probability. (ii) $\operatorname{ReLU}(-3)=\max(0,-3)=0$
+--- the neuron is silent. (iii) $\operatorname{sigmoid}(0)=1/(1+e^{0})=1/2=0.5$ --- maximally
+uncertain, a coin flip.}
 
 \vspace{2pt}\hrule\vspace{5pt}
 
