@@ -1,0 +1,222 @@
+% =====================================================================
+%  MSACL DS301 Deep Learning · Lecture 10 · Architecture Matchmaker
+%  WORKSHEET (this lecture has NO quiz — the worksheet is the assessment)
+%  Academic problem-set style (single-source, \ifsolution toggle)
+%  SINGLE SOURCE — produces BOTH the student worksheet and the answer key.
+%
+%  ANSWER TOGGLE
+%  -------------
+%  Student version (suggested answers HIDDEN) — the default:
+%       pdflatex worksheet10_architecture_matchmaker.tex
+%  Answer key (suggested answers SHOWN):
+%       pdflatex "\def\showsolutions{}\input{worksheet10_architecture_matchmaker.tex}"
+%  (or, to flip by hand, change \solutionfalse to \solutiontrue below.)
+% =====================================================================
+\documentclass[11pt]{article}
+
+\newif\ifsolution
+\ifdefined\showsolutions \solutiontrue \else \solutionfalse \fi
+% \solutiontrue   % <-- uncomment to hard-code the ANSWER-KEY build
+
+\usepackage[letterpaper, margin=0.6in, top=0.7in, bottom=0.5in]{geometry}
+\usepackage{amsmath, amssymb}
+\usepackage[table]{xcolor}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textbf{MSACL DS301 --- Deep Learning}}
+\fancyhead[R]{\small\textbf{Lecture 10: Architecture Matchmaker\ifsolution\ \textmd{(Suggested Answers)}\fi}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\newcommand{\blk}[1]{\underline{\hspace{#1}}}
+% Reveal-or-blank: shows the answer in the key, a blank rule on the student sheet.
+\newcommand{\rb}[2]{\ifsolution\textbf{#1}\else\blk{#2}\fi}
+% Boxed suggested answer (key only) and blank writing space (student only).
+\newcommand{\keybox}[1]{\ifsolution\par\vspace{2pt}%
+  \fbox{\parbox{0.965\textwidth}{\small\textbf{Suggested answer.}\; #1}}\par\fi}
+\newcommand{\work}[1]{\ifsolution\else\vspace{#1}\fi}
+% A labelled fill line used in every scenario: the key shows the bold answer,
+% the student sheet shows a writing rule that runs to the right margin.
+\newcommand{\fillrow}[2]{\textbf{#1:}\ \ifsolution\textbf{#2}\else\hrulefill\fi\par}
+
+% ---- course palette (numeric grid) ---------------------------------------
+\definecolor{ink}{HTML}{1B2025}
+\definecolor{teal}{HTML}{0E7C7B}
+\definecolor{tealsoft}{HTML}{E3F0EF}
+\definecolor{amber}{HTML}{E09E2F}
+\definecolor{ambersoft}{HTML}{FBF0DC}
+\definecolor{redd}{HTML}{C4534F}
+\definecolor{redsoft}{HTML}{F7E4E3}
+\definecolor{inksoft}{HTML}{3D444C}
+% square, centred cells for the confusion matrix
+\newcolumntype{G}{>{\centering\arraybackslash}p{28mm}}
+\newcommand{\gr}{\renewcommand{\arraystretch}{1.7}}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{3pt}
+\setlength{\abovedisplayskip}{5pt}
+\setlength{\belowdisplayskip}{5pt}
+
+\begin{document}
+
+\begin{center}
+{\Large \textbf{Architecture Matchmaker --- Worksheet}}\\[2pt]
+{\normalsize For each lab scenario: pick a \textbf{representation} + \textbf{architecture} off the decision chart, and name \textbf{one validation risk}}
+\end{center}
+
+\vspace{-2pt}
+\begin{center}
+\fbox{\parbox{0.92\textwidth}{\small
+\textbf{Instructions:}\; Work in pairs. Everything is answerable from the \emph{decision chart} and the
+\emph{metric rules} on the slides --- no outside knowledge needed. For Part A, fill the three lines under each
+scenario. For Part B, compute the two rates exactly, then pick the metric \emph{and} the curve to trust under imbalance.%
+\ifsolution\else\\[4pt]\textbf{Name:}\ \blk{6cm}\hfill\textbf{Date:}\ \blk{3.5cm}\fi
+}}
+\end{center}
+
+\vspace{-1pt}
+\begin{center}\small
+\textbf{Decision chart (from the slides):}\;
+dense 1D signal $\to$ intensity vector $\to$ \textbf{1D CNN} \;$\cdot$\;
+peak list $\to$ peak-as-token $\to$ \textbf{Transformer} \;$\cdot$\;
+image $\to$ patches/pixels $\to$ \textbf{2D CNN / ViT} \;$\cdot$\;
+token sequence $\to$ 1 token/residue $\to$ \textbf{Transformer} \;$\cdot$\;
+small table $\to$ features $\to$ \textbf{NOT DL: boosted trees}
+\end{center}
+
+\vspace{-2pt}\hrule\vspace{5pt}
+
+{\large \textbf{Part A --- Six lab scenarios}}
+
+% =========================== S1 ===========================
+\textbf{Scenario 1 --- Rapid AMR call from MALDI-TOF.}\; {\small You have $\sim$6{,}000-bin full-scan
+MALDI-TOF spectra of blood-culture isolates, each labeled \emph{susceptible} or \emph{resistant}; build a classifier.}
+\vspace{2pt}
+\fillrow{Representation}{TIC-normalized binned intensity vector (dense 1D)}\work{0.35cm}
+\fillrow{Architecture}{1D CNN (Lecture 5)}\work{0.35cm}
+\fillrow{One validation risk}{instrument/site batch effect --- validate externally on a different instrument or site, split by isolate not by spectrum}\work{0.35cm}
+\keybox{Dense, evenly-sampled 1D signal $\to$ \textbf{intensity vector} $\to$ \textbf{1D CNN} (chart row 1; this is Lab 2's setup).
+\textbf{Risk:} spectra come from one instrument/site, so a \emph{batch effect} can inflate internal accuracy --- validate on an
+\emph{external} instrument/site and split by isolate (never put two spectra of the same isolate on both sides). This is the DRIAMS
+across-site AUROC drop.}
+
+\vspace{2pt}\hrule\vspace{4pt}
+
+% =========================== S2 ===========================
+\textbf{Scenario 2 --- De novo peptide sequencing from MS/MS.}\; {\small Each spectrum is a \emph{peak list}
+(a sparse set of $m/z$ + intensity fragment peaks); output the peptide sequence.}
+\vspace{2pt}
+\fillrow{Representation}{peak-as-token set (each peak $\to$ one token: $m/z$ + intensity)}\work{0.35cm}
+\fillrow{Architecture}{Transformer encoder--decoder (Casanovo family, Lecture 8)}\work{0.35cm}
+\fillrow{One validation risk}{shift across instruments / fragmentation settings --- validate on a different instrument type; avoid homologous-peptide leakage}\work{0.35cm}
+\keybox{Sparse peak list $\to$ \textbf{peak-as-token} $\to$ \textbf{Transformer} (chart row 2; the Casanovo recipe --- read spectrum,
+write peptide). \textbf{Risk:} fragmentation/instrument \emph{distribution shift} --- validate on a different instrument type, and split so
+\emph{homologous} peptides don't leak between train and test.}
+
+\vspace{2pt}\hrule\vspace{4pt}
+
+% =========================== S3 ===========================
+\textbf{Scenario 3 --- MALDI imaging of tissue.}\; {\small A 2D image with one spectrum per pixel; classify
+each region as \emph{tumor} or \emph{normal}.}
+\vspace{2pt}
+\fillrow{Representation}{image --- pixel grid / patches (ion images or per-pixel spectra as channels)}\work{0.35cm}
+\fillrow{Architecture}{2D CNN or ViT (Lecture 5/8)}\work{0.35cm}
+\fillrow{One validation risk}{data leakage if pixels of the same slide/patient are split across train and test --- split by patient, validate on held-out patients}\work{0.35cm}
+\keybox{A genuine 2D image $\to$ \textbf{patches/pixel grid} $\to$ \textbf{2D CNN or ViT} (chart row 3). \textbf{Risk:} \emph{data leakage} ---
+pixels from one slide are highly correlated, so splitting pixels of the \emph{same} slide/patient into train and test massively
+over-states accuracy; split by \emph{patient/slide} and validate on held-out patients across staining batches.}
+
+\vspace{2pt}\hrule\vspace{4pt}
+
+% =========================== S4 ===========================
+\textbf{Scenario 4 --- Chromatographic peak QC.}\; {\small Raw 1D chromatogram traces (LC-UV or extracted-ion);
+classify each as a \emph{true peak} or an \emph{artifact}.}
+\vspace{2pt}
+\fillrow{Representation}{raw 1D signal resampled to a fixed-length trace (dense 1D)}\work{0.35cm}
+\fillrow{Architecture}{1D CNN (Lecture 5)}\work{0.35cm}
+\fillrow{One validation risk}{reagent-lot / column change / retention-time drift over time --- validate temporally on later runs}\work{0.35cm}
+\keybox{A dense, ordered 1D signal $\to$ \textbf{resampled intensity trace} $\to$ \textbf{1D CNN} (chart row 1, same family as Scenario 1).
+\textbf{Risk:} \emph{temporal} drift --- reagent lots, columns, and retention times change over time, so validate on \emph{later} runs
+(temporal validation), not just a random split of today's data.}
+
+\vspace{2pt}\hrule\vspace{4pt}
+
+% =========================== S5 ===========================
+\textbf{Scenario 5 --- Antimicrobial-peptide screen.}\; {\small Classify short peptides as antimicrobial or not from the
+\emph{amino-acid sequence} alone (no MS). You have $\sim$800 labeled sequences.}
+\vspace{2pt}
+\fillrow{Representation}{token sequence --- one token per residue + positional encoding}\work{0.35cm}
+\fillrow{Architecture}{Transformer --- fine-tune a pretrained protein language model (ESM-2), Lecture 7/8}\work{0.35cm}
+\fillrow{One validation risk}{only 800 labels (overfitting) and sequence-homology leakage --- split by sequence identity, validate externally}\work{0.35cm}
+\keybox{A token sequence $\to$ \textbf{one token/residue + position} $\to$ \textbf{Transformer} (chart row 4). With only 800 labels, \emph{fine-tune
+a pretrained} protein language model rather than train from scratch (Lecture 8 transfer learning). \textbf{Risk:} few labels overfit, and
+\emph{homologous} sequences leak between splits --- cluster by sequence identity and validate on a held-out cluster.}
+
+\vspace{2pt}\hrule\vspace{4pt}
+
+% =========================== S6 ===========================
+\textbf{Scenario 6 --- Outcome from a small patient panel.}\; {\small Predict a clinical outcome from a \emph{tabular}
+panel of 12 numeric analytes measured on 400 patients.}
+\vspace{2pt}
+\fillrow{Representation}{feature table (the 12 analytes as columns)}\work{0.35cm}
+\fillrow{Architecture}{NOT deep learning --- gradient-boosted trees (XGBoost/LightGBM)}\work{0.35cm}
+\fillrow{One validation risk}{site/population shift with small n; also need interpretability --- validate externally on a different site}\work{0.35cm}
+\keybox{Small tabular data $\to$ \textbf{feature table} $\to$ \textbf{NOT deep learning: gradient-boosted trees} (chart row 5 --- the stop sign).
+400$\times$12 is far too little for a neural net; trees win and stay \emph{interpretable} for a clinical call. \textbf{Risk:} site/population
+shift with small $n$ --- validate \emph{externally} on a different site, and prefer the interpretable model (FDA/CLIA: validation is the product).}
+
+\vspace{3pt}\hrule\vspace{5pt}
+
+% =========================== Part B ===========================
+{\large \textbf{Part B --- The metric that matters}}\; {\small A rapid resistance screen was run on
+\textbf{500 isolates} (positive $=$ \emph{resistant}). The confusion matrix (rows $=$ the model's call, columns $=$ truth):}
+
+\vspace{4pt}
+\begin{center}
+\gr\begin{tabular}{r|G|G|}
+\multicolumn{1}{r}{} & \multicolumn{1}{c}{\small truth: $+$ (resistant)} & \multicolumn{1}{c}{\small truth: $-$ (susceptible)}\\\cline{2-3}
+\small call: $+$ & \cellcolor{tealsoft}TP $=$ 16 & \cellcolor{ambersoft}FP $=$ 24 \\\cline{2-3}
+\small call: $-$ & \cellcolor{redsoft}FN $=$ 4 & \cellcolor{tealsoft}TN $=$ 456 \\\cline{2-3}
+\end{tabular}\\[3pt]
+{\footnotesize rows $=$ the model's call \quad columns $=$ the truth}
+\end{center}
+
+\vspace{2pt}
+{\small Rules from the slides:\; $\text{sensitivity} = \dfrac{TP}{TP+FN}$ \quad
+$\text{specificity} = \dfrac{TN}{TN+FP}$}
+
+\vspace{3pt}
+\textbf{(a)} sensitivity $=\ \dfrac{16}{16+4} =\ $ \rb{$16/20 = 0.80$ \,(80\%)}{3.4cm}
+\work{0.35cm}
+
+\textbf{(b)} specificity $=\ \dfrac{456}{456+24} =\ $ \rb{$456/480 = 0.95$ \,(95\%)}{3.4cm}
+\work{0.35cm}
+
+\textbf{(c)} A model that ALWAYS calls ``susceptible'' would score accuracy $= 480/500 = 96\%$. The lab must not miss resistant
+isolates. \emph{Which single metric do you trust here, and why is accuracy misleading?}
+
+\work{1.1cm}
+\ifsolution\else\blk{\linewidth}\par\vspace{2pt}\blk{\linewidth}\fi
+
+\textbf{(d)} Positives are \textbf{rare here --- 20 of 500 $= 4\%$}. To report this screen across \emph{all thresholds}, would you trust the
+\textbf{ROC-AUC} or the \textbf{PR curve}, and why? {\small (Read it off the ROC \& PR slide.)}
+
+\work{1.0cm}
+\ifsolution\else\blk{\linewidth}\par\vspace{2pt}\blk{\linewidth}\fi
+
+\keybox{(a) sensitivity $= 16/(16+4) = 16/20 = \mathbf{0.80}$ (\textbf{80\%}). (b) specificity $= 456/(456+24) = 456/480 = \mathbf{0.95}$
+(\textbf{95\%}). (c) Trust \textbf{sensitivity} (recall) --- reported with the \textbf{PR curve} --- not accuracy. Positives are rare (20 of 500),
+so accuracy is dominated by the 480 susceptibles: an always-``susceptible'' model scores \textbf{96\%} yet catches \textbf{0 of 20} resistant
+isolates. Sensitivity is the metric that exposes the missed cases. (d) Trust the \textbf{PR curve}. At \textbf{4\%} prevalence the true-negatives
+dominate, so \textbf{ROC-AUC can look flatteringly high}; the PR curve's chance baseline sits at the prevalence itself (\textbf{0.04}), so it stays
+honest and unforgiving as recall grows --- report sensitivity/recall alongside the PR curve, never accuracy or ROC-AUC alone.}
+
+\vspace{4pt}\hrule\vspace{3pt}
+{\small\itshape \ifsolution Suggested-answer key --- other defensible representations/risks may earn credit if consistent with the chart.%
+\else Keep this sheet --- it's your checklist for planning any deep-learning project in your own lab.\fi}
+
+\end{document}
