@@ -2628,6 +2628,8 @@ def build_all():
     _lecture8_figures()
     # ---- Lecture 10 ----
     _lecture10_figures()
+    # ---- Lecture 11 ----
+    _lecture11_figures()
 
 
 # deck I-do convolution (5x5 image, 3x3 diagonal detector) and the matched
@@ -3958,6 +3960,709 @@ def _lecture8_figures():
     transfer_learning()
 
 
+# ============================================================================
+#  Lecture 11 · Learning Without (Many) Labels
+#  Autoencoders, VAEs (intuition, no derivation), self-supervised learning
+#  (masking / contrastive / DINO) and semi-supervised pseudo-labelling.
+#  The one numeric mechanic of the hour is reconstruction error / MSE as an
+#  anomaly score (rule 6); everything else is a bespoke MS-anchored schematic
+#  (rule 9). The canonical autoencoder schematic is a REAL licensed image
+#  (Michela Massi, Wikimedia Commons, CC BY-SA 4.0) placed directly in the
+#  deck (rule 7); the rest are drawn here to stay MS-anchored, offline, and
+#  editable.
+# ============================================================================
+
+def _spectrum_curve(ax, peaks, color=TEAL, x_hi=10.0, lw=1.7, fill=True,
+                    ls="-", alpha_fill=0.10, zorder=3, width=0.16):
+    """A smooth spectrum = a sum of Gaussians at (centre, height)."""
+    mz = np.linspace(0, x_hi, 600)
+    y = np.zeros_like(mz)
+    for c, h in peaks:
+        y += h * np.exp(-((mz - c) / width) ** 2)
+    ax.plot(mz, y, color=color, lw=lw, zorder=zorder, ls=ls,
+            solid_capstyle="round")
+    if fill:
+        ax.fill_between(mz, y, color=color, alpha=alpha_fill, zorder=zorder - 1)
+    return mz, y
+
+
+def autoencoder_bottleneck(name="fig_ae_bottleneck.png"):
+    """MS-anchored autoencoder as an hourglass of nodes: an input spectrum is
+    SQUEEZED through a narrow latent code and then REBUILT. The bottleneck is
+    the teachable idea — the latent code is a compact 'map' coordinate for a
+    spectrum, and reconstruction is what makes anomaly scoring possible."""
+    fig, ax = plt.subplots(figsize=(11.8, 5.2))
+    ax.set_xlim(0, 12)
+    ax.set_ylim(-0.4, 6.2)
+    ax.axis("off")
+    counts = [5, 3, 2, 3, 5]
+    xs = [1.5, 3.7, 6.0, 8.3, 10.5]
+    yc = 3.3
+    sp = 0.5
+    positions = []
+    for cnt, x in zip(counts, xs):
+        ys = np.linspace(yc - sp * (cnt - 1) / 1.0, yc + sp * (cnt - 1) / 1.0, cnt)
+        positions.append([(x, y) for y in ys])
+    for li in range(len(positions) - 1):
+        for (x0, y0) in positions[li]:
+            for (x1, y1) in positions[li + 1]:
+                ax.plot([x0, x1], [y0, y1], color=TEAL, lw=0.8, alpha=0.22,
+                        zorder=1)
+    for li, (layer, cnt) in enumerate(zip(positions, counts)):
+        face = AMBER_SOFT if li == 2 else TEAL_SOFT
+        edge = AMBER if li == 2 else TEAL
+        for (x, y) in layer:
+            ax.add_patch(Circle((x, y), 0.24, facecolor=face, edgecolor=edge,
+                                lw=2.0, zorder=3))
+    # top banner
+    ax.text(6.0, 5.9, "compress  \u2192  latent code  \u2192  reconstruct",
+            ha="center", color=INK, fontsize=15, fontweight="bold")
+    # bottleneck callout above the narrow column
+    ax.text(6.0, 4.85, "latent code z\n(2\u20133 numbers)", ha="center",
+            va="bottom", color=ROI_INK, fontsize=12, fontweight="bold")
+    # end labels
+    ax.text(1.5, 0.82, "input spectrum x", ha="center", va="center", color=TEAL,
+            fontsize=12, fontweight="bold")
+    ax.text(10.5, 0.82, "reconstruction x\u0302", ha="center", va="center",
+            color=TEAL, fontsize=12, fontweight="bold")
+    # encoder / decoder brackets
+    ax.annotate("", xy=(5.2, 0.4), xytext=(1.5, 0.4),
+                arrowprops=dict(arrowstyle="-", color=INK_SOFT, lw=1.4))
+    ax.annotate("", xy=(10.5, 0.4), xytext=(6.8, 0.4),
+                arrowprops=dict(arrowstyle="-", color=INK_SOFT, lw=1.4))
+    ax.text(3.35, 0.05, "ENCODER \u2014 squeeze", ha="center", va="top",
+            color=INK_SOFT, fontsize=11.5, fontweight="bold")
+    ax.text(8.65, 0.05, "DECODER \u2014 rebuild", ha="center", va="top",
+            color=INK_SOFT, fontsize=11.5, fontweight="bold")
+    ax.text(6.0, -0.28,
+            "trained so output \u2248 input \u2014 the squeeze forces it to keep only what matters",
+            ha="center", va="top", color=MUTED, fontsize=11.5, style="italic")
+    _save(fig, name)
+
+
+def recon_error_worked(mode="ido", name="fig_recon_error_ido.png",
+                       x=(0.2, 0.5, 0.1), xhat=(0.2, 0.4, 0.1), thr=0.01):
+    """The one numeric mechanic of the hour (rule 6): reconstruction error.
+    Left = a 3-bin spectrum vs. its reconstruction as bars; right = the worked
+    table (elementwise squared error \u2192 MSE) and the anomaly decision against a
+    stated threshold. mode='ido' fills every number; mode='youdo' leaves the
+    differences, squared errors, MSE and the decision as '?' for Quiz 11 Q3."""
+    blank = mode == "youdo"
+    diffs = [round(a - b, 4) for a, b in zip(x, xhat)]
+    sq = [round(d * d, 4) for d in diffs]
+    sse = round(sum(sq), 4)
+    mse = sse / len(x)
+    normal = mse <= thr
+    fig, (axb, axt) = plt.subplots(1, 2, figsize=(11.8, 4.7),
+                                   gridspec_kw={"width_ratios": [1, 1.3]})
+    idx = np.arange(len(x))
+    w = 0.36
+    axb.bar(idx - w / 2, x, width=w, color=TEAL, label="x  (measured)",
+            zorder=3)
+    axb.bar(idx + w / 2, xhat, width=w, facecolor="none", edgecolor=AMBER,
+            lw=2.6, label="x\u0302  (reconstruction)", zorder=3)
+    axb.set_xticks(idx)
+    axb.set_xticklabels([f"bin {i + 1}" for i in idx], fontsize=11)
+    axb.set_ylim(0, max(max(x), max(xhat)) * 1.4)
+    axb.set_yticks([])
+    for s in ("top", "right", "left"):
+        axb.spines[s].set_visible(False)
+    axb.legend(loc="upper right", frameon=False, fontsize=10.5)
+    axb.set_title("a 3-bin spectrum vs. its reconstruction", fontsize=12,
+                  color=INK, fontweight="bold")
+    # right: formula + worked table
+    axt.set_xlim(0, 1)
+    axt.set_ylim(0, 1)
+    axt.axis("off")
+    axt.text(0.0, 0.97, "MSE = (1/n) \u03a3 (x\u1d62 \u2212 x\u0302\u1d62)\u00b2",
+             fontsize=15, color=INK, fontweight="bold")
+    axt.text(0.0, 0.86, f"flag ANOMALY if MSE > {thr:g}", fontsize=12.5,
+             color=RED, fontweight="bold")
+    cols_x = [0.02, 0.24, 0.44, 0.66, 0.90]
+    hdr = ["bin", "x\u1d62", "x\u0302\u1d62", "x\u1d62\u2212x\u0302\u1d62",
+           "(x\u1d62\u2212x\u0302\u1d62)\u00b2"]
+    y0 = 0.70
+    for cx, h in zip(cols_x, hdr):
+        axt.text(cx, y0, h, fontsize=11.5, color=MUTED, fontweight="bold")
+    for i in range(len(x)):
+        yy = y0 - 0.11 * (i + 1)
+        axt.text(cols_x[0], yy, str(i + 1), fontsize=12, color=INK_SOFT)
+        axt.text(cols_x[1], yy, f"{x[i]:g}", fontsize=12, color=TEAL,
+                 fontweight="bold")
+        axt.text(cols_x[2], yy, f"{xhat[i]:g}", fontsize=12, color=ROI_INK,
+                 fontweight="bold")
+        axt.text(cols_x[3], yy, "?" if blank else f"{diffs[i]:g}", fontsize=12,
+                 color=INK)
+        axt.text(cols_x[4], yy, "?" if blank else f"{sq[i]:g}", fontsize=12,
+                 color=INK)
+    axt.plot([0.0, 0.99], [0.30, 0.30], color=HAIRLINE, lw=1.2)
+    mse_txt = ("MSE = ?" if blank else
+               f"MSE = {sse:g} / {len(x)} = {mse:.4f}")
+    axt.text(0.0, 0.21, mse_txt, fontsize=14, color=INK, fontweight="bold")
+    # decision box
+    if blank:
+        dec = "decision:  ?  (normal or anomaly)"
+        dcol, dface = ROI_INK, AMBER_SOFT
+    elif normal:
+        dec = f"{mse:.4f} < {thr:g}  \u2192  NORMAL (pass QC)"
+        dcol, dface = TEAL, TEAL_SOFT
+    else:
+        dec = f"{mse:.4f} > {thr:g}  \u2192  ANOMALY (flag the run)"
+        dcol, dface = RED, "#F7E4E3"
+    axt.add_patch(FancyBboxPatch((0.0, 0.0), 0.99, 0.12,
+                  boxstyle="round,pad=0.01,rounding_size=0.03",
+                  facecolor=dface, edgecolor=dcol, lw=2.0))
+    axt.text(0.495, 0.06, dec, ha="center", va="center", color=dcol,
+             fontsize=12.5, fontweight="bold")
+    fig.subplots_adjust(wspace=0.22)
+    _save(fig, name)
+
+
+def anomaly_overlay(name="fig_anomaly_overlay.png"):
+    """Reconstruction error as an anomaly / QC score. The autoencoder is trained
+    ONLY on good runs, so a normal run reconstructs well (small gap, LOW error,
+    pass) but an abnormal run \u2014 e.g. a contaminant peak the model never learned
+    \u2014 reconstructs poorly (large red gap, HIGH error, flag)."""
+    fig, (axl, axr) = plt.subplots(1, 2, figsize=(11.8, 4.5))
+    normal = [(2.0, 1.0), (4.0, 0.6), (6.5, 0.85), (8.5, 0.4)]
+    recon = [(2.0, 0.94), (4.0, 0.56), (6.5, 0.80), (8.5, 0.37)]
+    contaminant = normal + [(5.2, 0.9)]
+    for ax, title, inp, col in [
+            (axl, "normal QC run", normal, TEAL),
+            (axr, "abnormal run (contaminant)", contaminant, TEAL)]:
+        mz, yin = _spectrum_curve(ax, inp, color=col, fill=True, alpha_fill=0.12)
+        _, yrec = _spectrum_curve(ax, recon, color=AMBER, ls="--", fill=False,
+                                  lw=2.0, zorder=4)
+        ax.set_xlim(0, 10)
+        ax.set_ylim(0, 1.5)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        for s in ("top", "right", "left"):
+            ax.spines[s].set_visible(False)
+        ax.set_xlabel("m/z \u2192", fontsize=11, color=MUTED)
+        ax.set_title(title, fontsize=12.5, color=INK, fontweight="bold")
+    # legend proxies on left
+    axl.plot([], [], color=TEAL, lw=2.0, label="measured x")
+    axl.plot([], [], color=AMBER, lw=2.0, ls="--", label="reconstruction x\u0302")
+    axl.legend(loc="upper right", frameon=False, fontsize=10)
+    # shade the mismatch on the abnormal panel
+    mz = np.linspace(0, 10, 600)
+    yin = np.zeros_like(mz)
+    for c, h in contaminant:
+        yin += h * np.exp(-((mz - c) / 0.16) ** 2)
+    yrec = np.zeros_like(mz)
+    for c, h in recon:
+        yrec += h * np.exp(-((mz - c) / 0.16) ** 2)
+    axr.fill_between(mz, yrec, yin, where=(yin > yrec), color=RED, alpha=0.30,
+                     zorder=2)
+    axr.annotate("model never learned\nthis peak \u2192 big gap", xy=(5.2, 0.9),
+                 xytext=(6.2, 1.28), ha="left", fontsize=10, color=RED,
+                 fontweight="bold",
+                 arrowprops=dict(arrowstyle="-|>", color=RED, lw=1.6))
+    axl.text(0.5, -0.14, "recon error LOW  \u2192  pass", transform=axl.transAxes,
+             ha="center", color=TEAL, fontsize=12.5, fontweight="bold")
+    axr.text(0.5, -0.14, "recon error HIGH  \u2192  FLAG", transform=axr.transAxes,
+             ha="center", color=RED, fontsize=12.5, fontweight="bold")
+    fig.subplots_adjust(wspace=0.14, bottom=0.16)
+    _save(fig, name)
+
+
+def _latent_scatter(ax, kind, seed=7, annotate=True):
+    """Draw one latent-space panel. kind='ae' = scattered islands with big empty
+    gaps (points that fall between clusters decode to garbage); kind='vae' = one
+    smooth, organised, gap-free cloud you can sample anywhere. annotate=False
+    drops the answer-giving callouts for the Quiz 11 Q1 you-do variant so the
+    room must read the shape itself."""
+    rng = np.random.default_rng(seed)
+    class_cols = [TEAL, AMBER, RED, INK_SOFT]
+    ax.set_xlim(-3, 3)
+    ax.set_ylim(-3, 3)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    for s in ax.spines.values():
+        s.set_edgecolor(HAIRLINE)
+    if kind == "ae":
+        centers = [(-1.5, 1.4), (1.6, 1.5), (-1.5, -1.4), (1.5, -1.4)]
+        for (cx, cy), col in zip(centers, class_cols):
+            pts = rng.normal(0, 0.20, size=(26, 2)) + np.array([cx, cy])
+            ax.scatter(pts[:, 0], pts[:, 1], s=22, color=col, alpha=0.85,
+                       edgecolor="none", zorder=3)
+        ax.text(0.0, 0.0, "\u2715", ha="center", va="center", color=RED,
+                fontsize=20, fontweight="bold", zorder=4)
+        if annotate:
+            ax.annotate("empty gap \u2192\ndecodes to garbage", xy=(0.0, 0.0),
+                        xytext=(0.15, -2.6), ha="center", fontsize=10, color=RED,
+                        fontweight="bold",
+                        arrowprops=dict(arrowstyle="-|>", color=RED, lw=1.4))
+    else:
+        # one broad blob; colour by angle so classes blend continuously
+        n = 150
+        r = rng.normal(0, 0.85, size=n)
+        th = rng.uniform(0, 2 * np.pi, size=n)
+        px = r * np.cos(th) + rng.normal(0, 0.35, n)
+        py = r * np.sin(th) + rng.normal(0, 0.35, n)
+        ang = (np.arctan2(py, px) + np.pi) / (2 * np.pi)
+        cols = [class_cols[int(a * 4) % 4] for a in ang]
+        ax.scatter(px, py, s=22, color=cols, alpha=0.8, edgecolor="none",
+                   zorder=3)
+        if annotate:
+            ax.annotate("sample anywhere \u2192\na plausible spectrum", xy=(0.4, 0.3),
+                        xytext=(0.1, -2.6), ha="center", fontsize=10, color=TEAL,
+                        fontweight="bold",
+                        arrowprops=dict(arrowstyle="-|>", color=TEAL, lw=1.4))
+
+
+def ae_vs_vae_latent(labels=("autoencoder latent", "VAE latent"),
+                     name="fig_ae_vs_vae_latent.png", describe=True):
+    """Side-by-side latent maps of the SAME spectra: an autoencoder's scattered
+    islands with gaps vs. a VAE's smooth, sampleable cloud. Reused with A/B
+    titles for the Quiz 11 Q1 you-do so the room reads it straight off the
+    slide. describe=False strips the answer-giving descriptor captions and
+    in-panel callouts so the you-do variant does not telegraph which is the
+    VAE."""
+    fig, (axl, axr) = plt.subplots(1, 2, figsize=(11.4, 5.0))
+    _latent_scatter(axl, "ae", annotate=describe)
+    _latent_scatter(axr, "vae", annotate=describe)
+    axl.set_title(labels[0], fontsize=14, color=INK, fontweight="bold", pad=8)
+    axr.set_title(labels[1], fontsize=14, color=INK, fontweight="bold", pad=8)
+    if describe:
+        for ax, cap in [(axl, "scattered islands, big empty gaps"),
+                        (axr, "one smooth, organised, gap-free cloud")]:
+            ax.text(0.5, -0.08, cap, transform=ax.transAxes, ha="center",
+                    va="top", color=MUTED, fontsize=11, style="italic")
+    fig.subplots_adjust(wspace=0.14, bottom=0.12)
+    _save(fig, name)
+
+
+def vae_recipe(name="fig_vae_recipe.png"):
+    """The VAE recipe in one picture, NO derivation: reconstruction (output \u2248
+    input) PLUS a 'keep the cloud tidy' penalty (pull the codes toward one neat,
+    centred blob) = a smooth, sampleable latent."""
+    fig, ax = plt.subplots(figsize=(12.0, 4.4))
+    ax.set_xlim(0, 12)
+    ax.set_ylim(0, 5)
+    ax.axis("off")
+    ax.text(6.0, 4.72, "the VAE recipe \u2014 two ingredients, no derivation",
+            ha="center", color=INK, fontsize=14, fontweight="bold")
+    # card 1: reconstruction
+    ax.add_patch(FancyBboxPatch((0.4, 1.1), 3.4, 2.9,
+                boxstyle="round,pad=0.02,rounding_size=0.06",
+                facecolor=WHITE, edgecolor=TEAL, lw=2.4))
+    ax.text(2.1, 3.6, "reconstruction", ha="center", color=TEAL, fontsize=12.5,
+            fontweight="bold")
+    # mini spectrum drawn directly in ax coordinates so it stays inside the card
+    mzc = np.linspace(0.75, 3.45, 320)
+    base = 1.75
+    yin = base + sum(h * np.exp(-((mzc - cx) / 0.10) ** 2)
+                     for cx, h in [(1.3, 1.2), (2.1, 0.7), (2.9, 0.95)])
+    yrec = base + sum(h * np.exp(-((mzc - cx) / 0.10) ** 2)
+                      for cx, h in [(1.3, 1.1), (2.1, 0.64), (2.9, 0.88)])
+    ax.plot(mzc, yin, color=TEAL, lw=1.7, zorder=3)
+    ax.fill_between(mzc, base, yin, color=TEAL, alpha=0.12, zorder=2)
+    ax.plot(mzc, yrec, color=AMBER, lw=1.5, ls="--", zorder=4)
+    ax.text(2.1, 1.4, "output \u2248 input", ha="center", color=INK_SOFT,
+            fontsize=10.5, style="italic")
+    ax.text(4.25, 2.55, "+", ha="center", va="center", color=INK, fontsize=30,
+            fontweight="bold")
+    # card 2: keep the cloud tidy
+    ax.add_patch(FancyBboxPatch((4.7, 1.1), 3.4, 2.9,
+                boxstyle="round,pad=0.02,rounding_size=0.06",
+                facecolor=WHITE, edgecolor=AMBER, lw=2.4))
+    ax.text(6.4, 3.6, "keep the cloud tidy", ha="center", color=ROI_INK,
+            fontsize=12.5, fontweight="bold")
+    rng = np.random.default_rng(3)
+    scatter = rng.normal(0, 1, size=(18, 2)) * np.array([1.6, 1.0])
+    for (dx, dy) in scatter:
+        px, py = 6.4 + 0.28 * dx, 2.45 + 0.28 * dy
+        ax.plot([px], [py], marker="o", ms=4, color=MUTED, zorder=3)
+        ax.annotate("", xy=(6.4, 2.45), xytext=(px, py),
+                    arrowprops=dict(arrowstyle="-|>", color=AMBER, lw=0.8,
+                                    alpha=0.55), zorder=2)
+    ax.add_patch(Circle((6.4, 2.45), 0.28, facecolor=AMBER_SOFT,
+                        edgecolor=AMBER, lw=1.6, zorder=4))
+    ax.text(6.4, 1.35, "pull codes toward\none neat, centred blob", ha="center",
+            color=INK_SOFT, fontsize=10, style="italic")
+    ax.text(8.55, 2.55, "=", ha="center", va="center", color=INK, fontsize=30,
+            fontweight="bold")
+    # result card
+    ax.add_patch(FancyBboxPatch((9.0, 1.1), 2.8, 2.9,
+                boxstyle="round,pad=0.02,rounding_size=0.06",
+                facecolor=TEAL_SOFT, edgecolor=TEAL, lw=2.4))
+    ax.text(10.4, 3.6, "smooth latent", ha="center", color=TEAL, fontsize=12.5,
+            fontweight="bold")
+    rng2 = np.random.default_rng(5)
+    blob = rng2.normal(0, 0.7, size=(40, 2))
+    ax.scatter(10.4 + 0.32 * blob[:, 0], 2.45 + 0.32 * blob[:, 1], s=14,
+               color=TEAL, alpha=0.7, zorder=3)
+    ax.text(10.4, 1.35, "sampleable +\ninterpolatable", ha="center",
+            color=INK_SOFT, fontsize=10, style="italic")
+    _save(fig, name)
+
+
+def latent_interpolation(name="fig_latent_interp.png"):
+    """Walking a straight line through a VAE's latent space = one spectrum
+    morphing into another. Top: the latent cloud with a line A\u2192B and 5 marked
+    stops; bottom: the 5 decoded spectra, peaks sliding and swapping height."""
+    fig = plt.figure(figsize=(11.8, 5.4))
+    gs = fig.add_gridspec(2, 5, height_ratios=[1.05, 1.0], hspace=0.42,
+                          wspace=0.18)
+    axtop = fig.add_subplot(gs[0, :])
+    rng = np.random.default_rng(11)
+    blob = rng.normal(0, 0.8, size=(120, 2))
+    axtop.scatter(blob[:, 0] * 2.2, blob[:, 1], s=16, color=TEAL_SOFT,
+                  edgecolor="none", zorder=1)
+    ax_pts = np.linspace(-3.4, 3.4, 5)
+    ay = np.linspace(-0.7, 0.7, 5)
+    axtop.plot(ax_pts, ay, color=ROI_INK, lw=2.2, ls="--", zorder=3)
+    for i, (px, py) in enumerate(zip(ax_pts, ay)):
+        axtop.plot([px], [py], marker="o", ms=11, color=AMBER,
+                   markeredgecolor=ROI_INK, zorder=4)
+        axtop.text(px, py + 0.42, f"{i + 1}", ha="center", color=ROI_INK,
+                   fontsize=11, fontweight="bold")
+    axtop.text(ax_pts[0], ay[0] - 0.5, "A", ha="center", color=TEAL,
+               fontsize=14, fontweight="bold")
+    axtop.text(ax_pts[-1], ay[-1] - 0.5, "B", ha="center", color=RED,
+               fontsize=14, fontweight="bold")
+    axtop.set_xlim(-4.2, 4.2)
+    axtop.set_ylim(-2.4, 2.0)
+    axtop.set_xticks([])
+    axtop.set_yticks([])
+    for s in axtop.spines.values():
+        s.set_edgecolor(HAIRLINE)
+    axtop.set_title("walk a straight line through the VAE latent space",
+                    fontsize=12.5, color=INK, fontweight="bold")
+    A = [(2.0, 1.0), (4.0, 0.3), (7.0, 0.7)]
+    B = [(3.0, 0.4), (5.5, 1.0), (8.5, 0.5)]
+    for i in range(5):
+        t = i / 4.0
+        peaks = [((1 - t) * a[0] + t * b[0], (1 - t) * a[1] + t * b[1])
+                 for a, b in zip(A, B)]
+        axb = fig.add_subplot(gs[1, i])
+        col = TEAL if i == 0 else (RED if i == 4 else AMBER)
+        _spectrum_curve(axb, peaks, color=col, fill=True, alpha_fill=0.15)
+        axb.set_xlim(0, 10)
+        axb.set_ylim(0, 1.25)
+        axb.set_xticks([])
+        axb.set_yticks([])
+        for s in axb.spines.values():
+            s.set_visible(False)
+        axb.set_title(f"stop {i + 1}", fontsize=10.5, color=col,
+                      fontweight="bold")
+    fig.text(0.5, 0.005, "decoded spectrum morphs smoothly from A into B",
+             ha="center", color=MUTED, fontsize=11.5, style="italic")
+    _save(fig, name)
+
+
+def masking_pretext(name="fig_masking.png"):
+    """Self-supervised masking / pretext task (the BERT callback, Lecture 8):
+    hide a piece of the input and predict it from context. The data labels
+    itself \u2014 the hidden token IS the label. MS anchor: mask an amino acid in a
+    peptide (or a peak in a spectrum)."""
+    fig, ax = plt.subplots(figsize=(11.6, 4.2))
+    ax.set_xlim(0, 12)
+    ax.set_ylim(0, 5)
+    ax.axis("off")
+    ax.text(6.0, 4.68, "masking: hide a piece, predict it from context  (BERT)",
+            ha="center", color=INK, fontsize=14, fontweight="bold")
+    toks = ["A", "C", "[MASK]", "E", "F", "G"]
+    w = 1.5
+    gap = 0.28
+    x0 = 6.0 - (len(toks) * w + (len(toks) - 1) * gap) / 2
+    mask_cx = None
+    for i, t in enumerate(toks):
+        cx = x0 + i * (w + gap)
+        masked = t == "[MASK]"
+        _chip(ax, cx, 3.1, w, 0.8, t, RED if masked else TEAL_SOFT,
+              txt=WHITE if masked else INK, fs=15,
+              edge=RED if masked else TEAL, lw=2.0)
+        if masked:
+            mask_cx = cx + w / 2
+    ax.text(6.0, 3.95, "peptide  A\u2013C\u2013?\u2013E\u2013F\u2013G", ha="center",
+            color=MUTED, fontsize=11, style="italic")
+    # prediction
+    ax.annotate("", xy=(mask_cx, 1.55), xytext=(mask_cx, 2.6),
+                arrowprops=dict(arrowstyle="-|>", color=INK_SOFT, lw=2.0))
+    ax.add_patch(FancyBboxPatch((mask_cx - 1.3, 0.7), 2.6, 0.85,
+                boxstyle="round,pad=0.02,rounding_size=0.08",
+                facecolor=TEAL_SOFT, edgecolor=TEAL, lw=2.2))
+    ax.text(mask_cx, 1.12, "predict \u2192  D", ha="center", va="center",
+            color=TEAL, fontsize=14, fontweight="bold")
+    ax.text(6.0, 0.28,
+            "no human labels \u2014 the hidden token is its own answer (mask a residue, or a peak)",
+            ha="center", color=MUTED, fontsize=11, style="italic")
+    _save(fig, name)
+
+
+def contrastive_views(name="fig_contrastive.png"):
+    """Contrastive learning: two augmented VIEWS of the SAME spectrum should land
+    together in embedding space (attract), while a different spectrum is pushed
+    away (repel). The label comes from 'same source or not' \u2014 no human labels."""
+    fig, (axl, axr) = plt.subplots(1, 2, figsize=(11.8, 4.6),
+                                   gridspec_kw={"width_ratios": [1.05, 1]})
+    base = [(2.2, 1.0), (4.5, 0.55), (6.8, 0.8), (8.4, 0.35)]
+    v1 = [(c, h * (0.85 + 0.1)) for c, h in base]  # + noise (heights jittered)
+    v2 = [(c + 0.5, h) for c, h in base]           # m/z shift
+    axl.set_xlim(0, 10)
+    axl.set_ylim(-0.2, 3.4)
+    axl.axis("off")
+    axl.text(5.0, 3.25, "one spectrum \u2192 two augmented views", ha="center",
+             color=INK, fontsize=12.5, fontweight="bold")
+    ax1 = fig.add_axes([0.06, 0.50, 0.20, 0.28])
+    _spectrum_curve(ax1, v1, color=TEAL)
+    ax1.set_xlim(0, 10)
+    ax1.set_ylim(0, 1.25)
+    ax1.axis("off")
+    ax1.set_title("view 1  (+ noise)", fontsize=10, color=TEAL)
+    ax2 = fig.add_axes([0.06, 0.13, 0.20, 0.28])
+    _spectrum_curve(ax2, v2, color=TEAL)
+    ax2.set_xlim(0, 10)
+    ax2.set_ylim(0, 1.25)
+    ax2.axis("off")
+    ax2.set_title("view 2  (m/z shift)", fontsize=10, color=TEAL)
+    # right: embedding space
+    axr.set_xlim(0, 10)
+    axr.set_ylim(0, 10)
+    axr.set_xticks([])
+    axr.set_yticks([])
+    for s in axr.spines.values():
+        s.set_edgecolor(HAIRLINE)
+    axr.set_title("embedding space", fontsize=12, color=INK, fontweight="bold")
+    p1 = (4.2, 6.6)
+    p2 = (5.6, 5.6)
+    other = (8.4, 2.2)
+    axr.plot(*p1, marker="o", ms=15, color=TEAL, zorder=4)
+    axr.plot(*p2, marker="o", ms=15, color=TEAL, zorder=4)
+    axr.text(p1[0] - 1.3, p1[1], "view 1", ha="right", va="center", color=TEAL,
+             fontsize=10, fontweight="bold")
+    axr.text(p2[0] - 1.3, p2[1], "view 2", ha="right", va="center", color=TEAL,
+             fontsize=10, fontweight="bold")
+    axr.annotate("", xy=p2, xytext=p1,
+                 arrowprops=dict(arrowstyle="<|-|>", color=TEAL, lw=2.2))
+    axr.text((p1[0] + p2[0]) / 2 + 0.7, (p1[1] + p2[1]) / 2 + 0.3, "pull\ntogether",
+             ha="left", color=TEAL, fontsize=10.5, fontweight="bold")
+    axr.plot(*other, marker="o", ms=15, color=RED, zorder=4)
+    axr.text(other[0], other[1] - 1.2, "a different\nspectrum", ha="center",
+             color=RED, fontsize=10, fontweight="bold")
+    axr.annotate("", xy=(7.4, 3.0), xytext=(5.9, 4.9),
+                 arrowprops=dict(arrowstyle="-|>", color=RED, lw=2.0,
+                                 ls="--"))
+    axr.text(7.2, 4.4, "push\napart", ha="left", color=RED, fontsize=10.5,
+             fontweight="bold")
+    fig.text(0.5, 0.02,
+             "same source \u2192 same point; the augmentation IS the label",
+             ha="center", color=MUTED, fontsize=10.5, style="italic")
+    _save(fig, name)
+
+
+def dino_student_teacher(name="fig_dino.png"):
+    """DINO: student\u2013teacher self-distillation. Two augmented views of one input
+    go to a STUDENT and a TEACHER network; the student is trained so its output
+    MATCHES the teacher's, and the teacher is a slow moving average of the
+    student \u2014 all with NO labels. The famous payoff: attention learns to
+    segment the object on its own."""
+    fig, (axl, axr) = plt.subplots(1, 2, figsize=(11.8, 4.6),
+                                   gridspec_kw={"width_ratios": [1.35, 1]})
+    axl.set_xlim(0, 12)
+    axl.set_ylim(0, 6)
+    axl.axis("off")
+    axl.text(6.0, 5.7, "student\u2013teacher self-distillation  (no labels)",
+             ha="center", color=INK, fontsize=13, fontweight="bold")
+    # input + two views
+    ax_in = fig.add_axes([0.045, 0.42, 0.13, 0.22])
+    _spectrum_curve(ax_in, [(2.5, 1.0), (5.5, 0.6), (7.8, 0.8)], color=TEAL)
+    ax_in.set_xlim(0, 10)
+    ax_in.set_ylim(0, 1.3)
+    ax_in.axis("off")
+    ax_in.set_title("one input", fontsize=9.5, color=INK_SOFT)
+    # student / teacher boxes
+    axl.add_patch(FancyBboxPatch((4.0, 3.3), 3.0, 1.3,
+                  boxstyle="round,pad=0.02,rounding_size=0.06",
+                  facecolor=TEAL_SOFT, edgecolor=TEAL, lw=2.4))
+    axl.text(5.5, 3.95, "STUDENT", ha="center", va="center", color=TEAL,
+             fontsize=13, fontweight="bold")
+    axl.add_patch(FancyBboxPatch((4.0, 1.1), 3.0, 1.3,
+                  boxstyle="round,pad=0.02,rounding_size=0.06",
+                  facecolor=AMBER_SOFT, edgecolor=AMBER, lw=2.4))
+    axl.text(5.5, 1.75, "TEACHER", ha="center", va="center", color=ROI_INK,
+             fontsize=13, fontweight="bold")
+    axl.annotate("", xy=(4.0, 3.95), xytext=(2.4, 3.7),
+                 arrowprops=dict(arrowstyle="-|>", color=INK_SOFT, lw=1.8))
+    axl.annotate("", xy=(4.0, 1.75), xytext=(2.4, 2.0),
+                 arrowprops=dict(arrowstyle="-|>", color=INK_SOFT, lw=1.8))
+    axl.text(2.9, 4.05, "view 1", ha="center", color=INK_SOFT, fontsize=9.5)
+    axl.text(2.9, 1.65, "view 2", ha="center", color=INK_SOFT, fontsize=9.5)
+    # match outputs
+    axl.add_patch(FancyBboxPatch((8.0, 2.35), 3.4, 1.0,
+                  boxstyle="round,pad=0.02,rounding_size=0.06",
+                  facecolor=WHITE, edgecolor=INK_SOFT, lw=2.0))
+    axl.text(9.7, 2.85, "make outputs MATCH", ha="center", va="center",
+             color=INK, fontsize=11.5, fontweight="bold")
+    axl.annotate("", xy=(8.0, 2.95), xytext=(7.0, 3.7),
+                 arrowprops=dict(arrowstyle="-|>", color=TEAL, lw=1.8))
+    axl.annotate("", xy=(8.0, 2.75), xytext=(7.0, 1.75),
+                 arrowprops=dict(arrowstyle="-|>", color=AMBER, lw=1.8))
+    # EMA arrow points STUDENT -> TEACHER: the teacher's weights are a slow
+    # moving average of the student's, so the update flows down into the teacher.
+    axl.annotate("", xy=(5.5, 2.4), xytext=(5.5, 3.3),
+                 arrowprops=dict(arrowstyle="-|>", color=MUTED, lw=1.6,
+                                 ls="--"))
+    axl.text(6.4, 2.85, "EMA", ha="center", va="center", color=MUTED,
+             fontsize=9, style="italic")
+    axl.text(5.5, 0.35,
+             "teacher = a slow moving average of the student", ha="center",
+             va="center", color=MUTED, fontsize=9.5, style="italic")
+    # right: unsupervised attention segmentation schematic
+    axr.set_xlim(0, 10)
+    axr.set_ylim(0, 10)
+    axr.set_xticks([])
+    axr.set_yticks([])
+    for s in axr.spines.values():
+        s.set_edgecolor(HAIRLINE)
+    axr.set_title("attention finds the object\n(unsupervised segmentation)",
+                  fontsize=11, color=INK, fontweight="bold")
+    # background grid (the 'image')
+    axr.add_patch(FancyBboxPatch((0.6, 0.8), 8.8, 7.8,
+                  boxstyle="round,pad=0.02,rounding_size=0.04",
+                  facecolor="#EFEFEA", edgecolor=HAIRLINE, lw=1.0))
+    # the object, highlighted by amber attention
+    axr.add_patch(FancyBboxPatch((3.2, 2.6), 3.8, 4.4,
+                  boxstyle="round,pad=0.02,rounding_size=0.6",
+                  facecolor=AMBER, edgecolor=ROI_INK, lw=2.2, alpha=0.75))
+    axr.text(5.1, 4.8, "object", ha="center", va="center", color=WHITE,
+             fontsize=12, fontweight="bold")
+    axr.text(5.0, 1.5, "no labels, no boxes \u2014 learned", ha="center",
+             color=MUTED, fontsize=9.5, style="italic")
+    axr.text(5.0, 0.4, "(illustrative schematic)", ha="center",
+             color=MUTED, fontsize=8.5, style="italic")
+    fig.subplots_adjust(wspace=0.12)
+    _save(fig, name)
+
+
+def pseudo_labeling(name="fig_pseudolabel.png"):
+    """Semi-supervised pseudo-labelling, the '10,000 unlabeled + 100 labeled'
+    middle path (named, not derived): train on the few labels, predict on the
+    many unlabeled, keep the confident guesses as pseudo-labels, retrain on
+    both."""
+    fig, ax = plt.subplots(figsize=(12.0, 4.4))
+    ax.set_xlim(0, 12)
+    ax.set_ylim(0, 5)
+    ax.axis("off")
+    ax.text(6.0, 4.7, "semi-supervised: 100 labeled + 10,000 unlabeled",
+            ha="center", color=INK, fontsize=14, fontweight="bold")
+    boxes = [
+        (1.25, TEAL, "100 labeled\nspectra", "the few you have"),
+        (3.6, TEAL, "train a first\nmodel", "on the 100"),
+        (5.95, AMBER, "predict on\n10,000 unlabeled", "guess their labels"),
+        (8.3, AMBER, "keep CONFIDENT\nguesses", "= pseudo-labels"),
+        (10.65, TEAL, "retrain on\n100 + pseudo", "far more data"),
+    ]
+    w = 1.95
+    for i, (x, col, head, sub) in enumerate(boxes):
+        cx = x
+        ax.add_patch(FancyBboxPatch((cx - w / 2, 1.7), w, 1.6,
+                    boxstyle="round,pad=0.02,rounding_size=0.06",
+                    facecolor=WHITE, edgecolor=col, lw=2.4))
+        ax.text(cx, 2.78, head, ha="center", va="center", color=col,
+                fontsize=10.5, fontweight="bold")
+        ax.text(cx, 2.05, sub, ha="center", va="center", color=MUTED,
+                fontsize=8.5, style="italic")
+        if i < len(boxes) - 1:
+            nx = boxes[i + 1][0]
+            ax.annotate("", xy=(nx - w / 2 - 0.04, 2.5),
+                        xytext=(cx + w / 2 + 0.04, 2.5),
+                        arrowprops=dict(arrowstyle="-|>", color=INK_SOFT,
+                                        lw=1.8))
+    # loop-back arrow from retrain to predict, routed BELOW the boxes (negative
+    # rad dips it down) so it never strikes through the box text.
+    ax.annotate("", xy=(5.95, 1.62), xytext=(10.65, 1.62),
+                arrowprops=dict(arrowstyle="-|>", color=ROI_INK, lw=1.6,
+                                connectionstyle="arc3,rad=-0.22", ls="--"))
+    ax.text(8.3, 0.5, "repeat \u2014 each round labels more", ha="center",
+            color=ROI_INK, fontsize=10, style="italic")
+    _save(fig, name)
+
+
+def paradigm_chart(mode="ido", name="fig_paradigm_chart.png"):
+    """The four learning paradigms as a decision/matching chart (rules 3/8): the
+    single source the Quiz 11 Q2 four-way match is answerable from. Each row =
+    paradigm | what you have | what it does | an MS example. mode='ido' is the
+    teaching chart; the same PNG is reused for the you-do so the room reads the
+    worksheet scenario straight off it."""
+    rows = [
+        ("SUPERVISED", TEAL, "many LABELED examples",
+         "learn input \u2192 label", "labeled spectra \u2192 R/S classifier"),
+        ("UNSUPERVISED", AMBER, "NO labels",
+         "find structure / score anomalies",
+         "autoencoder flags bad QC runs"),
+        ("SELF-SUPERVISED", RED, "no labels \u2014 data labels itself",
+         "pretext task pretrains a body",
+         "mask peaks & predict, then fine-tune"),
+        ("SEMI-SUPERVISED", INK_SOFT, "FEW labeled + MANY unlabeled",
+         "pseudo-label the rest, retrain",
+         "100 labeled + 10,000 unlabeled"),
+    ]
+    fig, ax = plt.subplots(figsize=(12.6, 6.0))
+    ax.set_xlim(0, 13)
+    ax.set_ylim(0, 6)
+    ax.axis("off")
+    header = ("match the data you have to a paradigm"
+              if mode == "ido" else
+              "your turn: read each quiz scenario's row off the chart")
+    hcol = INK if mode == "ido" else ROI_INK
+    ax.text(6.5, 5.72, header, ha="center", va="center", fontsize=15,
+            color=hcol, fontweight="bold")
+    ax.text(1.75, 5.15, "paradigm", ha="center", color=MUTED, fontsize=12)
+    ax.text(5.15, 5.15, "what you have", ha="center", color=MUTED, fontsize=12)
+    ax.text(8.15, 5.15, "what it does", ha="center", color=MUTED, fontsize=12)
+    ax.text(11.3, 5.15, "MS example", ha="center", color=MUTED, fontsize=12)
+    ys = [4.4, 3.35, 2.3, 1.25]
+    for (name_, col, have, does, ex), y in zip(rows, ys):
+        ax.add_patch(FancyBboxPatch((0.25, y - 0.45), 3.0, 0.9,
+                    boxstyle="round,pad=0.02,rounding_size=0.06",
+                    facecolor=col, edgecolor=col, lw=2.0))
+        ax.text(1.75, y, name_, ha="center", va="center", fontsize=11.5,
+                color=WHITE, fontweight="bold")
+        ax.add_patch(FancyBboxPatch((3.55, y - 0.45), 3.2, 0.9,
+                    boxstyle="round,pad=0.02,rounding_size=0.06",
+                    facecolor=WHITE, edgecolor=col, lw=1.8))
+        ax.text(5.15, y, have, ha="center", va="center", fontsize=10,
+                color=INK, fontweight="bold")
+        ax.add_patch(FancyBboxPatch((6.75, y - 0.45), 2.8, 0.9,
+                    boxstyle="round,pad=0.02,rounding_size=0.06",
+                    facecolor="#F1F1EC", edgecolor=col, lw=1.8))
+        ax.text(8.15, y, does, ha="center", va="center", fontsize=9.5,
+                color=INK_SOFT)
+        ax.add_patch(FancyBboxPatch((9.6, y - 0.45), 3.15, 0.9,
+                    boxstyle="round,pad=0.02,rounding_size=0.06",
+                    facecolor=WHITE, edgecolor=col, lw=1.8))
+        ax.text(11.18, y, ex, ha="center", va="center", fontsize=9,
+                color=INK, style="italic")
+    _save(fig, name)
+
+
+def _lecture11_figures():
+    autoencoder_bottleneck()
+    anomaly_overlay()
+    recon_error_worked("ido", "fig_recon_error_ido.png",
+                       x=(0.2, 0.5, 0.1), xhat=(0.2, 0.4, 0.1), thr=0.01)
+    # you-do = Quiz 11 Q3: x=(0.1,0.8,0.2), x\u0302=(0.1,0.5,0.2), thr 0.01
+    #  errors (0,0.3,0) -> squared (0,0.09,0) -> MSE 0.09/3 = 0.03 > 0.01 = ANOMALY
+    recon_error_worked("youdo", "fig_recon_error_youdo.png",
+                       x=(0.1, 0.8, 0.2), xhat=(0.1, 0.5, 0.2), thr=0.01)
+    ae_vs_vae_latent(("autoencoder latent", "VAE latent"),
+                     "fig_ae_vs_vae_latent.png")
+    ae_vs_vae_latent(("Picture A", "Picture B"), "fig_latent_ab_quiz.png",
+                     describe=False)
+    vae_recipe()
+    latent_interpolation()
+    masking_pretext()
+    contrastive_views()
+    dino_student_teacher()
+    pseudo_labeling()
+    paradigm_chart("ido", "fig_paradigm_chart.png")
+    paradigm_chart("youdo", "fig_paradigm_youdo.png")
+
+
 FUNCS = {
     "maldi": maldi_real,
     "chatgpt": chatgpt_panel,
@@ -4111,6 +4816,32 @@ FUNCS = {
     "scarce_toolkit": scarce_data_toolkit,
     "shift_drop": distribution_shift_drop,
     "not_dl": when_not_deep_learning,
+    # ---- Lecture 11 ----
+    "unsupervised": _lecture11_figures,
+    "ae_bottleneck": autoencoder_bottleneck,
+    "anomaly_overlay": anomaly_overlay,
+    "recon_error": lambda: (
+        recon_error_worked("ido", "fig_recon_error_ido.png",
+                           x=(0.2, 0.5, 0.1), xhat=(0.2, 0.4, 0.1), thr=0.01),
+        recon_error_worked("youdo", "fig_recon_error_youdo.png",
+                           x=(0.1, 0.8, 0.2), xhat=(0.1, 0.5, 0.2), thr=0.01),
+    ),
+    "ae_vs_vae": lambda: (
+        ae_vs_vae_latent(("autoencoder latent", "VAE latent"),
+                         "fig_ae_vs_vae_latent.png"),
+        ae_vs_vae_latent(("Picture A", "Picture B"), "fig_latent_ab_quiz.png",
+                         describe=False),
+    ),
+    "vae_recipe": vae_recipe,
+    "latent_interp": latent_interpolation,
+    "masking": masking_pretext,
+    "contrastive": contrastive_views,
+    "dino": dino_student_teacher,
+    "pseudolabel": pseudo_labeling,
+    "paradigm": lambda: (
+        paradigm_chart("ido", "fig_paradigm_chart.png"),
+        paradigm_chart("youdo", "fig_paradigm_youdo.png"),
+    ),
 }
 
 

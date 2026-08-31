@@ -1,0 +1,237 @@
+% =====================================================================
+%  MSACL DS301 Deep Learning · Quiz 11 · Learning Without (Many) Labels
+%  Academic problem-set style (single-source, \ifsolution toggle)
+%  SINGLE SOURCE — produces BOTH the student quiz and the answer key.
+%
+%  ANSWER TOGGLE
+%  -------------
+%  Student version (answers HIDDEN) — the default:
+%       pdflatex quiz11_unsupervised.tex
+%  Answer key (answers SHOWN):
+%       pdflatex "\def\showsolutions{}\input{quiz11_unsupervised.tex}"
+%  (or, to flip by hand, change \solutionfalse to \solutiontrue below.)
+% =====================================================================
+\documentclass[11pt]{article}
+
+\newif\ifsolution
+\ifdefined\showsolutions \solutiontrue \else \solutionfalse \fi
+% \solutiontrue   % <-- uncomment to hard-code the ANSWER KEY build
+
+\usepackage[letterpaper, margin=0.6in, top=0.7in, bottom=0.5in]{geometry}
+\usepackage{amsmath, amssymb}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, calc}
+\usepackage{fancyhdr}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textbf{MSACL DS301 --- Deep Learning}}
+\fancyhead[R]{\small\textbf{Quiz 11: Learning Without (Many) Labels\ifsolution\ \textmd{(Answer Key)}\fi}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\newcommand{\blk}[1]{\underline{\hspace{#1}}}
+% Reveal-or-blank: shows the answer in the key, a blank rule on the student sheet.
+\newcommand{\rb}[2]{\ifsolution\textbf{#1}\else\blk{#2}\fi}
+% Boxed answer (key only) and blank writing space (student only).
+\newcommand{\keybox}[1]{\ifsolution\par\vspace{2pt}%
+  \fbox{\parbox{0.965\textwidth}{\small\textbf{Answer.}\; #1}}\par\fi}
+\newcommand{\work}[1]{\ifsolution\else\vspace{#1}\fi}
+
+% ---- course palette (numeric grids / diagram) ----------------------------
+\definecolor{ink}{HTML}{1B2025}
+\definecolor{teal}{HTML}{0E7C7B}
+\definecolor{tealsoft}{HTML}{E3F0EF}
+\definecolor{amber}{HTML}{E09E2F}
+\definecolor{ambersoft}{HTML}{FBF0DC}
+\definecolor{redd}{HTML}{C4534F}
+\definecolor{redsoft}{HTML}{F7E4E3}
+\definecolor{inksoft}{HTML}{3D444C}
+\definecolor{muted}{HTML}{8A9099}
+\definecolor{hair}{HTML}{D9D9D2}
+% square, centred, monospace cells for the numeric grids
+\newcolumntype{G}{>{\centering\arraybackslash\ttfamily}p{9mm}}
+\newcommand{\gr}{\renewcommand{\arraystretch}{1.5}}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{3pt}
+\setlength{\abovedisplayskip}{5pt}
+\setlength{\belowdisplayskip}{5pt}
+
+% ---- the two latent-space pictures reproduced from the deck --------------
+% Picture A = an autoencoder latent (scattered islands, big empty gaps).
+% Picture B = a VAE latent (one smooth, organised, gap-free cloud).
+\newcommand{\latentA}{%
+\begin{tikzpicture}[scale=0.72]
+  \draw[hair, line width=0.8pt] (0,0) rectangle (5,5);
+  % four tight, separated clusters with large empty gaps between them
+  \foreach \cx/\cy/\col in {1/3.7/teal, 3.9/4/amber, 1/1/redd, 4/1/inksoft}{
+    \foreach \dx/\dy in {0/0, 0.28/0.12, -0.22/0.18, 0.15/-0.24, -0.18/-0.15,
+                         0.32/-0.05, -0.05/0.30, 0.10/0.02, -0.30/0.02, 0.05/-0.32}{
+      \fill[\col] ($(\cx,\cy)+(\dx,\dy)$) circle (1.6pt);
+    }
+  }
+  \node[redd, font=\footnotesize\bfseries] at (2.5,2.5) {$\times$};
+  \node[redd, font=\scriptsize] at (2.5,2.0) {empty gap};
+\end{tikzpicture}}
+\newcommand{\latentB}{%
+\begin{tikzpicture}[scale=0.72]
+  \draw[hair, line width=0.8pt] (0,0) rectangle (5,5);
+  % one broad, gap-free cloud; colours blend continuously
+  \foreach \dx/\dy/\col in {%
+    0/0/teal, 0.6/0.3/teal, -0.5/0.4/inksoft, 0.4/-0.6/amber, -0.6/-0.4/teal,
+    0.9/0.7/redd, -0.9/0.6/inksoft, 0.7/-0.9/amber, -0.7/-0.8/teal, 1.2/0.1/redd,
+    -1.2/0.2/inksoft, 0.1/1.2/inksoft, 0.2/-1.2/amber, 1.0/-0.4/amber, -1.0/-0.3/teal,
+    0.3/0.8/redd, -0.3/0.9/inksoft, 0.8/0.0/amber, -0.8/0.1/teal, 0.0/-0.9/amber,
+    1.4/0.6/redd, -1.4/0.5/inksoft, 0.5/1.0/redd, -0.5/-1.1/teal, 1.1/-1.0/amber}{
+    \fill[\col] ($(2.5,2.5)+(\dx,\dy)$) circle (1.7pt);
+  }
+\end{tikzpicture}}
+
+\begin{document}
+
+\begin{center}
+{\Large \textbf{Quiz 11 --- Learning Without (Many) Labels}}\\[2pt]
+{\normalsize Read a latent map, match paradigms, compute a reconstruction error, and say why two views must agree}
+\end{center}
+
+\vspace{-2pt}
+\begin{center}
+\fbox{\parbox{0.92\textwidth}{\small
+\textbf{Instructions:}\; Answer all four questions --- every part is answerable from the
+pictures and rules on the slides. Intuition first; the only arithmetic is a mean of three
+squared numbers. No calculators needed.%
+\ifsolution\else\\[4pt]\textbf{Name:}\ \blk{6cm}\hfill\textbf{Date:}\ \blk{3.5cm}\fi
+}}
+\end{center}
+
+\vspace{-2pt}\hrule\vspace{5pt}
+
+% =========================== Q1 ===========================
+\textbf{1. Which picture is the VAE?}\; {\small Below are two latent-space maps of the
+\emph{same} spectra --- the same pair you saw on the slides. One is a plain autoencoder, one
+is a VAE.}
+
+\vspace{4pt}
+\begin{center}
+\begin{tabular}{cc}
+\latentA & \latentB \\[2pt]
+\textbf{Picture A} & \textbf{Picture B}
+\end{tabular}
+\end{center}
+
+\vspace{2pt}
+\textbf{(a)} Which picture is the \textbf{VAE}? \hfill $\rightarrow$\; \rb{Picture B}{3.2cm}
+
+\vspace{3pt}
+\textbf{(b)} Justify in \emph{one sentence}.
+
+\work{1.0cm}
+\ifsolution\else\blk{\linewidth}\fi
+
+\keybox{(a) \textbf{Picture B} is the VAE. (b) \textbf{Picture B is one smooth, organised,
+gap-free cloud} in which every point decodes to a plausible spectrum (so you can sample new
+spectra and interpolate), whereas \textbf{Picture A is scattered islands with big empty gaps}
+that would decode to garbage --- the memorised points of a plain autoencoder. (Any equivalent
+one-sentence reason --- ``B has no gaps / is sampleable / is continuous'' --- earns full credit.)}
+
+\vspace{2pt}\hrule\vspace{5pt}
+
+% =========================== Q2 ===========================
+\textbf{2. Match each scenario to a learning paradigm.}\; {\small Use the four-paradigm chart
+from the slides. Each paradigm is used \textbf{exactly once}:
+\textit{supervised $\cdot$ unsupervised $\cdot$ self-supervised $\cdot$ semi-supervised}.}
+
+\vspace{4pt}
+\textbf{(a)} You have \textbf{3{,}000 spectra, each labelled} susceptible/resistant; train a
+classifier.\hfill $\rightarrow$\;\rb{supervised}{4.4cm}
+
+\vspace{3pt}
+\textbf{(b)} You have \textbf{50{,}000 unlabelled QC runs}; flag the ones that look
+abnormal.\hfill $\rightarrow$\;\rb{unsupervised}{4.4cm}
+
+\vspace{3pt}
+\textbf{(c)} You \textbf{pretrain on millions of unlabelled spectra by masking peaks and
+predicting them}, then fine-tune on your 500 labels.\hfill $\rightarrow$\;\rb{self-supervised}{4.4cm}
+
+\vspace{3pt}
+\textbf{(d)} You have \textbf{100 labelled + 10{,}000 unlabelled} spectra; use the model to
+label the 10{,}000 and retrain.\hfill $\rightarrow$\;\rb{semi-supervised}{4.4cm}
+
+\keybox{(a) \textbf{Supervised} --- you already hold the labels, so learn the input$\rightarrow$label
+map directly. (b) \textbf{Unsupervised} --- no labels at all; an autoencoder's reconstruction
+error scores each run for anomaly (bad-QC detection). (c) \textbf{Self-supervised} --- there are
+no human labels, but the \emph{data labels itself}: the hidden (masked) peak is its own target,
+which pretrains a general body you then fine-tune. (d) \textbf{Semi-supervised} --- a few labels
+plus many unlabelled examples, bridged by pseudo-labelling (the middle path).}
+
+\vspace{2pt}\hrule\vspace{5pt}
+
+% =========================== Q3 ===========================
+\textbf{3. Compute a reconstruction error and make the QC call.}\; {\small An autoencoder was
+trained only on \emph{good} runs. For a new 3-bin spectrum it produces the reconstruction
+$\hat{x}$ below. Reconstruction error is the mean squared error}
+\[
+  \text{MSE} \;=\; \tfrac{1}{n}\sum_{i}\,(x_i-\hat{x}_i)^2 ,
+  \qquad\text{{\small flag an \textbf{anomaly} if } } \text{MSE} > 0.01 .
+\]
+
+\vspace{2pt}
+\begin{center}
+\gr\begin{tabular}{r|G|G|G|}
+\multicolumn{1}{r}{} & \multicolumn{1}{c}{\small bin 1} & \multicolumn{1}{c}{\small bin 2} & \multicolumn{1}{c}{\small bin 3}\\\cline{2-4}
+\small measured $x$        & 0.1 & 0.8 & 0.2 \\\cline{2-4}
+\small reconstruction $\hat{x}$ & 0.1 & 0.5 & 0.2 \\\cline{2-4}
+\end{tabular}
+\end{center}
+
+\vspace{3pt}
+\textbf{(a)} Squared error in each bin: \;
+bin 1 $=$ \rb{$0$}{1.2cm}, \; bin 2 $=$ \rb{$0.09$}{1.4cm}, \; bin 3 $=$ \rb{$0$}{1.2cm}.
+
+\work{0.4cm}
+
+\textbf{(b)} $\text{MSE} = (0 + 0.09 + 0)/3 = $ \rb{$0.03$}{2.0cm}
+
+\work{0.4cm}
+
+\textbf{(c)} Since $0.03$ \rb{$>$}{0.8cm} $0.01$, this run is \rb{an anomaly (flag it)}{4.8cm}.
+
+\work{0.5cm}
+
+\keybox{(a) Per-bin squared errors: $(0.1-0.1)^2=\mathbf{0}$, $(0.8-0.5)^2=0.3^2=\mathbf{0.09}$,
+$(0.2-0.2)^2=\mathbf{0}$. (b) $\text{MSE}=(0+0.09+0)/3=0.09/3=\mathbf{0.03}$. (c) $0.03>0.01$, so
+the run is \textbf{an ANOMALY --- flag it} for a human. (The single big mismatch in bin~2 is what
+pushes the error over the threshold; choosing that threshold is the same sensitivity/specificity
+trade-off as Lecture~10.)}
+
+\vspace{2pt}\hrule\vspace{5pt}
+
+% =========================== Q4 ===========================
+\textbf{4. Why must the two views agree?}\; {\small In contrastive learning and in DINO, two
+\emph{augmented views} of the \emph{same} spectrum --- say one with added noise, one with a small
+$m/z$ shift --- are forced to land at the \textbf{same} point in embedding space.}
+
+\vspace{3pt}
+In one sentence, \emph{why} must the two views agree --- i.e.\ what does forcing agreement make
+the model learn?
+
+\work{1.2cm}
+\ifsolution\else\blk{\linewidth}\\[6pt]\blk{\linewidth}\fi
+
+\keybox{The two views differ \emph{only} by nuisance augmentations (noise, an $m/z$ shift) while
+the underlying sample is identical, so \textbf{forcing their embeddings to agree makes the model
+learn the stable, real content of the spectrum and ignore the nuisance variation} ---
+augmentation-invariance. That invariance is exactly what you want for robust spectra: the same
+sample on a different day or instrument should still land in the same place. (Any equivalent
+answer --- ``so it learns features that don't depend on the augmentation / that generalise across
+instruments'' --- earns full credit. Caveat worth noting: the augmentations must preserve the
+biology, or agreement would teach it to ignore something real.)}
+
+\vspace{4pt}\hrule\vspace{3pt}
+{\small\itshape \ifsolution Answer key.\else Keep this sheet --- Lab 4 trains a real VAE on
+spectra, scores anomalies by reconstruction error, and plots the latent map.\fi}
+
+\end{document}

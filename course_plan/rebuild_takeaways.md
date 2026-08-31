@@ -19,10 +19,40 @@ open decisions. Keep it terse.
 ## Reusable assets (slides/assets/img/)
 - sparrow.jpg, sparrows_two.jpg (+ edge/blur variants), cat.jpg, vgg16.png,
   alphafold_protein.png, alphago_go_board.jpg, selfdriving_waymo.jpg,
-  maldi_spectrum.png, ai_statistics_meme.png, conv_worked_example.png (CC BY 4.0).
+  maldi_spectrum.png, ai_statistics_meme.png, conv_worked_example.png (CC BY 4.0),
+  autoencoder_schema.png (Michela Massi, Wikimedia Commons, CC BY-SA 4.0).
 
 ## Per-lecture log
 <!-- newest first; one block per lecture on approval -->
+
+### Lecture 11 · Learning Without (Many) Labels — BUILT 2026-08-30 (pending review)
+- **21 slides, 19 figure-driven.** Spec: `slides/spec/lecture11_unsupervised.yaml`
+  → `slides/pptx/lecture11_unsupervised.pptx`. Conceptual topic, so the ONE
+  numeric compute beat (rule 6) is reconstruction error / MSE → anomaly-vs-normal
+  against a threshold (an explicit callback to Lecture 10's sens/spec choice).
+- **Interactive spine (rule 8), all four Quiz 11 items worked live:** Q3 recon-error
+  compute (I-do x=(.2,.5,.1),x̂=(.2,.4,.1)→MSE 0.01/3=0.0033<0.01 NORMAL; you-do
+  x=(.1,.8,.2),x̂=(.1,.5,.2)→MSE 0.09/3=0.03>0.01 ANOMALY), Q1 pick-the-VAE picture,
+  Q2 four-way paradigm match, Q4 "why must two views agree" (contrastive/DINO).
+- **Quiz** `quizzes/src/quiz11_unsupervised.tex` single-source `\ifsolution`,
+  quiz08 conventions (`\rb`,`\keybox`,`\work`). The TWO latent pictures are
+  reproduced IN the quiz as self-contained TikZ (Picture A = AE scattered
+  islands+gap; Picture B = VAE smooth cloud) so Q1 is answerable without an
+  external image — student+key both compile (pdflatex, 2 pp each).
+- **NEW toolkit funcs (extend, not fork) in `_lecture11_figures()`:**
+  `autoencoder_bottleneck`, `recon_error_worked(ido/youdo)`, `anomaly_overlay`,
+  `ae_vs_vae_latent` (labeled + A/B `fig_latent_ab_quiz`), `vae_recipe`,
+  `latent_interpolation`, `masking_pretext`, `contrastive_views`,
+  `dino_student_teacher`, `pseudo_labeling`, `paradigm_chart(ido/youdo)` +
+  helpers `_spectrum_curve`,`_latent_scatter`. Registered in build_all() and FUNCS
+  (key `unsupervised` + per-figure keys). Rebuild: `python3 tools/make_slide_figures.py unsupervised`.
+- **Real licensed image (rule 7):** `slides/assets/img/autoencoder_schema.png`
+  (Michela Massi, Wikimedia Commons, **CC BY-SA 4.0**) for the canonical AE
+  schematic; everything else hand-authored (MS-anchored, offline, editable).
+  The AE-vs-VAE latent comparison + DINO/contrastive schematics are the rule-6/9
+  exception (no clean licensed offline image for those).
+- **Verify:** overlap checker 0 FAIL, fractional-EMU 0, all 21 notes non-empty;
+  regression rebuild L5/7/8/10 all 0 FAIL / 0 fractional-EMU.
 
 ### Lecture 1 · What Is Deep Learning? — APPROVED 2026-08-30
 - **22 slides, 11 figure-driven.** Spec: `slides/spec/lecture01_intro.yaml`. HTML
