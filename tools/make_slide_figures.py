@@ -2624,6 +2624,8 @@ def build_all():
     _lecture5_figures()
     # ---- Lecture 7 ----
     _lecture7_figures()
+    # ---- Lecture 8 ----
+    _lecture8_figures()
 
 
 # deck I-do convolution (5x5 image, 3x3 diagonal detector) and the matched
@@ -3160,6 +3162,413 @@ def _lecture7_figures():
     rnn_vs_attention()
 
 
+# ============================================================================
+#  Lecture 8 · The Transformer, Assembled (+ transfer learning)
+#  Hand-authored numeric mechanics (rule 6) + bespoke MS-anchored schematics
+#  (rule 9). The canonical full encoder–decoder diagram is a REAL licensed
+#  image (dvgodoy, Wikimedia Commons, CC BY 4.0) placed directly in the deck.
+# ============================================================================
+
+def positional_encoding(name="fig_posenc.png"):
+    """Positional encoding's job, by picture (rule 6/9). Left: attention is
+    order-blind — the SAME residues in two orders give the same weighted
+    average, so attention can't tell them apart. Right: the fix, an exact
+    element-wise ADD of a per-position signal to a token's embedding, so the
+    same token at a new position becomes a different vector."""
+    fig, axes = plt.subplots(1, 2, figsize=(11.8, 4.5),
+                             gridspec_kw={"width_ratios": [1, 1.15]})
+    # ---- left: attention is order-blind ----
+    ax = axes[0]
+    ax.set_xlim(0, 1); ax.set_ylim(0, 1); ax.axis("off")
+    ax.text(0.5, 0.96, "attention is order-blind", ha="center", fontsize=14,
+            color=INK, fontweight="bold")
+
+    def orow(y, toks, cap):
+        n = len(toks); w = 0.17; gap = 0.03
+        total = n * w + (n - 1) * gap; x0 = 0.5 - total / 2
+        for i, t in enumerate(toks):
+            _chip(ax, x0 + i * (w + gap), y, w, 0.14, t, TEAL_SOFT, txt=INK,
+                  fs=15, edge=TEAL, lw=1.4)
+        ax.text(0.5, y - 0.12, cap, ha="center", va="top", fontsize=11.5,
+                color=INK_SOFT)
+    orow(0.74, ["D", "E", "K"], "peptide  D–E–K")
+    orow(0.44, ["K", "E", "D"], "shuffled  K–E–D")
+    ax.text(0.5, 0.20,
+            "same tokens → same weighted average\nattention can’t tell the two orders apart",
+            ha="center", va="top", fontsize=11, color=RED, fontweight="bold")
+    # ---- right: the fix — add a position signal ----
+    ax = axes[1]
+    ax.set_xlim(0, 1); ax.set_ylim(0, 1); ax.axis("off")
+    ax.text(0.5, 0.96, "the fix: ADD a position signal", ha="center",
+            fontsize=14, color=INK, fontweight="bold")
+    emb = [0.2, 0.9, 0.5, 0.1]
+    pos = [0.1, 0.0, 0.5, 1.0]
+    tot = [round(a + b, 1) for a, b in zip(emb, pos)]
+
+    def vec(y, label, vals, color, lcol, txt=WHITE):
+        ax.text(0.03, y + 0.13, label, ha="left", va="center", fontsize=11,
+                color=lcol, fontweight="bold")
+        n = len(vals); w = 0.155; gap = 0.02
+        total = n * w + (n - 1) * gap; x0 = 0.97 - total
+        for i, v in enumerate(vals):
+            _chip(ax, x0 + i * (w + gap), y, w, 0.13, f"{v:g}", color,
+                  txt=txt, fs=13)
+    vec(0.72, "token “peptide” embedding", emb, TEAL, TEAL)
+    ax.text(0.645, 0.605, "+", ha="center", fontsize=20, color=INK,
+            fontweight="bold")
+    vec(0.49, "position-3 signal (a fixed wave)", pos, AMBER, ROI_INK)
+    ax.plot([0.32, 0.97], [0.37, 0.37], color=INK_SOFT, lw=1.3)
+    vec(0.26, "= position-aware input", tot, INK_SOFT, INK)
+    ax.text(0.5, 0.075,
+            "same token at a new position → a different vector, so order becomes visible",
+            ha="center", va="top", fontsize=10, color=MUTED, style="italic")
+    fig.subplots_adjust(wspace=0.16)
+    _save(fig, name)
+
+
+def norm_axes(mode="ido", name="fig_norm_axes.png"):
+    """Batch norm vs. layer norm at the 'which axis gets averaged' level
+    (the Lecture 8 learning outcome). Rows = samples in the batch, columns =
+    features. LAYER norm averages across a token's features (one teal row);
+    BATCH norm averages down a feature across the batch (one amber column).
+    mode='ido' shows the worked means and a full, exact layer-norm normalize;
+    mode='youdo' blanks the answers for Quiz 8 Q4 (parallel matrix, new
+    numbers)."""
+    if mode == "ido":
+        data = [[2, 2, 6, 6], [4, 4, 8, 8], [0, 0, 4, 4]]
+        clabels = ["f1", "f2", "f3", "f4"]; rlabels = ["tok1", "tok2", "tok3"]
+    else:
+        data = [[2, 4, 6], [4, 6, 8]]
+        clabels = ["f1", "f2", "f3"]; rlabels = ["tok1", "tok2"]
+    rows = len(data); cols = len(data[0])
+    fig, ax = plt.subplots(figsize=(11.6, 5.0 if mode == "ido" else 4.2))
+    ax.set_xlim(-1.7, cols + 6.4)
+    ax.set_ylim(-2.5 if mode == "ido" else -1.9, rows + 1.3)
+    ax.axis("off")
+    for c in range(cols):
+        ax.text(c + 0.48, rows + 0.28, clabels[c], ha="center", va="bottom",
+                fontsize=12, color=INK_SOFT, fontweight="bold")
+    for r in range(rows):
+        yy = rows - 1 - r
+        ax.text(-0.22, yy + 0.48, rlabels[r], ha="right", va="center",
+                fontsize=12, color=INK_SOFT, fontweight="bold")
+        for c in range(cols):
+            face = TEAL_SOFT if r == 0 else WHITE
+            ax.add_patch(plt.Rectangle((c, yy), 0.96, 0.96, facecolor=face,
+                         edgecolor=HAIRLINE, lw=1.2, zorder=2))
+            ax.text(c + 0.48, yy + 0.48, f"{data[r][c]:g}", ha="center",
+                    va="center", fontsize=15, color=INK, fontweight="bold",
+                    zorder=3)
+    # amber box around column f1 (batch-norm axis)
+    ax.add_patch(plt.Rectangle((-0.04, -0.04), 1.04, rows + 0.08, fill=False,
+                 edgecolor=AMBER, lw=3.0, zorder=5))
+    # teal arrow across the top row (layer-norm axis)
+    ax.annotate("", xy=(cols + 1.0, rows - 0.5), xytext=(cols + 0.15, rows - 0.5),
+                arrowprops=dict(arrowstyle="-|>", color=TEAL, lw=2.4))
+    if mode == "ido":
+        ax.text(cols + 1.15, rows - 0.5,
+                "LAYER norm — average across a\ntoken’s features:  mean(2,2,6,6) = 4",
+                ha="left", va="center", fontsize=11.5, color=TEAL,
+                fontweight="bold")
+    else:
+        ax.text(cols + 1.15, rows - 0.5,
+                "LAYER norm averages across ___?\nmean of tok1 = ?",
+                ha="left", va="center", fontsize=11.5, color=TEAL,
+                fontweight="bold")
+    # amber arrow down column f1 (batch-norm axis)
+    ax.annotate("", xy=(0.48, -1.05), xytext=(0.48, -0.18),
+                arrowprops=dict(arrowstyle="-|>", color=ROI_INK, lw=2.4))
+    if mode == "ido":
+        ax.text(0.48, -1.2, "BATCH norm — average down\nthe batch:  mean(2,4,0) = 2",
+                ha="center", va="top", fontsize=11.5, color=ROI_INK,
+                fontweight="bold")
+    else:
+        ax.text(0.48, -1.15, "BATCH norm averages down ___?\nmean of f1 = ?",
+                ha="center", va="top", fontsize=11.5, color=ROI_INK,
+                fontweight="bold")
+    if mode == "ido":
+        strip = ("normalize tok1:  [2, 2, 6, 6]  − mean 4  →  [−2, −2, 2, 2]"
+                 "  ÷ std 2  →  [−1, −1, 1, 1]")
+        ax.text(cols / 2.0, -2.1, strip, ha="center", va="center",
+                fontsize=12, color=INK, fontweight="bold", family="monospace",
+                bbox=dict(boxstyle="round,pad=0.4", fc=TEAL_SOFT, ec=TEAL,
+                          lw=1.4))
+    _save(fig, name)
+
+
+def transformer_block(labeled=True, name="fig_transformer_block.png"):
+    """A simplified transformer (encoder) block as a vertical stack of the four
+    blocks the room already owns, so Quiz 8 Q1 is labelable from the taught
+    diagram. labeled=True names each block (the I-do reference); labeled=False
+    blanks them 1-4 with a word bank (the you-do = Quiz 8 Q1). Same layout and
+    colours in both so the pair matches visually (rule 8)."""
+    fig, ax = plt.subplots(figsize=(7.8, 5.6))
+    ax.set_xlim(0, 8); ax.set_ylim(0, 11); ax.axis("off")
+    cx = 3.2; bw = 5.2
+    names = (["Positional encoding", "Multi-head self-attention",
+              "Add & Norm  (layer norm)", "Feed-forward network"]
+             if labeled else ["①", "②", "③", "④"])
+    styles = [(TEAL_SOFT, TEAL), (AMBER_SOFT, AMBER), (WHITE, INK_SOFT),
+              ("#F7E4E3", RED)]
+    ys = [1.0, 3.2, 5.4, 7.6]
+    bh = 1.3
+
+    def arrow(y0, y1):
+        ax.annotate("", xy=(cx, y1), xytext=(cx, y0),
+                    arrowprops=dict(arrowstyle="-|>", color=INK_SOFT, lw=2.0))
+    ax.text(cx, 0.35, "input tokens", ha="center", fontsize=11, color=MUTED)
+    arrow(0.6, 1.0)
+    for i, (lab, (face, edge), y) in enumerate(zip(names, styles, ys)):
+        ax.add_patch(FancyBboxPatch((cx - bw / 2, y), bw, bh,
+                    boxstyle="round,pad=0.02,rounding_size=0.08",
+                    facecolor=face, edgecolor=edge, lw=2.4, zorder=3))
+        ax.text(cx, y + bh / 2, lab, ha="center", va="center",
+                color=INK if labeled else edge,
+                fontsize=12.5 if labeled else 20, fontweight="bold", zorder=4)
+        if i < len(ys) - 1:
+            arrow(y + bh, ys[i + 1])
+    arrow(ys[-1] + bh, ys[-1] + bh + 0.5)
+    ax.text(cx, ys[-1] + bh + 0.75, "to the next block  →  output",
+            ha="center", fontsize=11, color=MUTED)
+    # right-hand rail: 'residual skip' note echoing the '+' in the real diagram
+    ax.annotate("", xy=(cx + bw / 2 + 0.35, ys[2] + bh / 2),
+                xytext=(cx + bw / 2 + 0.35, ys[1] - 0.1),
+                arrowprops=dict(arrowstyle="-|>", color=MUTED, lw=1.6,
+                                connectionstyle="arc3,rad=0.5"))
+    ax.text(cx + bw / 2 + 0.5, (ys[1] + ys[2]) / 2 + 0.3, "residual\nskip",
+            ha="left", va="center", fontsize=9.5, color=MUTED, style="italic")
+    if not labeled:
+        bank = ("word bank:   Feed-forward network  ·  Multi-head self-attention"
+                "  ·  Add & Norm (layer norm)  ·  Positional encoding")
+        ax.text(cx, -0.15, bank, ha="center", va="top", fontsize=10,
+                color=INK_SOFT, wrap=True)
+        ax.set_ylim(-1.0, 11)
+    _save(fig, name)
+
+
+def bert_vs_gpt(name="fig_bert_vs_gpt.png"):
+    """Encoder-only (BERT: read the whole sequence → one label / embedding) vs.
+    decoder-only (GPT: generate the next token, left to right). MS anchors
+    underneath each."""
+    fig, axes = plt.subplots(1, 2, figsize=(11.8, 4.5))
+    toks = ["A", "C", "D", "E", "K"]
+    xs = np.linspace(1.0, 5.0, 5)
+    # ---- left: encoder-only ----
+    ax = axes[0]; ax.set_xlim(0, 6); ax.set_ylim(0, 5); ax.axis("off")
+    ax.text(3, 4.7, "Encoder-only  (BERT)", ha="center", fontsize=14,
+            color=TEAL, fontweight="bold")
+    ax.add_patch(FancyBboxPatch((1.0, 3.0), 4.0, 0.75,
+                boxstyle="round,pad=0.02,rounding_size=0.08",
+                facecolor=TEAL_SOFT, edgecolor=TEAL, lw=2.2))
+    ax.text(3, 3.375, "one label for the whole input", ha="center",
+            va="center", fontsize=11.5, color=INK, fontweight="bold")
+    for i in range(len(xs)):
+        for j in range(i + 1, len(xs)):
+            ax.annotate("", xy=(xs[j], 1.95), xytext=(xs[i], 1.95),
+                        arrowprops=dict(arrowstyle="-", color=TEAL, lw=0.8,
+                        alpha=0.4, connectionstyle=f"arc3,rad={-0.18*(j-i)}"))
+    for x, t in zip(xs, toks):
+        _chip(ax, x - 0.33, 1.3, 0.66, 0.55, t, TEAL_SOFT, txt=INK, fs=13,
+              edge=TEAL, lw=1.3)
+    ax.text(3, 0.62, "reads the WHOLE sequence, both directions → classify / embed",
+            ha="center", va="top", fontsize=10, color=INK_SOFT)
+    ax.text(3, 0.18, "MS: whole-spectrum call — resistant / susceptible",
+            ha="center", va="top", fontsize=10, color=TEAL, fontweight="bold")
+    # ---- right: decoder-only ----
+    ax = axes[1]; ax.set_xlim(0, 6); ax.set_ylim(0, 5); ax.axis("off")
+    ax.text(3, 4.7, "Decoder-only  (GPT)", ha="center", fontsize=14,
+            color=RED, fontweight="bold")
+    gen = ["A", "C", "D", "E", "?"]
+    for k in range(4):
+        ax.annotate("", xy=(xs[k + 1] - 0.32, 1.6), xytext=(xs[k] + 0.32, 1.6),
+                    arrowprops=dict(arrowstyle="-|>", color=RED, lw=1.6))
+    for i, (x, t) in enumerate(zip(xs, gen)):
+        face = "#F7E4E3" if i < 4 else WHITE
+        edge = RED if i < 4 else AMBER
+        _chip(ax, x - 0.33, 1.3, 0.66, 0.55, t, face, txt=INK, fs=13,
+              edge=edge, lw=1.3)
+    ax.add_patch(FancyBboxPatch((3.6, 2.7), 2.2, 0.7,
+                boxstyle="round,pad=0.02,rounding_size=0.08",
+                facecolor=AMBER_SOFT, edgecolor=AMBER, lw=2.0))
+    ax.text(4.7, 3.05, "predict next", ha="center", va="center", fontsize=11,
+            color=ROI_INK, fontweight="bold")
+    ax.annotate("", xy=(xs[4], 1.65), xytext=(4.7, 2.7),
+                arrowprops=dict(arrowstyle="-|>", color=AMBER, lw=1.6))
+    ax.text(3, 0.62, "generates one token at a time, left to right → generate",
+            ha="center", va="top", fontsize=10, color=INK_SOFT)
+    ax.text(3, 0.18, "MS: de novo peptide — predict the next residue (Casanovo)",
+            ha="center", va="top", fontsize=10, color=RED, fontweight="bold")
+    fig.subplots_adjust(wspace=0.12)
+    _save(fig, name)
+
+
+def _mini_spectrum(ax, peaks, x_hi=10.0):
+    mz = np.linspace(0, x_hi, 500)
+    y = np.zeros_like(mz)
+    for c, h in peaks:
+        y += h * np.exp(-((mz - c) / 0.13) ** 2)
+    ax.plot(mz, y, color=TEAL, lw=1.3, zorder=3)
+    ax.fill_between(mz, y, color=TEAL, alpha=0.10, zorder=2)
+    return mz, y
+
+
+def tokenization_strategies(name="fig_tokenization_strategies.png"):
+    """Three ways to turn ONE spectrum into transformer tokens, side by side:
+    (a) chunk into patches + linear projection (ViT-style); (b) a small CNN
+    front-end that emits token embeddings (Lecture 5 callback); (c) each peak is
+    a token — m/z + intensity embedded (Casanovo)."""
+    peaks = [(1.8, 1.0), (3.0, 0.45), (4.8, 0.8), (6.6, 0.3), (8.2, 0.6)]
+    fig, axes = plt.subplots(3, 1, figsize=(11.2, 6.6))
+    titles = [
+        ("(a) chunk into patches → linear projection   —  ViT-style", TEAL),
+        ("(b) small CNN front-end → token embeddings   —  Lecture 5 callback", AMBER),
+        ("(c) each peak = one token: (m/z, intensity)   —  Casanovo", RED),
+    ]
+    for row, (ax, (title, col)) in enumerate(zip(axes, titles)):
+        ax.set_xlim(0, 15.2); ax.set_ylim(-0.35, 1.5); ax.axis("off")
+        ax.text(0.0, 1.42, title, ha="left", va="top", fontsize=12.5,
+                color=col, fontweight="bold")
+        mz, y = _mini_spectrum(ax, peaks)
+        ax.plot([0, 10], [0, 0], color=HAIRLINE, lw=1.0)
+        # token chips on the right
+        tx = np.linspace(11.2, 14.4, 4)
+        if row == 0:  # patches: vertical dashed splits
+            for xb in np.linspace(2.5, 10, 4):
+                ax.axvline(xb, ymin=0.10, ymax=0.86, color=ROI_INK, ls="--",
+                           lw=1.2, alpha=0.8)
+            ax.text(5, -0.28, "equal-width chunks", ha="center", fontsize=9.5,
+                    color=MUTED, style="italic")
+            for x in tx:
+                _chip(ax, x - 0.42, 0.55, 0.84, 0.45, "tok", TEAL, fs=11)
+        elif row == 1:  # CNN window sliding
+            ax.add_patch(FancyBboxPatch((1.2, 0.02), 2.2, 1.05,
+                        boxstyle="round,pad=0.02,rounding_size=0.05",
+                        fill=False, edgecolor=AMBER, lw=2.0, ls="--"))
+            ax.annotate("", xy=(6.0, 1.15), xytext=(2.3, 1.15),
+                        arrowprops=dict(arrowstyle="-|>", color=AMBER, lw=1.6))
+            ax.text(5, -0.28, "conv window slides along m/z", ha="center",
+                    fontsize=9.5, color=MUTED, style="italic")
+            for x in tx:
+                _chip(ax, x - 0.42, 0.55, 0.84, 0.45, "tok", AMBER, fs=11)
+        else:  # peaks as tokens
+            for c, h in peaks:
+                ax.plot([c], [h], marker="o", ms=7, color=RED, zorder=5)
+            ax.text(5, -0.28, "only the peaks become tokens", ha="center",
+                    fontsize=9.5, color=MUTED, style="italic")
+            ptx = np.linspace(10.9, 14.6, 5)
+            for x in ptx:
+                _chip(ax, x - 0.34, 0.55, 0.68, 0.45, "pk", RED, fs=10)
+        ax.annotate("", xy=(11.0, 0.55), xytext=(10.2, 0.55),
+                    arrowprops=dict(arrowstyle="-|>", color=INK_SOFT, lw=1.6))
+    fig.subplots_adjust(hspace=0.55)
+    _save(fig, name)
+
+
+def tokenization_decision(mode="ido", name="fig_tokenization_decision.png"):
+    """A which-strategy-for-which-data chart. mode='ido' shows the three
+    data→strategy rules; mode='youdo' presents the three Quiz 8 Q2 data-type
+    cards with a blank arrow and a word bank of the strategies."""
+    fig, ax = plt.subplots(figsize=(11.4, 4.6))
+    ax.set_xlim(0, 12); ax.set_ylim(0, 6); ax.axis("off")
+    if mode == "ido":
+        ax.text(6, 5.6, "which strategy for which data?", ha="center",
+                fontsize=14, color=INK, fontweight="bold")
+        rowspec = [
+            ("2D image\n(imaging-MS, LC×MS heatmap)", TEAL,
+             "cut into patches +\nlinear projection  (ViT)"),
+            ("dense 1D signal\n(binned spectrum, chromatogram)", AMBER,
+             "CNN front-end →\ntoken embeddings"),
+            ("sparse peak list\n(m/z + intensity peaks)", RED,
+             "peak-as-token\n(Casanovo)"),
+        ]
+    else:
+        ax.text(6, 5.6, "your turn: match each data type to a strategy",
+                ha="center", fontsize=14, color=ROI_INK, fontweight="bold")
+        rowspec = [
+            ("imaging-MS image", TEAL, "?"),
+            ("raw binned spectrum", AMBER, "?"),
+            ("peak list", RED, "?"),
+        ]
+    ys = [4.3, 2.9, 1.5]
+    for (dtype, col, strat), y in zip(rowspec, ys):
+        ax.add_patch(FancyBboxPatch((0.3, y - 0.55), 4.4, 1.1,
+                    boxstyle="round,pad=0.02,rounding_size=0.06",
+                    facecolor=WHITE, edgecolor=col, lw=2.2))
+        ax.text(2.5, y, dtype, ha="center", va="center", fontsize=11.5,
+                color=INK, fontweight="bold")
+        ax.annotate("", xy=(6.9, y), xytext=(4.9, y),
+                    arrowprops=dict(arrowstyle="-|>", color=col, lw=2.2))
+        face = col if mode == "ido" else "#F1F1EC"
+        tcol = WHITE if mode == "ido" else MUTED
+        ax.add_patch(FancyBboxPatch((7.0, y - 0.55), 4.6, 1.1,
+                    boxstyle="round,pad=0.02,rounding_size=0.06",
+                    facecolor=face, edgecolor=col, lw=2.2))
+        ax.text(9.3, y, strat, ha="center", va="center",
+                fontsize=12 if mode == "ido" else 20,
+                color=tcol if mode == "ido" else col, fontweight="bold")
+    if mode == "youdo":
+        bank = ("word bank:   patches + linear projection (ViT)   ·   "
+                "CNN front-end   ·   peak-as-token (Casanovo)")
+        ax.text(6, 0.35, bank, ha="center", va="center", fontsize=10.5,
+                color=INK_SOFT)
+    _save(fig, name)
+
+
+def transfer_learning(name="fig_transfer_learning.png"):
+    """Transfer learning: keep a pretrained body (FROZEN, trained on millions),
+    bolt on a small NEW head, train only the head on your 500–800 labels."""
+    fig, ax = plt.subplots(figsize=(11.4, 4.8))
+    ax.set_xlim(0, 12); ax.set_ylim(0, 6); ax.axis("off")
+    # frozen pretrained body (big teal stack)
+    ax.add_patch(FancyBboxPatch((3.6, 0.7), 4.8, 3.2,
+                boxstyle="round,pad=0.02,rounding_size=0.08",
+                facecolor=TEAL_SOFT, edgecolor=TEAL, lw=2.6))
+    ax.text(6.0, 2.9, "pretrained transformer body", ha="center",
+            va="center", fontsize=14, color=INK, fontweight="bold")
+    ax.text(6.0, 2.3, "FROZEN — weights kept as-is", ha="center", va="center",
+            fontsize=12, color=TEAL, fontweight="bold")
+    ax.text(6.0, 1.5, "already learned general features\nfrom MILLIONS of spectra / sequences",
+            ha="center", va="center", fontsize=11, color=INK_SOFT)
+    # new head (small amber box on top)
+    ax.add_patch(FancyBboxPatch((4.6, 4.3), 2.8, 1.1,
+                boxstyle="round,pad=0.02,rounding_size=0.08",
+                facecolor=AMBER_SOFT, edgecolor=AMBER, lw=2.6))
+    ax.text(6.0, 5.05, "NEW head", ha="center", va="center", fontsize=13,
+            color=ROI_INK, fontweight="bold")
+    ax.text(6.0, 4.6, "trainable", ha="center", va="center", fontsize=11,
+            color=ROI_INK)
+    ax.annotate("", xy=(6.0, 4.3), xytext=(6.0, 3.9),
+                arrowprops=dict(arrowstyle="-|>", color=INK_SOFT, lw=2.0))
+    ax.annotate("", xy=(6.0, 0.7), xytext=(6.0, 0.2),
+                arrowprops=dict(arrowstyle="-|>", color=INK_SOFT, lw=2.0))
+    ax.text(6.0, 0.05, "your spectrum in", ha="center", va="top",
+            fontsize=10.5, color=MUTED)
+    # right note: your small labeled set trains the head
+    ax.annotate("", xy=(7.5, 4.85), xytext=(9.4, 4.85),
+                arrowprops=dict(arrowstyle="-|>", color=AMBER, lw=2.0))
+    ax.text(9.5, 4.85, "train on your\n500–800 labels", ha="left", va="center",
+            fontsize=11, color=ROI_INK, fontweight="bold")
+    ax.text(9.5, 2.3,
+            "from scratch would need\nmillions of labels — you\nhave hundreds → fine-tune",
+            ha="left", va="center", fontsize=10.5, color=INK_SOFT)
+    ax.text(1.0, 2.3, "borrow the\nbody →", ha="center", va="center",
+            fontsize=12, color=TEAL, fontweight="bold")
+    _save(fig, name)
+
+
+def _lecture8_figures():
+    positional_encoding()
+    norm_axes("ido", "fig_norm_axes.png")
+    norm_axes("youdo", "fig_norm_youdo.png")
+    transformer_block(True, "fig_transformer_block.png")
+    transformer_block(False, "fig_transformer_block_youdo.png")
+    bert_vs_gpt()
+    tokenization_strategies()
+    tokenization_decision("ido", "fig_tokenization_decision.png")
+    tokenization_decision("youdo", "fig_tokenization_youdo.png")
+    transfer_learning()
+
+
 FUNCS = {
     "maldi": maldi_real,
     "chatgpt": chatgpt_panel,
@@ -3283,6 +3692,24 @@ FUNCS = {
                                tokens=["token 1", "token 2", "token 3"]),
     ),
     "rnn_vs_attn": rnn_vs_attention,
+    # ---- Lecture 8 ----
+    "transformer": _lecture8_figures,
+    "posenc": positional_encoding,
+    "norm_axes": lambda: (
+        norm_axes("ido", "fig_norm_axes.png"),
+        norm_axes("youdo", "fig_norm_youdo.png"),
+    ),
+    "transformer_block": lambda: (
+        transformer_block(True, "fig_transformer_block.png"),
+        transformer_block(False, "fig_transformer_block_youdo.png"),
+    ),
+    "bert_vs_gpt": bert_vs_gpt,
+    "tokenization": lambda: (
+        tokenization_strategies(),
+        tokenization_decision("ido", "fig_tokenization_decision.png"),
+        tokenization_decision("youdo", "fig_tokenization_youdo.png"),
+    ),
+    "transfer": transfer_learning,
 }
 
 

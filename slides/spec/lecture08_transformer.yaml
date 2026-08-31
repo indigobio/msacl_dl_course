@@ -1,0 +1,398 @@
+deck:
+  title: "Lecture 8 · The Transformer, Assembled (+ transfer learning)"
+  eyebrow: "MSACL · DS301 Deep Learning · Segment 3 · Lecture 8"
+
+slides:
+  - type: title
+    title: "The transformer, assembled — and how to borrow one"
+    subtitle: "Positions · layer norm · the full block · encoder vs decoder · a spectrum → tokens · transfer learning"
+    notes: >
+      Monday morning, hour two, straight on from Lecture 7. Last hour we built
+      one thing — self-attention, a soft lookup that is just a weighted average.
+      This hour we bolt on the four missing pieces and the whole transformer
+      falls out, then we turn it loose on spectra and show how to borrow a
+      pretrained one for a lab with only a few hundred labels. Nothing new that is
+      hard: the only arithmetic is a mean and a subtract-and-divide (layer norm),
+      both by hand. Same interactive spine as every lecture so far: each worked
+      example (I-do) is followed by one you do yourself (you-do), and every
+      quiz-backed you-do IS a Quiz 8 item. Hand out Quiz 8 now, blank; the room
+      fills it across the hour. Quiz 8 has four items and we hit all four live —
+      label the four transformer blocks (Q1), match data to tokenization strategy
+      (Q2), the fine-tune-vs-scratch call (Q3), and which-norm-averages-what (Q4).
+      Keep the Quiz 7 sheet handy — attention is the beating heart of what we
+      assemble today.
+
+  - type: bullets
+    eyebrow: "Lecture 8 · where this hour goes"
+    title: "Five stops, one finished machine"
+    bullets:
+      - {text: "Positional encoding — attention is order-blind, so inject position", time: "10 min"}
+      - {text: "Normalization — batch vs. layer norm, and why transformers pick layer norm", time: "8 min"}
+      - {text: "Assembling the block; encoder vs. decoder; BERT vs. GPT", time: "12 min"}
+      - {text: "A spectrum → tokens — three strategies, and which to pick", time: "10 min"}
+      - {text: "Transfer learning — borrow a body, retrain a head; why 500–800 labels can be enough", time: "13 min"}
+    notes: >
+      Signpost the five stops so the room can pace itself. Every block today is
+      one they already own: attention (Lecture 7), softmax (Lecture 4), residual
+      skips and normalization (Lecture 5), embeddings (Lecture 7). The only two
+      genuinely new pieces are positional encoding and layer norm, and both are a
+      single picture plus a one-line calculation. The back half is the money for
+      this room — how their actual data (spectra, peak lists, imaging-MS) becomes
+      transformer input, and how to fine-tune a pretrained model on a small
+      labeled set, which is exactly what Lab 3 does next hour. Every quiz item
+      gets worked live; there is no end-of-class quiz block.
+
+  - type: image
+    eyebrow: "Positional encoding · order-blind → inject position · do-it-together"
+    title: "Attention ignores order — so we add the order back in"
+    image: img/fig_posenc.png
+    img_h: 4.2
+    callout: {kind: plain, text: "Left: the gap we left on purpose last hour — 'output = Σ weight × value' has no notion of position, so D–E–K and K–E–D give the SAME output; attention is order-blind. Right (fill it in together): give each position its own fixed signal and ADD it to the token's embedding — 0.2+0.1=0.3, 0.9+0.0=0.9, 0.5+0.5=1.0, 0.1+1.0=1.1. Now the same token at a new position is a different vector."}
+    notes: >
+      Open on the cliffhanger from Lecture 7's last slide: the weighted average is
+      unchanged if you shuffle the tokens, so raw self-attention cannot tell D–E–K
+      from K–E–D — a disaster for sequences, where order IS the identity (slide 3
+      of Lecture 7, SAGK vs GKAS). The fix is deliberately unglamorous: manufacture
+      a distinct signal for each POSITION and add it, element-by-element, onto that
+      slot's token embedding. Do the four sums live with the room (do-it-together,
+      a genuine hands-on beat): 0.2+0.1, 0.9+0.0, 0.5+0.5, 0.1+1.0 → [0.3, 0.9,
+      1.0, 1.1] — exact, no rounding. The teaching point: because the position
+      signal differs slot to slot, the SAME token "peptide" lands at a different
+      vector depending on where it sits, so attention can finally see order. Where
+      do the signals come from? Sine/cosine waves of different frequencies — each
+      position is a unique blend, and neighbours get similar blends (that is the
+      only reason the exact wave shape matters; don't derive it). Modern models
+      often LEARN these position vectors instead, but the job is identical:
+      positions must be injected because attention won't infer them.
+
+  - type: image
+    eyebrow: "Normalization · which axis gets averaged · I-do"
+    title: "Batch norm vs. layer norm: what gets averaged?"
+    image: img/fig_norm_axes.png
+    img_h: 4.4
+    callout: {kind: plain, text: "Rows = samples in the batch, columns = features. BATCH norm averages DOWN a feature across the batch: mean(2,4,0)=2. LAYER norm averages ACROSS one token's features: mean(2,2,6,6)=4, then subtract and divide by the spread → [2,2,6,6] − 4 = [−2,−2,2,2], ÷ std 2 = [−1,−1,1,1]. Transformers use LAYER norm: it needs no batch, so it works at batch size 1 and with variable-length sequences."}
+    notes: >
+      Normalization keeps activations in a sane range as signals pass through a
+      deep stack — the same drift problem behind Lecture 4's vanishing/exploding
+      gradients — by recentering and rescaling to mean 0, standard size. The only
+      question worth teaching is WHICH AXIS the mean-and-spread is taken over, and
+      the figure answers it with exact numbers. Batch norm (amber column) pools a
+      single feature across every sample in the batch: mean(2,4,0)=2. Layer norm
+      (teal row) pools across one token's own features: mean(2,2,6,6)=4; centre to
+      [−2,−2,2,2]; the population variance is (4+4+4+4)/4=4 so std=2; divide to get
+      [−1,−1,1,1] — all exact, reproducible from the numbers on screen (rule 3).
+      Then the "why layer norm for transformers" beat, stated before the you-do so
+      Q4 is answerable: batch norm's statistics depend on the OTHER samples in the
+      batch, which is fragile when batches are small, mixed-length, or size 1 at
+      inference; layer norm looks only within a single token, so it is independent
+      of batch size and sequence length — perfect for a model whose inputs are
+      ragged sequences. Next slide the room computes both means on a new matrix
+      (Quiz 8 Q4).
+
+  - type: image
+    eyebrow: "Normalization · your turn (you-do = Q4)"
+    title: "Your matrix: which norm averages over what?"
+    image: img/fig_norm_youdo.png
+    img_h: 3.6
+    callout: {kind: check, text: "Your turn → Quiz 8, Q4. Rows = tokens, columns = features. (a) LAYER norm averages across WHAT — and what is the mean of tok1? (b) BATCH norm averages down WHAT — and what is the mean of feature f1? (c) One reason transformers prefer layer norm. Worked answer in the notes."}
+    notes: >
+      YOU-DO = Quiz 8 Q4 (same "which axis, then take the mean" skill, new numbers;
+      it assesses the batch-vs-layer outcome). Answers: (a) LAYER norm averages
+      across a token's FEATURES (one row) — mean of tok1 = (2+4+6)/3 = 4. (b) BATCH
+      norm averages down the BATCH (one feature's column across all samples) — mean
+      of f1 = (2+4)/2 = 3. (c) Layer norm needs no batch statistics, so it is
+      stable at batch size 1 and with variable-length sequences, and treats each
+      token independently — which is why transformers use it. Every number is
+      identical to the Quiz 8 Q4 figure and key. Take one axis answer from the
+      floor, then have them fill Q4.
+
+  - type: image
+    eyebrow: "Assemble · the whole transformer"
+    title: "Every block is one you already own"
+    image: img/transformer_architecture.png
+    img_h: 4.7
+    caption: "the full transformer · encoder (left, orange) + decoder (right, green) · diagram: dvgodoy, Wikimedia Commons, CC BY 4.0"
+    callout: {kind: plain, text: "Read bottom-up. Embeddings + positional encoding (just now) → Norm (just now) → Multi-head attention (Lecture 7) → a '+' residual skip (Lecture 5) → Feed-forward network (the Lab-1 MLP) → repeat ×N. The ENCODER (left) reads the whole input; the DECODER (right) writes an output, one token at a time, and cross-attends back to the encoder."}
+    notes: >
+      The reveal: the intimidating "Attention Is All You Need" diagram is entirely
+      blocks this room has already built. Walk the left (encoder) stack bottom to
+      top once: embeddings with positional encoding added (this hour), a Norm (this
+      hour), multi-head self-attention (Lecture 7, the weighted-average lookup),
+      the circled "+" which is the residual skip connection straight from ResNet
+      (Lecture 5's gradient highway), then a feed-forward network — literally the
+      dense MLP from Lab 1 — and another skip. Stack that block N times. The right
+      (decoder) stack is the same parts plus two wrinkles: its self-attention is
+      "masked" (it may only look at tokens already generated, because it writes
+      left to right) and it has a cross-attention block whose queries come from the
+      decoder but whose keys/values come from the ENCODER — that is how the output
+      reads the input. Don't belabour masking; the message is that nothing here is
+      new, it is assembly. This is a real licensed figure (dvgodoy, CC BY 4.0, same
+      series as Lecture 7's multi-head diagram); credit it. Next slide we strip it
+      to the four blocks we will label.
+
+  - type: image
+    eyebrow: "Assemble · one block, four parts · I-do"
+    title: "One block: four parts, each with a name"
+    image: img/fig_transformer_block.png
+    img_h: 4.6
+    callout: {kind: plain, text: "Simplify to one encoder block, bottom-up: ① Positional encoding (added to the input embeddings — inject order) → ② Multi-head self-attention (the Lecture-7 lookup) → ③ Add & Norm (residual skip + layer norm) → ④ Feed-forward network (the MLP). The residual skip carries the input around a block and adds it back — the Lecture-5 highway. Simplified for labeling: the real diagram (prev. slide) norms before each sub-layer; here we collapse to one Add & Norm per block."}
+    notes: >
+      Strip the canonical diagram down to the four blocks the quiz will ask for,
+      each labelled here so the you-do next slide is a fair test (rule 3: Q1 must be
+      labelable from a labelled version taught first). Bottom to top: ① the input —
+      token embeddings with the positional encoding we added two slides ago (label
+      it "Positional encoding", matching the word bank and Quiz 8 Q1 key); ②
+      multi-head self-attention, last hour's query/key/value weighted average run
+      by several heads at once; ③ "Add & Norm" — the residual skip (Lecture 5) adds
+      the block's input back to its output, then layer norm (this hour) rescales;
+      ④ the feed-forward network, a small dense MLP applied to each position —
+      exactly the Lecture-1 neuron stack. Name the residual skip explicitly (the
+      curved arrow) so it isn't mistaken for decoration: it is why deep
+      transformers train at all. One honesty note if a sharp eye catches it: the
+      real dvgodoy diagram on the previous slide places its Norm BEFORE each
+      sub-layer (the modern pre-norm arrangement), whereas this teaching block
+      collapses to a single "Add & Norm" drawn after attention for a clean
+      four-way label — same parts, we've just merged the norms for labeling.
+      Next slide the room labels a blank copy (Quiz 8 Q1).
+
+  - type: image
+    eyebrow: "Assemble · your turn (you-do = Q1)"
+    title: "Label the four blocks"
+    image: img/fig_transformer_block_youdo.png
+    img_h: 4.6
+    callout: {kind: check, text: "Your turn → Quiz 8, Q1. Same block, now blank. Name blocks ①–④ from the word bank: Feed-forward network · Multi-head self-attention · Add & Norm (layer norm) · Positional encoding. Worked answer in the notes."}
+    notes: >
+      YOU-DO = Quiz 8 Q1 (the same block, labels removed; it assesses the
+      "assemble/label the architecture" outcome). Reading bottom to top, ① =
+      Positional encoding (added to the input embeddings), ② = Multi-head
+      self-attention, ③ = Add & Norm (the residual skip plus layer norm), ④ =
+      Feed-forward network. These are the identical four blocks and order from the
+      labelled I-do slide and from the Quiz 8 Q1 diagram/key. Take one label from
+      the floor, then have them fill Q1. If anyone flips ② and ④, point back to the
+      teaching diagram: attention comes first (mix information across tokens), then
+      the feed-forward refines each token on its own.
+
+  - type: image
+    eyebrow: "Assemble · two ways to wire it"
+    title: "Encoder-only reads; decoder-only writes"
+    image: img/fig_bert_vs_gpt.png
+    img_h: 4.4
+    callout: {kind: pair, text: "Encoder-only (BERT): read the WHOLE sequence both directions → one label/embedding (call a spectrum resistant/susceptible, or embed a peptide). Decoder-only (GPT): generate the next token left to right → write a peptide residue by residue. 💬 Your turn (30 sec): a model that writes a peptide one residue at a time — encoder-only or decoder-only, and why? Worked answer in the notes."}
+    notes: >
+      Two dominant wirings, both built from the same block. Encoder-only models
+      (BERT is the famous one) keep just the left stack: they read the entire
+      input at once, every token attending both left and right, and produce either
+      one label for the whole sequence (classification) or a rich per-token
+      embedding — the natural fit for "is this spectrum resistant or susceptible?"
+      or "embed this peptide for search." Decoder-only models (the GPT family) keep
+      the right stack with masked attention: they generate one token at a time,
+      each new token attending only to what came before — the natural fit for
+      GENERATION, like writing a peptide sequence residue by residue. The old
+      encoder→decoder pairing (translation: read all of language A, write language
+      B) is exactly Casanovo's shape: read a spectrum, write a peptide. Tie it to
+      the room's task list: classification jobs → encoder-only; generation/de-novo
+      jobs → decoder-only or encoder–decoder. Lab 3 fine-tunes an encoder-only
+      model (DistilBERT) for classification.
+
+  - type: title
+    eyebrow: "Lecture 8 · part four"
+    title: "How does a spectrum become tokens?"
+    subtitle: "a transformer eats a sequence of vectors — so what are the vectors for MS data?"
+    notes: >
+      Pivot to the question this room actually cares about. Everything so far
+      assumed the input is already a sequence of token vectors — trivial for a
+      peptide (one token per residue, Lecture 7). But a raw spectrum is 6,000
+      intensities, an imaging-MS slide is a picture, a peak list is a ragged set of
+      (m/z, intensity) pairs. None of those is "a sentence." So the design choice
+      that matters for applying transformers to MS is TOKENIZATION: how to turn
+      your signal into the sequence of vectors the transformer expects. Three
+      strategies, all in real published use, coming up — then a decision chart the
+      room uses on the quiz.
+
+  - type: image
+    eyebrow: "A spectrum → tokens · three strategies · I-do"
+    title: "One spectrum, three ways to tokenize it"
+    image: img/fig_tokenization_strategies.png
+    img_h: 4.6
+    callout: {kind: plain, text: "(a) Patch + linear projection — cut the signal into equal chunks, project each to a vector (the ViT idea). (b) CNN front-end — slide a small 1D CNN (Lecture 5) that emits a sequence of token embeddings. (c) Peak-as-token — keep only the peaks; each becomes one token carrying its (m/z, intensity). Same spectrum, three sequences of vectors."}
+    notes: >
+      The three tokenization strategies side by side on the identical spectrum, so
+      the contrast is about the METHOD, not the data. (a) Patch + linear
+      projection: chop the signal into fixed-width chunks and multiply each chunk
+      by a learned matrix to get one token vector — this is exactly how a Vision
+      Transformer (ViT) turns an image into tokens, and it works on a binned
+      spectrum or a 2D imaging-MS tile. (b) CNN front-end: run a small 1D
+      convolutional stack (their Lab-2 machinery) over the signal and treat its
+      output positions as token embeddings — the conv does the local peak-shape
+      detection, the transformer does the long-range mixing. (c) Peak-as-token:
+      throw away the empty baseline and keep only the peaks; each peak becomes a
+      token whose vector encodes its m/z and intensity — this is how Casanovo reads
+      a spectrum, and it is efficient because a spectrum is mostly zeros. No single
+      winner — which one fits depends on the data, which is the very next slide.
+
+  - type: image
+    eyebrow: "A spectrum → tokens · which one? · I-do"
+    title: "Which strategy for which data?"
+    image: img/fig_tokenization_decision.png
+    img_h: 4.2
+    callout: {kind: plain, text: "Read it as three rules. A 2D image (imaging-MS, an LC×MS heatmap) → patches + linear projection (ViT). A dense 1D signal (a binned spectrum, a chromatogram) → a CNN front-end that emits tokens. A sparse peak list (a handful of m/z + intensity peaks) → peak-as-token (Casanovo)."}
+    notes: >
+      The decision chart makes the choice explicit and testable (rule 3: Q2 must be
+      derivable from this chart). Match the strategy to the SHAPE of the data. If
+      the signal is genuinely 2D — an imaging-MS image or an LC×MS heatmap — cut it
+      into patches and project, the ViT recipe. If it is a dense, evenly-sampled 1D
+      signal — a binned full-scan spectrum or a chromatogram — a small CNN
+      front-end is the natural condenser: it exploits local structure before the
+      transformer mixes globally. If it is already a sparse list of peaks with
+      variable count — the (m/z, intensity) pairs a spectral library uses — treat
+      each peak as a token, the most efficient path and the one Casanovo takes.
+      These three rules are exactly the three matches on Quiz 8 Q2. Next slide the
+      room does the matching.
+
+  - type: image
+    eyebrow: "A spectrum → tokens · your turn (you-do = Q2)"
+    title: "Match each data type to its strategy"
+    image: img/fig_tokenization_youdo.png
+    img_h: 3.9
+    callout: {kind: check, text: "Your turn → Quiz 8, Q2. Match each to one strategy (each used once): imaging-MS image · raw binned spectrum · peak list → {patches + linear projection (ViT), CNN front-end, peak-as-token (Casanovo)}. Worked answer in the notes."}
+    notes: >
+      YOU-DO = Quiz 8 Q2 (the same three rules, now applied; it assesses the
+      "name/pick a tokenization strategy" outcome). Answers, straight off the
+      decision chart: imaging-MS image (2D) → patches + linear projection (ViT);
+      raw binned spectrum (dense 1D) → CNN front-end → token embeddings; peak list
+      (sparse (m/z, intensity)) → peak-as-token (Casanovo). Each strategy used
+      once. Identical to the Quiz 8 Q2 key. Take one match from the floor, then
+      have them fill Q2. If someone matches the binned spectrum to patches, accept
+      the reasoning but point to the chart's primary rule — a dense, ordered 1D
+      signal is where a CNN front-end shines.
+
+  - type: pipeline
+    eyebrow: "A spectrum → tokens · a real system"
+    title: "Casanovo: a spectrum in, a peptide out"
+    stages:
+      - {label: "peak list", sub: "each peak → a token"}
+      - {label: "encoder", sub: "reads all peaks", kind: conv}
+      - {label: "decoder", sub: "writes residues one at a time", kind: pool}
+      - {label: "peptide", sub: "A-C-D-E-K …", kind: dashed}
+    callout: {kind: pair, text: "De novo sequencing as TRANSLATION: the encoder reads the spectrum's peaks (peak-as-token), the decoder writes the peptide residue by residue — the encoder→decoder shape on your MS/MS data (Lab 3's bonus cell touches this family). 💬 Quick (90 sec): why does this need a DECODER, not just an encoder-only classifier? Worked answer in the notes."}
+    notes: >
+      Casanovo (Yilmaz et al., 2022) makes the whole hour concrete: it treats de
+      novo peptide sequencing as machine translation — spectrum language in,
+      peptide language out. The encoder tokenizes each fragment peak as a token
+      (strategy c) and reads them all with self-attention; the decoder generates
+      the amino-acid sequence one residue at a time, cross-attending back to the
+      peaks, stopping at the end of the peptide — the encoder→decoder wiring from
+      two slides ago. The point for this room: the transformer they just assembled
+      is already doing real mass-spec work, and the tokenization choice (peak-as-
+      token) is the same decision they just made on the quiz. Lab 3's bonus cell
+      fine-tunes a protein language model (ESM-2) on peptides — same alphabet
+      family. Keep this fast, ~90 seconds; it is a payoff, not new mechanics.
+      Beat answer: an encoder-only model can only emit ONE fixed output (a label
+      or embedding); de novo sequencing must PRODUCE a variable-length peptide
+      one residue at a time, which is exactly what an autoregressive decoder does
+      — so you need the decoder to generate, the encoder to read the spectrum.
+
+  - type: image
+    eyebrow: "Transfer learning · borrow a body · I-do"
+    title: "Don't train from zero — borrow a pretrained body"
+    image: img/fig_transfer_learning.png
+    img_h: 4.5
+    callout: {kind: ms, text: "Someone pretrained a transformer on MILLIONS of spectra/sequences; its body already learned general features. FREEZE that body (weights kept as-is), bolt on a small NEW head for your task, and train only the head on your few hundred labels. That's transfer learning; training the head (± a little of the body) is fine-tuning."}
+    notes: >
+      The single most useful idea for a small lab. A transformer has millions of
+      weights; training them from scratch needs a mountain of labeled data most
+      labs will never have. Transfer learning sidesteps that: take a model someone
+      already pretrained on a huge unlabeled or loosely-labeled corpus — its BODY
+      has learned general-purpose features (peak shapes, sequence motifs, context)
+      — and reuse it. Two moves: FREEZE the body so its learned weights stay put,
+      and attach a small NEW head (a fresh output layer) sized to YOUR task, say a
+      two-class susceptible/resistant readout. You then train only the head on your
+      few hundred labels — cheap, fast, hard to overfit because there are few new
+      weights. "Fine-tuning" is the umbrella term for adapting the pretrained model:
+      head-only training is the most conservative; you can also unfreeze a little of
+      the top of the body and train it gently (a much smaller learning rate — why?
+      you're nudging good weights, not discovering them, the Lab-3 blank). Next
+      slide, why this rescues a 500–800-spectrum project; then the room makes the
+      call.
+
+  - type: bullets
+    eyebrow: "Transfer learning · why it changes the game"
+    title: "Why 500–800 labeled spectra can be enough"
+    bullets:
+      - "From scratch: millions of weights need a mountain of labels — hundreds of spectra land near the majority-class floor (Lecture 4's overfitting)"
+      - "Fine-tuning: the body already knows general spectral features — you only fit a SMALL head, so a few hundred labels suffice"
+      - "Smaller learning rate when fine-tuning — you're nudging good weights, not discovering them from noise"
+      - "Lab 3 makes it visible: from-scratch ≈ chance, fine-tuned ≈ far better — same data, same afternoon"
+    notes: >
+      Land why the freeze-and-fine-tune move is not just convenient but decisive
+      for this audience. Training from scratch on a few hundred spectra is a
+      textbook overfitting/underfitting trap (Lecture 4): millions of free weights,
+      almost no signal to pin them down, so the model memorizes noise or collapses
+      to predicting the majority class — near chance on anything imbalanced. Fine-
+      tuning inverts the arithmetic: the pretrained body supplies the general
+      features for free, so the only weights you fit are the small head, and a few
+      hundred labels are plenty to fit a small head well. Use a smaller learning
+      rate than from-scratch training, because you're making tiny corrections to
+      already-good weights. This is not hand-waving: Lab 3 runs the exact three-way
+      comparison — full fine-tune vs. frozen-body-head-only vs. from-scratch — and
+      from-scratch lands near the majority floor while the fine-tuned model reaches
+      far higher, on the same small dataset in the same session. Next slide the
+      room makes the call themselves (Quiz 8 Q3).
+
+  - type: image
+    eyebrow: "Transfer learning · your turn (you-do = Q3) · 💬 pair"
+    title: "Your call: from scratch, or fine-tune?"
+    image: img/fig_transfer_learning.png
+    img_h: 4.2
+    callout: {kind: check, text: "Your turn → Quiz 8, Q3. 💬 You have 800 labeled spectra and access to a transformer pretrained on 2 million spectra. Train from scratch, or fine-tune? Give one reason. Worked answer in the notes."}
+    notes: >
+      YOU-DO = Quiz 8 Q3 (the fine-tune-vs-scratch scenario; it assesses the
+      transfer-learning outcome). Expected answer: FINE-TUNE — freeze the
+      pretrained body and train a small new head on the 800 labels (optionally
+      unfreeze a little of the top with a small learning rate). Reason (any one is
+      full credit): 800 labels are far too few to train millions of weights from
+      scratch without overfitting/landing at the majority-class floor; the
+      pretrained body already learned general spectral features from the 2 million
+      spectra, so you only need to fit a small head, which 800 labels can do well.
+      This is a 💬 pair beat — 90 seconds, harvest one or two answers with their
+      reason — then everyone fills Q3. That's all four Quiz 8 items worked live.
+
+  - type: bullets
+    eyebrow: "Lecture 8 · what you can do now"
+    title: "You can now…"
+    bullets:
+      - "Say positional encoding's job — attention is order-blind, so add a per-position signal to each token embedding"
+      - "Distinguish batch vs. layer norm by which axis is averaged, and why transformers use layer norm (Quiz 8 Q4)"
+      - "Label the four blocks of a transformer (Quiz 8 Q1) — and tell an encoder (reads) from a decoder (writes), BERT vs. GPT"
+      - "Pick a tokenization for MS data — patches, a CNN front-end, or peak-as-token (Quiz 8 Q2) — and choose fine-tune vs. from-scratch (Quiz 8 Q3)"
+    callout: {kind: plain, text: "You have now worked every item on Quiz 8 live — label the blocks (Q1), match the tokenizations (Q2), the fine-tune call (Q3), and which-norm-averages-what (Q4). Keep the sheet — Lab 3 fine-tunes a real pretrained transformer next hour."}
+    notes: >
+      Recap = the Lecture 8 outcomes, each already a you-do this hour tied to a
+      Quiz 8 item: Q1 the four-block label, Q2 the tokenization matches, Q3 the
+      fine-tune-vs-scratch call, Q4 which-norm-averages-what. The encoder-vs-decoder
+      (BERT vs. GPT) distinction is taught this hour but is not a separate quiz
+      item — so it rides alongside the Q1 block-labeling bullet without its own tag. Note the sheet was
+      done out of numeric order (Q4 first, at the norm slide) — that's fine, it's a
+      distributed worksheet, not a test block. There is no separate quiz block;
+      they've done all four across the hour. Have them keep the sheet as the on-ramp
+      to Lab 3, then the closing bridge.
+
+  - type: bullets
+    eyebrow: "Lecture 8 · over to your lab"
+    title: "Next hour — Lab 3"
+    bullets:
+      - "Fine-tune a pretrained transformer (DistilBERT) on a small labeled set — swap the head, freeze the body"
+      - "Run the three-way race: full fine-tune vs. frozen-body head-only vs. from scratch"
+      - "Watch from-scratch stall near chance while fine-tuning wins — on the same small data"
+      - "Bonus: the same recipe on ESM-2, a protein language model, classifying peptides"
+    callout: {kind: check, text: "2 minutes to finish Quiz 8 solo while Colab boots → we mark it together as Lab 3 opens. The first blank you'll fill is the classification HEAD you bolt onto a frozen pretrained body — exactly the move from the last slide."}
+    notes: >
+      Hand the final minutes to finishing Quiz 8 and selling Lab 3. Lab 3 is the
+      transfer-learning slide made real: load a pretrained transformer, replace its
+      head, freeze the body, fine-tune on a small dataset, and race it against
+      training from scratch — the from-scratch model lands near the majority floor
+      while the fine-tuned one reaches far higher, the game-changer lesson made
+      visible. The bonus cell reruns the identical recipe on ESM-2 over peptides —
+      "DistilBERT read billions of English words; ESM-2 read hundreds of millions
+      of protein sequences; same move, different alphabet." Then Colab is up and we
+      mark Quiz 8 together as Lab 3 begins.
