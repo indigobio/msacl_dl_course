@@ -49,13 +49,16 @@ learning: keep the pretrained body, swap the head (Lecture 8).}
 
 \textbf{Blank 1 --- build \texttt{model}.}
 \begin{itemize}
-  \item[(a)] \opt{model = AutoModelForSequenceClassification.from\_pretrained(CHECKPOINT, num\_labels=NUM\_LABELS)}
+  \item[(a)] \opt{model = AutoModelForSequenceClassification.from\_pretrained(} \opt{CHECKPOINT, num\_labels=NUM\_LABELS, attn\_implementation=ATTN)}
   \item[(b)] \opt{model = AutoModel.from\_pretrained(CHECKPOINT)}
   \item[(c)] \opt{model = AutoModelForSequenceClassification.from\_pretrained(CHECKPOINT)}
 \end{itemize}
 {\small (a) loads the body \emph{and} a new 5-way head. (b) is the body only --- no classifier, so it
 cannot output class scores. (c) forgets \opt{num\_labels}, so it defaults to a \textbf{2}-class head and
-the shape check fails (it wants \opt{[batch, 5]}).}
+the shape check fails (it wants \opt{[batch, 5]}). The \opt{attn\_implementation=ATTN} argument (already
+defined for you as \opt{"eager"}) picks an attention kernel that runs on a Colab GPU, an Apple-silicon
+Mac (MPS), and plain CPU alike --- the fast default kernel cannot apply attention dropout while training
+on MPS.}
 
 \vspace{3pt}\hrule\vspace{4pt}
 
