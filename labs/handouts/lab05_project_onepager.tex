@@ -1,0 +1,86 @@
+% =====================================================================
+%  MSACL DS301 Deep Learning · Lab 5 (Capstone) · Project One-Pager
+%  A printable, fillable "first DL project plan" template.
+%  Style matches the labNN_hints.tex handouts.
+% =====================================================================
+\documentclass[11pt]{article}
+
+\usepackage[letterpaper, margin=0.6in, top=0.55in, bottom=0.45in]{geometry}
+\usepackage{amsmath, amssymb}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{tikz}
+
+\definecolor{rule}{gray}{0.55}
+\definecolor{hint}{gray}{0.35}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textbf{MSACL DS301 --- Deep Learning}}
+\fancyhead[R]{\small\textbf{Lab 5: Project One-Pager}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{2pt}
+
+% a labelled box with faint guide lines to write on
+\newcommand{\fillbox}[3]{%
+  % #1 = number, #2 = title, #3 = prompt/hint
+  \vspace{2pt}
+  {\normalsize\textbf{#1 · #2}}\\[-1pt]
+  {\footnotesize\color{hint}\itshape #3}\\[3pt]
+  \begin{tikzpicture}
+    \foreach \y in {0,1,2} {
+      \draw[rule, line width=0.3pt] (0,\y*0.34) -- (\textwidth,\y*0.34);
+    }
+  \end{tikzpicture}
+  \vspace{4pt}
+}
+
+\begin{document}
+
+\begin{center}
+{\Large \textbf{My First Deep-Learning Project --- One-Pager}}\\[3pt]
+{\normalsize Name: \underline{\hspace{5cm}} \qquad Assay / instrument: \underline{\hspace{5cm}}}
+\end{center}
+
+\vspace{2pt}
+\begin{center}
+\fbox{\parbox{0.95\textwidth}{\footnotesize
+Fill one page for a real project in \emph{your} lab. The goal is a plan you could hand a
+collaborator --- and an honest answer to ``do I even need deep learning?'' Keep it concrete: one
+example, real shapes and units, a split with no leakage, and clinical-grade metrics (Lecture 10).
+}}
+\end{center}
+
+\vspace{4pt}\hrule\vspace{6pt}
+
+\fillbox{1}{Problem}{What decision or measurement would the model make, and who uses the output?
+E.g.\ ``flag likely-resistant isolates from the MALDI spectrum before culture comes back.''}
+
+\fillbox{2}{Data \& representation}{Describe \emph{one} example exactly: shape, units, how many
+samples, how they are labeled, and how imbalanced. E.g.\ ``one 6000-dim TIC-normalized spectrum;
+$\sim$700 samples; 5--25\% positive; labeled by AST.''}
+
+\fillbox{3}{Architecture}{Which model, and why does it fit \emph{this} representation? E.g.\ ``1D-CNN
+--- peaks are local patterns anywhere along m/z, like Lab 2 / Track A''; or MLP for a tabular panel;
+or transfer/re-head an existing model (Track C).}
+
+\fillbox{4}{Validation plan}{What split (no leakage --- split by patient/batch, not by row!), which
+metrics, and what target? E.g.\ ``stratified 80/20 by patient; sensitivity / specificity / AUROC +
+confusion matrix; $\ge$0.90 sensitivity at a fixed specificity, threshold chosen on a validation set
+--- never a single accuracy number.''}
+
+\fillbox{5}{Why not a simpler model?}{What baseline must deep learning \emph{beat} to be worth it ---
+logistic regression, a single-peak threshold, or always-guess-the-majority-class? If a one-line rule
+already hits your target, deep learning may be the wrong tool --- and saying so is a valid, honest
+conclusion (the Lecture 10 mindset).}
+
+\vspace{2pt}\hrule\vspace{4pt}
+{\footnotesize\itshape Discussion D5: share this page with a neighbor. Pressure-test each other on
+leakage (could val info leak into training?), the honest majority-class baseline, and the clinical
+cost of a false negative vs.\ a false alarm --- does your threshold reflect it?}
+
+\end{document}

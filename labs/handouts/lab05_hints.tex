@@ -1,0 +1,162 @@
+% =====================================================================
+%  MSACL DS301 Deep Learning · Lab 5 (Capstone) · Code Hint Sheet
+%  Multiple-choice code options for the two fill-in blanks in EACH track.
+%  Style matches labs/handouts/lab02_hints.tex .. lab04_hints.tex.
+% =====================================================================
+\documentclass[11pt]{article}
+
+\usepackage[letterpaper, margin=0.55in, top=0.55in, bottom=0.4in]{geometry}
+\usepackage{amsmath, amssymb}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textbf{MSACL DS301 --- Deep Learning}}
+\fancyhead[R]{\small\textbf{Lab 5 (Capstone): Code Hint Sheet}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{1.5pt}
+\newcommand{\opt}[1]{\texttt{#1}}
+\setlist[itemize]{leftmargin=2.2em, itemsep=0pt, topsep=0pt, parsep=0pt}
+
+\begin{document}
+\small
+
+\begin{center}
+{\Large \textbf{Lab 5 --- Capstone Code Hint Sheet}}\\[2pt]
+{\normalsize An End-to-End MS Mini-Project --- three tracks, two blanks each}
+\end{center}
+
+\vspace{-2pt}
+\begin{center}
+\fbox{\parbox{0.93\textwidth}{\small
+You do \textbf{one} track. Set \opt{TRACK} to \opt{'A'}, \opt{'B'}, or \opt{'C'}, then fill that
+track's \textbf{two} blanks below. Pick an option, type it in, and \textbf{run the cell} --- the
+built-in \texttt{assert} checks tell you if your choice is structurally sound (shapes, split, frozen /
+trainable parameters, metrics in $[0,1]$). They never check accuracy \emph{magnitude}, so a small run
+still passes. Everything outside the marked blanks runs as-is.
+}}
+\end{center}
+
+\vspace{3pt}
+\begin{center}
+\fbox{\parbox{0.93\textwidth}{\small
+\textbf{Wrapping layers in a module (blanks A1 and B1).}\; Those two blanks ask for a whole little
+\opt{nn.Module} \emph{class} --- not just the layer list. Keep the skeleton exactly as below (same class
+\textbf{name} the blank asks for) and drop the option-(a) layers into the marked slot:\\[2pt]
+\opt{class ImprovedCNN(nn.Module):}\\
+~~~~\opt{def \_\_init\_\_(self):}\quad~~~~\opt{class ROIClassifier(nn.Module):}\\
+~~~~~~~~\opt{super().\_\_init\_\_()}\qquad~~~\opt{def \_\_init\_\_(self):}\\
+~~~~~~~~\opt{self.features = <A1 conv layers>}\quad\opt{super().\_\_init\_\_()}\\
+~~~~~~~~\opt{self.head = <A1 linear head>}\qquad\opt{self.net = <B1 layers>}\\
+~~~~\opt{def forward(self, x):}\qquad\qquad~~\opt{def forward(self, x):}\\
+~~~~~~~~\opt{return self.head(self.features(x))}\quad\opt{return self.net(x)}\\[2pt]
+Track C's blank C1 is different --- it is plain assignment statements that reuse the provided
+\opt{TransferModel} wrapper, so option (a) there is already complete as written.
+}}
+\end{center}
+
+\vspace{3pt}\hrule
+\begin{center}\textbf{TRACK A --- Beat the baseline}\end{center}\hrule\vspace{4pt}
+
+\textbf{Blank A1 --- \opt{ImprovedCNN}.}\; {\small A \emph{different} 1D-CNN than the Lab 2 baseline:
+deeper/wider conv blocks, an adaptive pool so the head size is fixed, one logit out.}
+\begin{itemize}
+  \item[(a)] \opt{nn.Sequential(Conv1d(1,16,15,pad7),ReLU,MaxPool1d(4),}
+    \opt{Conv1d(16,32,15,pad7),ReLU,MaxPool1d(4),} \opt{Conv1d(32,32,15,pad7),ReLU,}
+    \opt{AdaptiveMaxPool1d(8),Flatten)} feeding \opt{Linear(32*8,64) $\to$ Linear(64,1)}
+  \item[(b)] copy \opt{BaselineCNN} unchanged (two blocks \opt{1$\to$8$\to$16}, \opt{Linear(16*375,32)$\to$Linear(32,1)})
+  \item[(c)] \opt{nn.Linear(6000, 1)} only --- no conv layers at all
+\end{itemize}
+{\small (a) is right: three wider blocks give a \emph{different} trainable-parameter count (the check is
+\opt{improved\_params != baseline\_params}) and still output \opt{(N,1)}. (b) is an exact copy --- same
+param count, so it \textbf{fails} the ``must differ'' check (and doesn't ``improve'' anything). (c) throws
+away the peaks-are-local idea and, on a raw 6000-vector, is a weaker model, not a better CNN.}
+
+\vspace{3pt}
+\textbf{Blank A2 --- \opt{augment}.}\; {\small An m/z-jitter augmentation: nudge the spectrum a few bins
+along the mass axis and add a little noise. Must keep the shape and \emph{change} the values.}
+\begin{itemize}
+  \item[(a)] \opt{shift=randint(1,4); x=torch.roll(x,shift,dims=-1); return x+0.01*randn\_like(x)}
+  \item[(b)] \opt{return x} \quad(no change)
+  \item[(c)] \opt{return torch.zeros\_like(x)}
+\end{itemize}
+{\small (a) shifts by 1--3 bins (always nonzero) and adds noise, so it passes both checks
+(\opt{shape unchanged} and \opt{not torch.allclose(aug, x)}). (b) returns the input untouched --- fails
+the ``must change the values'' check and teaches the model nothing new. (c) destroys the spectrum
+entirely (all zeros) --- technically ``changed,'' but it erases every peak, so training collapses.}
+
+\vspace{3pt}\hrule
+\begin{center}\textbf{TRACK B --- Peak QC (real peak vs. noise)}\end{center}\hrule\vspace{4pt}
+
+\textbf{Blank B1 --- \opt{ROIClassifier}.}\; {\small A small 1D-CNN reading one 256-point ROI
+(\opt{(N,1,256)}) and returning one logit \opt{(N,1)}.}
+\begin{itemize}
+  \item[(a)] \opt{Conv1d(1,8,7,pad3),ReLU,MaxPool1d(4), Conv1d(8,16,7,pad3),ReLU,MaxPool1d(4),}
+    \opt{Flatten, Linear(16*16,32),ReLU, Linear(32,1)}
+  \item[(b)] \opt{Conv1d(1,8,7,pad3),ReLU,MaxPool1d(4), Flatten, Linear(16*16,32),ReLU, Linear(32,2)}
+  \item[(c)] \opt{Flatten, Linear(256,1)} directly (no conv)
+\end{itemize}
+{\small (a) is right: two pools take \opt{256$\to$64$\to$16}, so \opt{Linear(16*16,32)} matches and the
+output is \opt{(N,1)} (the check is \opt{out.shape == (2,1)}). (b) has \emph{one} pool, so the flattened
+size is \opt{8*64}, not \opt{16*16} --- a shape-mismatch crash --- and \opt{Linear(...,2)} outputs two
+columns, failing the \opt{(N,1)} check (we use one logit + \opt{BCEWithLogitsLoss}). (c) runs but is a bare
+linear model --- allowed to try, yet it ignores the local peak shape the segment is about.}
+
+\vspace{3pt}
+\textbf{Blank B2 --- \opt{pos\_weight}.}\; {\small Handle the imbalance (noise outnumbers peaks): up-weight
+the rare positive class by the neg:pos ratio, as a one-element tensor.}
+\begin{itemize}
+  \item[(a)] \opt{pos\_weight = torch.tensor([n\_neg\_train / n\_pos\_train])}
+  \item[(b)] \opt{pos\_weight = torch.tensor([1.0])}
+  \item[(c)] \opt{pos\_weight = torch.tensor([n\_pos\_train / n\_neg\_train])}
+\end{itemize}
+{\small (a) is right --- noise:peak is about \opt{2.3}, so the weight is \opt{>1} (the check requires
+\opt{pos\_weight.item() > 1}) and \opt{BCEWithLogitsLoss} then pays more attention to the rare peaks. (b)
+weights the classes equally --- no imbalance handling --- and fails the \opt{>1} check. (c) is the ratio
+\emph{upside down} (\opt{<1}), which \emph{down}-weights the already-rare peaks --- exactly wrong, and it
+fails the \opt{>1} check too.}
+
+\vspace{3pt}\hrule
+\begin{center}\textbf{TRACK C --- New question, same spectra (transfer)}\end{center}\hrule\vspace{4pt}
+
+\textbf{Blank C1 --- freeze the body, attach a fresh head.}\; {\small Reuse the trained
+\opt{saureus\_model.features} as a \emph{frozen} body, add a new head whose last layer outputs \emph{one}
+logit, wrap in \opt{TransferModel}.}
+\begin{itemize}
+  \item[(a)] \opt{transfer\_body = saureus\_model.features};\;
+    \opt{for p in transfer\_body.parameters(): p.requires\_grad = False};\\
+    \hspace*{1.2em}\opt{transfer\_head = Sequential(Linear(saureus\_model.feat\_dim,32),ReLU,Linear(32,1))};\;
+    \opt{transfer\_model = TransferModel(transfer\_body, transfer\_head)}
+  \item[(b)] same, but \textbf{omit} the \opt{requires\_grad = False} loop
+  \item[(c)] same, but final layer is \opt{Linear(32, 2)}
+\end{itemize}
+{\small (a) is right: freezing every body param makes \opt{n\_frozen == n\_body} \emph{and} leaves only the
+head trainable (\opt{n\_trainable == n\_head}), and the \opt{Linear(...,1)} head gives \opt{(N,1)} logits ---
+all three checks pass. (b) leaves the body trainable, so \opt{n\_trainable} includes the body and the
+\opt{== n\_head} check \textbf{fails} (and it isn't transfer learning any more --- you'd retrain everything).
+(c) outputs two columns, failing the \opt{(N,1)} check (this is a single-logit binary task).}
+
+\vspace{3pt}
+\textbf{Blank C2 --- \opt{TRANSFER\_LR}.}\; {\small A \emph{gentle} learning rate to fine-tune the fresh head
+on the frozen body --- positive and \opt{$\le$ 1e-2}.}
+\begin{itemize}
+  \item[(a)] \opt{TRANSFER\_LR = 5e-4}
+  \item[(b)] \opt{TRANSFER\_LR = 0.5}
+  \item[(c)] \opt{TRANSFER\_LR = 0}
+\end{itemize}
+{\small (a) is a good small step (smaller than the \opt{1e-3} the body was trained with); it passes
+\opt{0 < TRANSFER\_LR <= 1e-2}. (b) is \emph{huge} --- it fails the \opt{<= 1e-2} check and would blow the
+head up. (c) is zero --- it fails the \opt{> 0} check and the head never learns anything.}
+
+\vspace{4pt}\hrule\vspace{3pt}
+{\small\itshape Every track ends the same way (Lecture 10): report \textbf{sensitivity, specificity,
+and AUROC + the confusion matrix} from \opt{honest\_eval} on the held-out split --- \emph{never bare
+accuracy} --- and read the honest-error-analysis cell before you fill the rubric and your project
+one-pager.}
+
+\end{document}

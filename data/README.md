@@ -74,6 +74,17 @@ in Phase 2 before a lab is built on it.
 - Reference loaders: BorgwardtLab/maldi-learn (id-CSV parsing, S/I/R cleaning),
   BorgwardtLab/maldi_amr (paper's task definitions), gdewael/maldi-nn.
 - Used in: lab02 (1D CNN), lab04 (VAE), lab05 tracks A/C; Lecture 10 shift example.
+- **Lab 5 capstone reuse (Tracks A & C), built & run-verified (2026-08-31):**
+  `lab05_capstone.ipynb` reuses both local DRIAMS-C slices. **Track A (beat the baseline)**
+  trains the Lab 2 `BaselineCNN` on `driams_c_saureus_oxacillin.npz` (738 spectra, 697 S / 41 R)
+  and compares it against a deeper/wider `ImprovedCNN` + m/z-jitter augmentation on the *same*
+  stratified split. **Track C (transfer learning)** trains the S. aureus CNN body, **freezes**
+  it, and re-heads it for `driams_c_ecoli_ceftriaxone.npz` (913 spectra, 765 S / 148 R) — a new
+  organism/drug, same 6000-dim TIC-normalized format. Both tracks report sensitivity /
+  specificity / AUROC + confusion matrix via the shared `honest_eval` helper (Lecture 10), never
+  bare accuracy. All asserts are structural (logits `(N,1)`; leakage-free disjoint split;
+  improved-vs-baseline param counts differ; frozen-body param count == body params, trainable ==
+  head; metrics in `[0,1]`) so a shrunk CPU smoke run passes.
 - **Lab 4 reuse (VAE QC / anomaly / generation), built & run-verified (2026-08-31):**
   `lab04_vae_spectra.ipynb` reuses the local `driams_c_saureus_oxacillin.npz` slice
   (738 spectra, 6000-dim, TIC-normalized; 697 susceptible / 41 resistant). The
@@ -143,6 +154,18 @@ in Phase 2 before a lab is built on it.
   (8M params, MIT) in ~30 s to show the *same recipe, different alphabet*.
 - Used in: lab03 (bonus cell).
 
+### Lab 5 capstone — verified end-to-end (2026-08-31)
+- `labs/solutions/lab05_capstone.ipynb`: three self-contained tracks (set `TRACK='A'/'B'/'C'`)
+  reusing the local slices above, plus a `RUN_ALL_TRACKS` smoke switch. Verified via a reduced
+  CPU copy (`/tmp/lab05_smoke.ipynb`, `SMOKE=True`, `FORCE_CPU=True`, `RUN_ALL_TRACKS=True`,
+  200-sample stratified subsets, 2 epochs): all **13 code cells** ran with saved execution
+  counts (1–13) and **0 error outputs**; every track printed its assert-success line
+  (`Scaffolding OK`, `Track A/B/C blanks OK`) and its sensitivity/specificity/AUROC report
+  (`jupyter nbconvert --to notebook --execute --output /tmp/lab05_smoke.ipynb`, exit 0). Student
+  copy stripped to 6 `YOUR CODE HERE` blanks (0 marker leaks, 17 asserts retained); hint sheet
+  `labs/handouts/lab05_hints.tex` and one-pager `labs/handouts/lab05_project_onepager.tex` both
+  compile to PDF.
+
 ### PeakOnly annotated ROIs — chromatographic peak QC (Lecture 5 segment, Lab 5 Track B)
 - Source: Melnikov et al., *Anal Chem* 2020 (peakonly). Annotated data hosted on
   Yandex Disk; headless download via the app's own proxy URL (hardcoded in
@@ -161,6 +184,14 @@ in Phase 2 before a lab is built on it.
 - Course use: base task = peak vs. noise (1D CNN, mirrors the Lecture 5 detection
   segment); stretch = good vs. bad quality via the sub-labels; the `borders`
   field supports a segmentation extension.
+- **Lab 5 capstone use (Track B — Peak QC), built & run-verified (2026-08-31):**
+  `lab05_capstone.ipynb` Track B classifies the 256-dim ROIs as real-peak (1) vs. noise (0)
+  with a small 1D-CNN (`ROIClassifier`) and handles the imbalance via `pos_weight` (neg:pos
+  ratio $\approx$2.3, so $>1$). The honest error-analysis cell breaks missed peaks down by the
+  **quality sub-label** (good / low-intensity / lousy / noisy) to show *which* peaks are hardest.
+  Evaluated with the shared `honest_eval` (sensitivity / specificity / AUROC + confusion matrix).
+  Two blanks (`ROIClassifier` head; `pos_weight = torch.tensor([n_neg_train/n_pos_train])`);
+  asserts are structural (logits `(N,1)`; `pos_weight > 1`) so a shrunk CPU smoke run passes.
 - Also verified for the Lecture 5 lineage slide: PeakOnly (2020) → EVA (2021) →
   NeatMS (2022) → MsTargetPeaker (RL, *MCP* 2026); TargetedMSQC (*Clinical
   Proteomics* 2018) as the clinical-MRM precedent (600 expert-annotated
