@@ -18,12 +18,47 @@ open decisions. Keep it terse.
 
 ## Reusable assets (slides/assets/img/)
 - sparrow.jpg, sparrows_two.jpg (+ edge/blur variants), cat.jpg, vgg16.png,
-  alphafold_protein.png, alphago_go_board.jpg, selfdriving_waymo.jpg,
+  alphafold_protein.png (AlphaFold DB, CC0), alphago_go_board.jpg (Xchen27,
+  Wikimedia Commons, CC BY-SA 3.0), selfdriving_waymo.jpg,
   maldi_spectrum.png, ai_statistics_meme.png, conv_worked_example.png (CC BY 4.0),
   autoencoder_schema.png (Michela Massi, Wikimedia Commons, CC BY-SA 4.0).
 
 ## Per-lecture log
 <!-- newest first; one block per lecture on approval -->
+
+### Lecture 13 · Large Language Models + the DL-in-MS Landscape — BUILT 2026-08-31 (pending review)
+- **25 slides, 21 figure-driven.** Spec: `slides/spec/lecture13_llms_landscape.yaml`
+  → `slides/pptx/lecture13_llms_landscape.pptx`. Survey hour, so the ONE numeric
+  beat (rule 6) is a LIGHT next-token **softmax do-it-together** (reuse of
+  Lecture 4/7 softmax): logits (2,1,0) → e (7.39,2.72,1.00), sum 11.11 →
+  probs (0.665,0.245,0.090), argmax → next token K. Worked in `notes:`, not a
+  quiz item.
+- **Interactive spine (rule 8), all four Quiz 13 items worked live:** four
+  I-do→you-do pairs, one per item — hallucination guardrail (Q4), RL
+  agent/action/reward on an auto-tuned LC-gradient loop (Q2),
+  prompting-vs-RAG-vs-fine-tuning (Q3 → RAG), and the tool→problem→architecture
+  landscape match (Q1). Every landmark tool's problem+arch+impact appears on its
+  own tour slide BEFORE the Q1 match (rule 3).
+- **Quiz** `quizzes/src/quiz13_llms_landscape.tex` single-source `\ifsolution`,
+  quiz08 conventions (`\rb`,`\keybox`,`\work`). Q1 is a 3-col match table
+  (tool | problem | architecture) with two word banks; Q2 labels agent/action/
+  reward; Q3 one RAG scenario + why; Q4 hallucination + guardrail. Student+key
+  both compile (pdflatex, 2 pp each).
+- **NEW toolkit funcs (extend, not fork) in `_lecture13_figures()`:**
+  `next_token_predict`, `softmax_next_token`, `llm_pipeline(intro/rlhf)`,
+  `llm_scale`, `hallucination(ido/youdo)`, `rl_loop(ido/youdo)`, `rlhf_as_rl`,
+  `use_llm_chart(ido/youdo)`, `landscape_card` (× Casanovo/Prosit/DIA-NN/DRIAMS),
+  `landscape_match(ido/youdo)`. Registered in build_all() and FUNCS (key `llms`
+  + per-figure keys). Rebuild: `python3 tools/make_slide_figures.py llms`.
+- **Real licensed images (rule 7), REUSED existing assets:** the two flagship
+  photos are placed directly in the deck, credited in figcaptions —
+  `alphago_go_board.jpg` (Xchen27, Wikimedia Commons, **CC BY-SA 3.0**) on the
+  AlphaGo/RL slide, and `alphafold_protein.png` (**AlphaFold DB, CC0**) on the
+  AlphaFold tour slide. No new images fetched; the pipeline/RL/RAG/landscape-card
+  schematics are hand-authored (MS-anchored, offline, editable) as no clean
+  licensed offline diagram exists for them.
+- **Verify:** overlap checker 0 FAIL, fractional-EMU 0, all 25 notes non-empty;
+  regression rebuild L7/8/10/11 all 0 FAIL / 0 fractional-EMU.
 
 ### Lecture 11 · Learning Without (Many) Labels — BUILT 2026-08-30 (pending review)
 - **21 slides, 19 figure-driven.** Spec: `slides/spec/lecture11_unsupervised.yaml`

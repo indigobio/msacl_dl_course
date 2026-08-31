@@ -1,0 +1,506 @@
+deck:
+  title: "Lecture 13 · Large Language Models + the DL-in-MS Landscape"
+  eyebrow: "MSACL · DS301 Deep Learning · Segment 5 · Lecture 13"
+
+slides:
+  - type: title
+    title: "Large language models, and the DL-in-MS landscape"
+    subtitle: "LLMs demystified in pictures · reinforcement learning, touched base · prompting vs RAG vs fine-tuning · the landmark-tool tour"
+    notes: >
+      Tuesday morning, Segment 5, the frontier hour. Two jobs today. First,
+      DEMYSTIFY large language models entirely in pictures: they are next-token
+      predictors, trained in three stages (pretraining → supervised fine-tuning
+      → preference tuning/RLHF), and their headline failure mode — hallucination
+      — is something we DESIGN AROUND. To make "next-token prediction" concrete
+      we do one light numeric beat: a softmax over three candidate-token logits
+      (this hour's only arithmetic, a reuse of Lecture 4/7's softmax). Second,
+      the LANDSCAPE TOUR: five landmark tools from our own field, each in the
+      same frame — problem → the architecture you now know (a callback to
+      Lectures 5–11) → impact. Along the way we touch base on reinforcement
+      learning (agent–environment–reward in one diagram, AlphaGo in one slide)
+      because RLHF is just "RL where the reward comes from human preferences,"
+      and we cover how to USE an LLM without training one (prompting vs RAG vs
+      fine-tuning). Same interactive spine as every lecture: four I-do → you-do
+      pairs, each you-do pointing to one Quiz 13 item. Hand out Quiz 13 now,
+      blank — the room fills it across the hour. The four items: Q1 match
+      tool→problem→architecture, Q2 label agent/action/reward, Q3 prompting vs
+      RAG vs fine-tuning, Q4 where could it hallucinate + the guardrail. Lecture
+      14 (agentic AI) calls straight back to today's RL and prompting.
+
+  - type: bullets
+    eyebrow: "Lecture 13 · where this hour goes"
+    title: "Four stops on the frontier"
+    bullets:
+      - {text: "LLMs demystified — next-token prediction, the 3-stage training pipeline, scale, hallucination", time: "16 min"}
+      - {text: "Reinforcement learning, touched base — agent/environment/reward, AlphaGo, and RLHF", time: "12 min"}
+      - {text: "Using an LLM without training one — prompting vs RAG vs fine-tuning", time: "8 min"}
+      - {text: "The landscape tour — five landmark MS/biology tools: problem → architecture → impact", time: "18 min"}
+    notes: >
+      Signpost the four stops. The only arithmetic all hour is one softmax (the
+      do-it-together in the first stop), so reassure the room early. The heart of
+      the hour is the last stop — the landscape tour — where everything from
+      Lectures 5–11 comes home: a transformer that translates a spectrum into a
+      peptide, a 1D CNN that calls antibiotic resistance, attention that folds a
+      protein. Aim for a hands-on beat every ~8–10 minutes: the softmax
+      do-it-together, then the four you-dos (hallucination guardrail → Q4, RL
+      labels → Q2, prompting/RAG/fine-tuning → Q3, the tool match → Q1). Keep the
+      RL and "using an LLM" stops brisk — they are context and vocabulary, not
+      the destination.
+
+  # ============ PART 1 · LLMs demystified ============
+  - type: image
+    eyebrow: "LLMs demystified · 1 of 6 · the core idea"
+    title: "An LLM predicts the next token"
+    image: img/fig_next_token.png
+    img_h: 4.0
+    callout: {kind: ms, text: "Strip away the mystique: a language model reads the tokens so far and outputs a probability for EVERY token in its vocabulary — then it picks (usually) the most likely one and appends it. A peptide read A–C–D–E–? is the same game an amino acid at a time. Generate text by doing this over and over."}
+    notes: >
+      Demystify the whole thing in one picture. A large language model is a
+      next-token predictor: feed it the sequence of tokens so far (words, or here
+      amino acids), and it returns a probability distribution over the entire
+      vocabulary for what comes next; pick a token, append it, and repeat — that
+      loop is how it writes a sentence or, for a protein language model, extends
+      a peptide. The bars show the model favoring K (0.55) over R, G, and the
+      long tail. Nothing here is magic — it is the softmax over scores we already
+      know from Lecture 4 and used in attention (Lecture 7). Next slide we
+      compute one of those probability sets by hand so "next-token prediction"
+      is concrete, not a slogan.
+
+  - type: image
+    eyebrow: "LLMs demystified · 2 of 6 · do-it-together"
+    title: "Do it together: softmax the next-token scores"
+    image: img/fig_softmax_next.png
+    img_h: 4.5
+    callout: {kind: check, text: "Do-it-together (fill it in with me): three candidate next tokens carry logits 2, 1, 0. softmax turns them into probabilities — e² =7.39, e¹ =2.72, e⁰ =1.00, sum 11.11 → 0.665, 0.245, 0.090 (they sum to 1). Argmax → predicted next token = K. That is next-token prediction, exactly."}
+    notes: >
+      The hour's one numeric beat (rule 6), done together cell by cell — a reuse
+      of the Lecture 4/7 softmax so it's familiar. Three candidate next tokens
+      K, R, G carry logits 2, 1, 0. Softmax(z)ᵢ = e^{zᵢ} / Σⱼ e^{zⱼ}. Exponentiate:
+      e²=7.389, e¹=2.718, e⁰=1.000; the sum is 7.389+2.718+1.000 = 11.107.
+      Divide each by the sum: 7.389/11.107 = 0.665, 2.718/11.107 = 0.245,
+      1.000/11.107 = 0.090 — and they sum to 1.000, as probabilities must. The
+      argmax is the largest, 0.665, so the predicted next token is K. Emphasize
+      the intuition: a bigger logit becomes a bigger probability, and the model
+      would (greedily) emit K. This is exactly what happens billions of times as
+      an LLM writes — and the numbers are identical to the figure and notes.
+      Not a quiz item; it just makes the next-token idea tangible before we
+      zoom out to how the whole model is trained.
+
+  - type: image
+    eyebrow: "LLMs demystified · 3 of 6 · the training pipeline"
+    title: "Three training stages, each in one sentence"
+    image: img/fig_llm_pipeline.png
+    img_h: 4.0
+    callout: {kind: plain, text: "1) PRETRAINING — predict the next token on a huge text corpus → learns language & facts. 2) SUPERVISED FINE-TUNING (SFT) — train on curated instruction→answer pairs → learns to follow instructions. 3) PREFERENCE TUNING (RLHF) — humans rank answers, tune toward the preferred → learns to be helpful & safe."}
+    notes: >
+      How a chatbot is built, three stages, one sentence each. STAGE 1,
+      PRETRAINING: the next-token game from the last two slides, run on a
+      massive text corpus — this is where the model absorbs grammar, facts, and
+      reasoning patterns, but it only knows how to CONTINUE text, not to answer
+      you. STAGE 2, SUPERVISED FINE-TUNING (SFT): keep training, now on curated
+      examples of instruction → good answer, so the model learns to follow
+      instructions instead of just autocompleting. STAGE 3, PREFERENCE TUNING
+      (RLHF): humans compare answers and mark which they prefer, and the model
+      is tuned toward the preferred ones — this is what makes it feel helpful,
+      polite, and safe. We will unpack that third stage after a quick detour
+      through reinforcement learning, because "tune toward what humans prefer" IS
+      reinforcement learning. Base model → instruction-follower → assistant.
+
+  - type: image
+    eyebrow: "LLMs demystified · 4 of 6 · why it works"
+    title: "Scale is the engine"
+    image: img/fig_llm_scale.png
+    img_h: 3.8
+    callout: {kind: plain, text: "Why did this suddenly work? SCALE. More data + more parameters + more compute, and capabilities that weren't programmed in appear — grammar, then reasoning and coding, then broad 'emergent' skills. Same next-token objective the whole way up; the size is what changed."}
+    notes: >
+      The honest answer to "why now?" is scale. The training objective never
+      changed — it is still next-token prediction — but as models grew from
+      ~100M to ~10B to ~1T parameters (trained on correspondingly more data and
+      compute), qualitatively new abilities appeared: first fluent grammar, then
+      multi-step reasoning and code, then the broad, surprising "emergent" skills
+      that make today's assistants useful. The lesson for a lab audience is
+      twofold: these abilities are a product of scale, not hand-coded rules
+      (which is also why they're hard to fully predict or guarantee), and you
+      almost never train one yourself — you USE a pretrained one (stop three of
+      the hour). But scale also brings a failure mode we must plan for, next.
+
+  - type: image
+    eyebrow: "LLMs demystified · 5 of 6 · the failure mode · I-do"
+    title: "Hallucination: fluent, confident — and sometimes wrong"
+    image: img/fig_hallucination_ido.png
+    img_h: 4.4
+    callout: {kind: ms, text: "An LLM optimizes for plausible next tokens, not truth — so it can produce a fluent, confident answer that is simply WRONG, like an invented citation. In a clinical or lab setting that is dangerous. The guardrail: GROUND answers in real source documents (RAG) and require a human to verify every citation/number before it ships."}
+    notes: >
+      The critical caveat for anyone deploying this in a lab. Because a model is
+      trained to produce PLAUSIBLE next tokens, not verified truth, it will
+      sometimes generate something fluent and confident that is flatly wrong —
+      an invented reference, a made-up limit of detection, a plausible-looking
+      but fabricated number. This is "hallucination," and it is not a bug you can
+      fully patch out; it is a property of the objective, so you DESIGN AROUND
+      it. Two guardrails we lean on: (1) grounding — retrieve real source
+      documents and make the model answer from them (that's RAG, two stops from
+      now), so answers are anchored to your actual SOPs/records; and (2) a
+      human-in-the-loop check that verifies every citation and number before it
+      reaches a report. The takeaway: treat LLM output as a draft to verify, not
+      an oracle. Next slide the room states a guardrail themselves (Quiz 13 Q4).
+
+  - type: image
+    eyebrow: "LLMs demystified · 6 of 6 · your turn (you-do = Q4)"
+    title: "Your turn — where could it hallucinate, and what's the guardrail?"
+    image: img/fig_hallucination_youdo.png
+    img_h: 4.4
+    callout: {kind: check, text: "Your turn → Quiz 13, Q4. An LLM drafts a patient report and cites a reference to support a result. (a) Where could it hallucinate? (b) What ONE guardrail keeps it honest? Worked answer in the notes."}
+    notes: >
+      YOU-DO = Quiz 13 Q4 (name a hallucination risk and a guardrail; assesses
+      the "design around the failure mode" outcome). Expected answer (any
+      equivalent earns credit): (a) the model can invent a citation that does not
+      exist — or fabricate/round a numeric result — while sounding completely
+      confident, because it produces plausible tokens rather than checking a
+      source; (b) a guardrail such as GROUNDING the draft in retrieved real
+      documents (RAG) so every claim traces to a source, AND/OR requiring a human
+      to verify every citation and number before the report is released. Extend
+      it to their world: the same risk applies to auto-drafted method summaries,
+      QC narratives, or literature reviews — never let unverified LLM text become
+      the record. Take one answer from the floor, then have them fill Q4.
+
+  # ============ PART 2 · Reinforcement learning, touched base ============
+  - type: title
+    eyebrow: "Lecture 13 · part two"
+    title: "Reinforcement learning, touched base"
+    subtitle: "learn by trial and feedback — agent, environment, action, reward — then RLHF completes the LLM pipeline"
+    notes: >
+      A short detour so stage three of the pipeline (RLHF) makes sense, and so
+      Lecture 14's agents have the vocabulary. We keep it strictly intuitive —
+      the agent–environment–reward loop in ONE diagram, AlphaGo in ONE slide,
+      NO Markov decision processes, NO policy-gradient math. The single idea:
+      an agent learns by trying actions and getting feedback (reward), keeping
+      what earns more reward. Then we snap that loop onto RLHF — the reward is
+      just a human preference — and the LLM training pipeline is complete.
+
+  - type: image
+    eyebrow: "RL · 1 of 3 · the loop · I-do"
+    title: "One loop: agent, environment, action, reward"
+    image: img/fig_rl_loop_ido.png
+    img_h: 4.6
+    callout: {kind: plain, text: "The whole of reinforcement learning in one diagram. The AGENT takes an ACTION in an ENVIRONMENT; the environment returns a REWARD (and a new state). The agent has no labeled 'right answers' — it learns purely by trial and feedback, keeping the actions that earn more reward."}
+    notes: >
+      Reinforcement learning in one picture, no math. Four words: the AGENT (the
+      learner) takes an ACTION; the ENVIRONMENT (the world it acts in) responds
+      with a REWARD — a single number saying better or worse — and a new state;
+      the agent then acts again, gradually favoring actions that earn more
+      reward. The defining feature versus everything earlier in the course: there
+      are NO labeled examples of the correct action. Supervised learning is shown
+      the answer; an RL agent must DISCOVER good actions by trying them and
+      reading the feedback. That is "learn by trial and feedback." Hold these
+      four roles — agent, environment, action, reward — because the room will
+      label them on a lab scenario in two slides (Quiz 13 Q2), and because RLHF
+      is exactly this loop with a human-supplied reward.
+
+  - type: image
+    eyebrow: "RL · 2 of 3 · the famous example"
+    title: "AlphaGo: trial, feedback, improvement"
+    image: img/alphago_go_board.jpg
+    img_h: 3.6
+    caption: "Go board · photo: Xchen27, Wikimedia Commons, CC BY-SA 3.0 (reused course asset)"
+    callout: {kind: plain, text: "AlphaGo learned Go with this exact loop: ACTION = place a stone, ENVIRONMENT = the game, REWARD = win or lose. Play millions of games, keep the moves that lead to wins, and it beat the world champion — no human ever labeled the 'right' move. Trial → feedback → improvement, at scale."}
+    notes: >
+      One slide, the canonical RL story, mapped straight onto the loop. AlphaGo
+      (DeepMind, 2016) became superhuman at Go with reinforcement learning: the
+      ACTION is placing a stone, the ENVIRONMENT is the game of Go, and the
+      REWARD is simply winning or losing at the end. By playing millions of games
+      — including against itself — and reinforcing the moves that tended to lead
+      to a win, it discovered strategies no human taught it and beat world
+      champion Lee Sedol. The point for us is not Go; it's the pattern: trial →
+      feedback → improvement, no labeled "correct" moves, just a reward signal
+      and enormous practice. That same pattern, with a human preference standing
+      in for "win or lose," is how RLHF tunes an LLM — next slide. (This is a
+      reused, properly-licensed course image, credited in the caption.)
+
+  - type: image
+    eyebrow: "RL · 3 of 3 · back to LLMs"
+    title: "RLHF = RL where the reward is a human preference"
+    image: img/fig_rlhf.png
+    img_h: 4.2
+    callout: {kind: ms, text: "Now stage 3 of the pipeline makes sense. AGENT = the LLM, ACTION = write an answer, ENVIRONMENT = the prompt + a human rater, REWARD = how much a human PREFERS the answer. Same trial-and-feedback loop as AlphaGo — the only new thing is that people supply the reward. That's RLHF."}
+    notes: >
+      Close the loop back to the pipeline. Reinforcement Learning from Human
+      Feedback (RLHF) is just the agent–environment–reward loop with the roles
+      filled in for language: the AGENT is the LLM being tuned; its ACTION is to
+      write an answer to a prompt; the ENVIRONMENT is the prompt plus a human
+      rater (in practice a "reward model" trained to imitate human preferences);
+      and the REWARD is how strongly a human prefers that answer over
+      alternatives. The model is nudged, over many rounds, toward answers people
+      prefer — which is what turns a raw instruction-follower into a helpful,
+      polite, safe assistant. No new machinery beyond the RL loop we just drew;
+      that is why RLHF is "RL where the reward comes from human preferences," and
+      it completes the three-stage training pipeline. Next slide the room labels
+      the loop on a lab scenario (Quiz 13 Q2).
+
+  - type: image
+    eyebrow: "RL · your turn (you-do = Q2)"
+    title: "Your turn — label the agent, action, and reward"
+    image: img/fig_rl_loop_youdo.png
+    img_h: 4.6
+    callout: {kind: check, text: "Your turn → Quiz 13, Q2. An optimizer auto-tunes an LC gradient: each cycle it picks a new gradient slope, runs the sample, and scores the chromatogram's resolution. Label the AGENT, the ACTION, and the REWARD. Worked answer in the notes."}
+    notes: >
+      YOU-DO = Quiz 13 Q2 (label agent/action/reward on a lab RL scenario;
+      assesses the RL-loop outcome). The scenario: an optimizer automatically
+      tunes an LC gradient to maximize peak separation — each cycle it picks a
+      new gradient slope, runs the sample, and scores the resulting
+      chromatogram's resolution. Mapping (identical to the Quiz 13 Q2 key):
+      AGENT = the tuning optimizer (the learner choosing settings); ACTION =
+      the gradient it picks that cycle (e.g., the slope/steps); REWARD = the
+      chromatogram's resolution / separation score (higher = better). The
+      ENVIRONMENT, if asked, is the LC–MS instrument plus the sample. Tie it back:
+      just like AlphaGo, no one labels the "right" gradient — the optimizer
+      discovers it by trying gradients and reading the resolution reward. Take
+      one mapping from the floor, then have them fill Q2.
+
+  # ============ PART 3 · Using an LLM without training one ============
+  - type: image
+    eyebrow: "Using an LLM · 1 of 2 · the three options · I-do"
+    title: "Prompting vs RAG vs fine-tuning"
+    image: img/fig_use_llm_ido.png
+    img_h: 4.6
+    callout: {kind: ms, text: "You almost never train an LLM — you USE one, three ways. PROMPTING: just ask, with instructions/examples in the prompt (general task, no private data). RAG: retrieve YOUR documents at query time and put them in the prompt (answers must cite current/private docs). FINE-TUNING: further-train on your labeled examples (a consistent new style/skill, many examples)."}
+    notes: >
+      The practical stop: how to actually put an LLM to work without training
+      one. Three options, cheapest first. PROMPTING — just ask, putting your
+      instructions and a few examples right in the prompt; best for general tasks
+      with no private data, and it's instant. RAG (retrieval-augmented
+      generation) — at query time, retrieve YOUR relevant documents (SOPs,
+      records, papers) and paste them into the prompt so the model answers FROM
+      them; best when answers must cite current or private material, and it's
+      also the main hallucination guardrail from earlier. FINE-TUNING —
+      further-train the model on your own labeled examples; reserve it for when
+      you need a consistent new style or skill AND have many examples, because
+      it's the most work. The worked clinical example: drafting a report that
+      must quote TODAY's SOP → the SOP changes monthly, so you want RAG (pull the
+      current SOP at query time), not fine-tuning (which would bake in a snapshot
+      and need retraining every change). Next slide the room picks for a scenario
+      (Quiz 13 Q3).
+
+  - type: image
+    eyebrow: "Using an LLM · 2 of 2 · your turn (you-do = Q3)"
+    title: "Your turn — prompting, RAG, or fine-tuning?"
+    image: img/fig_use_llm_youdo.png
+    img_h: 4.4
+    callout: {kind: check, text: "Your turn → Quiz 13, Q3. You want the assistant to answer questions from each instrument's CURRENT calibration log — updated every week. Prompting, RAG, or fine-tuning? In one sentence, why? Worked answer in the notes."}
+    notes: >
+      YOU-DO = Quiz 13 Q3 (pick among prompting / RAG / fine-tuning and justify;
+      assesses the "use an LLM without training one" outcome). Answer (identical
+      to the Quiz 13 Q3 key): RAG. Why (any equivalent): the reports must cite
+      the CURRENT calibration logs, which change weekly, so you retrieve the up-to-date log
+      at query time and have the model answer from it — that keeps answers
+      current and grounded (and cuts hallucination). Fine-tuning is wrong here
+      because it would bake a stale snapshot into the weights and need
+      re-training every month; plain prompting is wrong because you can't paste
+      every log into every prompt and keep them current by hand. Note the bonus
+      link: RAG is also the hallucination guardrail from Q4 — grounding answers
+      in real documents. Take one answer with its reason, then have them fill Q3.
+
+  # ============ PART 4 · The landscape tour ============
+  - type: title
+    eyebrow: "Lecture 13 · part four"
+    title: "The landscape tour"
+    subtitle: "five landmark MS / biology tools, each in one frame: problem → the architecture you now know → impact"
+    notes: >
+      The payoff of the whole course. Five landmark tools from mass spectrometry
+      and structural biology, each on one slide in the SAME frame: the PROBLEM it
+      solves, the ARCHITECTURE it uses — which is one you now know from Lectures
+      5–11 — and its IMPACT. The through-line to keep saying out loud: these are
+      not exotic new inventions; they are the transformer, the CNN, and the
+      attention mechanism you already understand, pointed at our data. As we go,
+      the room is collecting the answers for the Q1 match (tool → problem →
+      architecture), which we do live at the end of the tour. 💬 Keep the
+      outcomes' pair prompt in your pocket: which of these is closest to a problem
+      in your lab?
+
+  - type: image
+    eyebrow: "Tour · 1 of 5 · de novo sequencing"
+    title: "Casanovo / DeepNovo — sequencing without a database"
+    image: img/fig_land_casanovo.png
+    img_h: 4.3
+    callout: {kind: ms, text: "Problem → architecture you know → impact. A TRANSFORMER reads an MS/MS spectrum and writes out the peptide — spectrum-in, peptide-out, exactly the translation setup from Lectures 7–8 with each peak as a token. It can name peptides that are in NO database: novel, mutated, immunopeptides."}
+    notes: >
+      Tour stop one, and the cleanest callback. De novo peptide sequencing means
+      reading the amino-acid sequence straight from an MS/MS fragmentation
+      spectrum WITHOUT matching to a database. Casanovo (and its ancestor
+      DeepNovo) frames this as TRANSLATION: the spectrum is the "source
+      sentence," the peptide is the "target sentence," and a transformer
+      encoder–decoder — the very architecture we assembled in Lecture 8, reading
+      each peak as a token (Lecture 7/8's peak-as-token) — translates one into
+      the other. Impact: because it doesn't need a reference database, it can
+      identify peptides that databases miss — novel variants, mutations, and
+      immunopeptides — which is exactly where database search fails. Say the
+      frame aloud: problem (de novo sequencing) → architecture you now know
+      (transformer/translation) → impact (reads peptides no database contains).
+
+  - type: image
+    eyebrow: "Tour · 2 of 5 · spectrum / RT prediction"
+    title: "Prosit / AlphaPeptDeep — predicting spectra to rescore IDs"
+    image: img/fig_land_prosit.png
+    img_h: 4.3
+    callout: {kind: ms, text: "Problem → architecture you know → impact. A deep SEQUENCE MODEL (RNN/LSTM + attention; AlphaPeptDeep uses a transformer) predicts a peptide's fragment spectrum and retention time from its sequence. The predicted spectra RESCORE database hits → more confident IDs, and they build DIA libraries."}
+    notes: >
+      Stop two runs the arrow the other way: given a peptide SEQUENCE, predict
+      what its fragment spectrum and retention time SHOULD look like. Prosit does
+      this with a deep sequence model — an RNN/LSTM with attention (Lecture 7) —
+      and AlphaPeptDeep with a transformer (Lecture 8); either way it's the
+      sequence-model machinery you know. Why predict a spectrum you could just
+      measure? Because comparing the observed spectrum to the PREDICTED one is a
+      powerful extra score: it RESCORES database search hits, promoting real
+      identifications and rejecting false ones, so you get more confident IDs at
+      the same FDR. The same predicted-library idea underpins DIA analysis (next
+      stop). Frame: problem (predict spectrum + RT) → architecture you know
+      (deep sequence model, RNN/attention) → impact (rescore → more, better IDs).
+
+  - type: image
+    eyebrow: "Tour · 3 of 5 · DIA analysis · 💬 predict"
+    title: "DIA-NN — untangling data-independent acquisition"
+    image: img/fig_land_diann.png
+    img_h: 4.3
+    callout: {kind: ms, text: "💬 Predict the architecture before I reveal it. In DIA runs many peptides fragment at once, so signals overlap. DIA-NN uses FEED-FORWARD NEURAL NETS — the plain MLP classifiers from Lectures 1–4 — to score which precursors are really present. Impact: robust, high-throughput proteomics, thousands of proteins per run."}
+    notes: >
+      Stop three, and a quick mid-tour interactive beat (keeps the ~8–10 min
+      cadence): before you reveal the middle band, ask the room to PREDICT which
+      architecture family this is from the problem alone — then reveal the MLP.
+      Data-independent acquisition (DIA) fragments wide m/z windows,
+      so a single spectrum is a jumble of many co-eluting peptides — powerful for
+      throughput and reproducibility, but hard to deconvolve. DIA-NN ("DIA neural
+      networks") uses deep neural networks — feed-forward classifiers, the plain
+      MLPs from Lectures 1–4 — to score whether each candidate precursor is
+      genuinely present amid the overlap, and to separate signal from noise.
+      Impact: it made DIA robust and routine at scale, quantifying thousands of
+      proteins per run with high reproducibility, which is why it's a workhorse
+      in modern proteomics cores. Frame: problem (ID + quantify in overlapping
+      DIA runs) → architecture you know (feed-forward MLP) → impact (robust,
+      high-throughput proteomics). Note the teaching point: the "simplest"
+      architecture in the course is behind one of the field's biggest tools —
+      match the model to the job, not to the hype.
+
+  - type: image
+    eyebrow: "Tour · 4 of 5 · a clinical win"
+    title: "DRIAMS — antibiotic resistance from MALDI-TOF"
+    image: img/fig_land_driams.png
+    img_h: 4.3
+    callout: {kind: ms, text: "Problem → architecture you know → impact. Predict antibiotic resistance (R/S) directly from the routine clinical MALDI-TOF spectrum a lab already runs to ID the organism. Framed as a 1D-CNN spectrum classifier — the Lecture 5 model you built in Lab 2. Impact: faster resistance calls from data you already collect."}
+    notes: >
+      Stop four is the clinical one, and it's the Lab 2 problem. (DRIAMS itself
+      is the public dataset/benchmark behind these resistance-calling models;
+      we frame it here as the 1D-CNN spectrum classifier you built in Lab 2.)
+      Clinical
+      microbiology labs already run MALDI-TOF on every isolate to identify the
+      organism; DRIAMS asks whether the SAME spectrum also predicts ANTIBIOTIC
+      RESISTANCE (resistant vs. susceptible) — a call that normally takes an
+      extra day of culture. Framed as a 1D spectrum classification, this is the
+      1D CNN from Lecture 5 (the same peak-detector-slid-along-m/z idea we built
+      in Lab 2). Impact: a potential resistance readout hours earlier, from data
+      the lab is already collecting at no extra bench cost — a real,
+      deployed-in-clinic style win. Be honest, tying to Lecture 10: these models
+      can lose accuracy across sites and over time (the DRIAMS distribution-shift
+      cautionary tale), so external and temporal validation is mandatory before
+      trusting a call. Frame: problem (R/S from MALDI-TOF) → architecture you
+      know (1D CNN) → impact (faster calls from routine data).
+
+  - type: image
+    eyebrow: "Tour · 5 of 5 · the flagship"
+    title: "AlphaFold — protein structure from sequence"
+    image: img/alphafold_protein.png
+    img_h: 3.8
+    caption: "AlphaFold-predicted protein structure · image: AlphaFold DB, CC0 (reused course asset)"
+    callout: {kind: ms, text: "Problem → architecture you know → impact. PROBLEM: predict a protein's 3D structure from its amino-acid sequence. ARCHITECTURE: attention / a transformer (the Evoformer) — Lectures 7–8. IMPACT: near-experimental accuracy and 200M+ predicted structures — the flagship of deep learning in biology."}
+    notes: >
+      The flagship, and the same frame. PROBLEM: predict a protein's 3D
+      structure from its amino-acid sequence — the decades-old "protein folding
+      problem." ARCHITECTURE: at its heart AlphaFold is attention — a specialized
+      transformer (the "Evoformer") reasoning over the sequence and its
+      evolutionary relatives — the exact mechanism from Lectures 7–8. IMPACT:
+      it reached near-experimental accuracy in the CASP assessment and DeepMind
+      has since released 200M+ predicted structures, reshaping structural biology
+      and drug discovery; it's the single most famous "deep learning changed a
+      science" result, and its authors shared a 2024 Nobel Prize. The message to
+      leave the room with: the architecture that folds proteins is the same
+      attention you now understand — pointed at sequences and scaled up. This is
+      a reused, properly-licensed course image, credited in the caption. Frame:
+      problem → architecture you know (attention/transformer) → impact (flagship).
+
+  - type: image
+    eyebrow: "Tour · the whole tour · I-do · 💬 pair"
+    title: "The tour on one page"
+    image: img/fig_landscape_match_ido.png
+    img_h: 4.9
+    callout: {kind: ms, text: "Five tools, one frame. Casanovo → de novo sequencing → Transformer (translation). Prosit → predict spectrum+RT → sequence model (RNN/attn). DIA-NN → DIA ID+quant → MLP. DRIAMS → resistance from MALDI-TOF → 1D CNN. AlphaFold → protein structure → Transformer/attention. 💬 Which is closest to a problem in YOUR lab?"}
+    notes: >
+      The whole tour on one page — the single chart the Q1 match is answerable
+      from (rule 3). Walk the five rows once more by architecture family so the
+      pattern lands: Casanovo = Transformer used as translation (Lecture 8);
+      Prosit = a deep sequence model, RNN/LSTM + attention (Lecture 7); DIA-NN =
+      a feed-forward MLP (Lectures 1–4); DRIAMS = a 1D CNN spectrum classifier
+      (Lecture 5); AlphaFold = attention / transformer (Lectures 7–8). Every one
+      is an architecture the room now owns, aimed at a real problem, with a
+      concrete impact. Run the outcomes' 💬 pair prompt here: which of these five
+      is closest to a problem in your own lab, and which architecture would it
+      use? Harvest two or three, then the room does the formal match next slide
+      (Quiz 13 Q1).
+
+  - type: image
+    eyebrow: "Tour · your turn (you-do = Q1)"
+    title: "Your turn — match tool → problem → architecture"
+    image: img/fig_landscape_match_youdo.png
+    img_h: 4.9
+    callout: {kind: check, text: "Your turn → Quiz 13, Q1. For each tool — Casanovo, Prosit, DIA-NN, DRIAMS, AlphaFold — fill in its PROBLEM and its ARCHITECTURE FAMILY, using the two word banks. Worked answer in the notes."}
+    notes: >
+      YOU-DO = Quiz 13 Q1 (match each landmark tool to its problem and its
+      architecture family; assesses the landscape outcome). Answers (identical
+      to the Quiz 13 Q1 key): Casanovo → de novo peptide sequencing →
+      Transformer (translation). Prosit → predict fragment spectrum + retention
+      time → deep sequence model (RNN/attention). DIA-NN → identify & quantify in
+      DIA runs → feed-forward neural net (MLP). DRIAMS → antibiotic resistance
+      (R/S) from MALDI-TOF → 1D CNN (spectrum classifier). AlphaFold → 3D protein
+      structure from sequence → Transformer / attention. Every problem and
+      architecture was shown on its tour slide moments ago, so the room answers
+      straight off the chart. Take one full row from the floor, then have them
+      complete Q1 — that's all four Quiz 13 items worked live.
+
+  # ============ Recap ============
+  - type: bullets
+    eyebrow: "Lecture 13 · what you can do now"
+    title: "You can now…"
+    bullets:
+      - "Explain LLM training in pictures — next-token pretraining → SFT → preference tuning (RLHF) — and treat hallucination as a failure mode to design around (Quiz 13 Q4)"
+      - "Describe reinforcement learning in one loop — agent, environment, action, reward — and label it on a lab scenario (Quiz 13 Q2)"
+      - "Choose among prompting, RAG, and fine-tuning for a lab use case (Quiz 13 Q3)"
+      - "For five landmark tools, name the problem, the architecture you now know, and the impact (Quiz 13 Q1)"
+    callout: {kind: plain, text: "You have now worked every item on Quiz 13 live — the hallucination guardrail (Q4), the RL labels (Q2), the prompting/RAG/fine-tuning choice (Q3), and the tool→problem→architecture match (Q1). Keep the sheet — Lecture 14 turns an LLM into an agent."}
+    notes: >
+      Recap = the Lecture 13 outcomes, each already a you-do this hour tied to a
+      Quiz 13 item: the LLM pipeline + hallucination guardrail (Q4), the RL loop
+      labeled on a lab scenario (Q2), the prompting/RAG/fine-tuning choice (Q3),
+      and the five-tool match (Q1). The sheet was filled across the hour, not as
+      an end block — a distributed worksheet. The big takeaway to send them off
+      with: the frontier is not a different field. LLMs are next-token predictors
+      trained in three stages; the landmark MS/biology tools are the same
+      transformers, CNNs, and attention you now understand, pointed at our data.
+      Keep the sheet — Lecture 14 makes an LLM into an agent that uses tools.
+
+  - type: bullets
+    eyebrow: "Lecture 13 · next"
+    title: "Next hour — Agentic AI, demo-driven"
+    bullets:
+      - "From chatbot to agent: an LLM + tools + a reason→act loop (ReAct) — a direct callback to today's RL feedback"
+      - "Follow along on your own free-tier bot: prompt for explicit reason → act → check steps"
+      - "Instructor live demo: an 'MS analysis assistant' reading a QC CSV, plotting, flagging anomalies, drafting a summary"
+      - "Where agents fit in the lab — and the guardrails each needs (human review, restricted tools, logging)"
+    callout: {kind: check, text: "2 minutes to finish Quiz 13 solo → we mark it together as Lecture 14 opens. Notice the thread: today's RL 'reward' and today's hallucination 'guardrails' are exactly what keep an AGENT honest next hour."}
+    notes: >
+      Hand the last minutes to finishing Quiz 13, then sell Lecture 14. The
+      through-line: an AGENT is an LLM given tools and a reason→act loop (ReAct),
+      and the two ideas from today carry straight over — reinforcement-style
+      feedback is how such behaviors get shaped, and the hallucination guardrails
+      (grounding, human review, restricted tools, logging) are exactly what keep
+      an agent safe in a lab workflow. Next hour we go demo-driven: participants
+      run a small reason→act→check exercise on their own free-tier chatbot, then
+      watch a live "MS analysis assistant" read a QC CSV, plot it, flag
+      anomalies, and draft a summary — each step narrated. Then Colab boots for
+      the capstone and we mark Quiz 13 together.

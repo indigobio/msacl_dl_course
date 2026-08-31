@@ -2630,6 +2630,8 @@ def build_all():
     _lecture10_figures()
     # ---- Lecture 11 ----
     _lecture11_figures()
+    # ---- Lecture 13 ----
+    _lecture13_figures()
 
 
 # deck I-do convolution (5x5 image, 3x3 diagonal detector) and the matched
@@ -4663,6 +4665,601 @@ def _lecture11_figures():
     paradigm_chart("youdo", "fig_paradigm_youdo.png")
 
 
+# ============================================================================
+#  Lecture 13 · Large Language Models + the DL-in-MS Landscape
+#  A survey hour, so the ONE numeric mechanic (rule 6) is a light next-token
+#  SOFTMAX do-it-together (reuse of Lecture 4/7's softmax): three candidate
+#  token logits → probabilities → argmax. Everything else is a bespoke,
+#  MS-anchored schematic (rule 9): the 3-stage LLM training pipeline, the RL
+#  agent–environment–reward loop, RLHF-as-RL, the prompting/RAG/fine-tuning
+#  decision chart, and per-tool landscape cards (problem → architecture you now
+#  know → impact). The two flagship photos (AlphaGo board, AlphaFold render)
+#  are REAL licensed images placed directly in the deck (rule 7), credited in
+#  their figcaptions — not redrawn here.
+# ============================================================================
+
+def next_token_predict(name="fig_next_token.png"):
+    """An LLM predicts the NEXT token: a context of tokens in, a probability over
+    the vocabulary out. MS-anchored context (a peptide being read left to right)
+    with a bar chart of candidate next residues; the argmax is the prediction."""
+    fig, (axl, axr) = plt.subplots(1, 2, figsize=(11.8, 4.2),
+                                   gridspec_kw={"width_ratios": [1.05, 1]})
+    axl.set_xlim(0, 10)
+    axl.set_ylim(0, 6)
+    axl.axis("off")
+    axl.text(5.0, 5.5, "predict the next token from the context", ha="center",
+             color=INK, fontsize=13.5, fontweight="bold")
+    toks = ["A", "C", "D", "E", "?"]
+    w = 1.35
+    gap = 0.28
+    x0 = 5.0 - (len(toks) * w + (len(toks) - 1) * gap) / 2
+    qcx = None
+    for i, t in enumerate(toks):
+        cx = x0 + i * (w + gap)
+        unknown = t == "?"
+        _chip(axl, cx, 3.4, w, 0.85, t, AMBER_SOFT if unknown else TEAL_SOFT,
+              txt=ROI_INK if unknown else INK, fs=17,
+              edge=AMBER if unknown else TEAL, lw=2.0)
+        if unknown:
+            qcx = cx + w / 2
+    axl.text(5.0, 4.25, "peptide read so far:  A – C – D – E – ?", ha="center",
+             color=MUTED, fontsize=11, style="italic")
+    axl.annotate("", xy=(qcx, 1.7), xytext=(qcx, 2.95),
+                 arrowprops=dict(arrowstyle="-|>", color=INK_SOFT, lw=2.0))
+    axl.text(5.0, 1.2,
+             "the model scores EVERY token in the vocabulary → a probability",
+             ha="center", color=INK_SOFT, fontsize=11)
+    # right: probability bars over candidate next residues
+    cands = [("K", 0.55), ("R", 0.20), ("G", 0.15), ("others", 0.10)]
+    ypos = np.arange(len(cands))[::-1]
+    for (lab, p), yy in zip(cands, ypos):
+        top = lab == "K"
+        axr.barh(yy, p, color=TEAL if top else "#CFE3E2", height=0.62,
+                 zorder=3)
+        axr.text(p + 0.02, yy, f"{p:.2f}", va="center", ha="left",
+                 color=INK if top else MUTED, fontsize=12,
+                 fontweight="bold" if top else "normal")
+        axr.text(-0.03, yy, lab, va="center", ha="right", color=INK,
+                 fontsize=12, fontweight="bold" if top else "normal")
+    axr.set_xlim(0, 0.72)
+    axr.set_ylim(-0.6, len(cands) - 0.4)
+    axr.set_xticks([])
+    axr.set_yticks([])
+    for s in axr.spines.values():
+        s.set_visible(False)
+    axr.set_title("P(next token)", fontsize=12, color=INK, fontweight="bold")
+    axr.text(0.5, -0.12, "pick the argmax → K", transform=axr.transAxes,
+             ha="center", color=TEAL, fontsize=12, fontweight="bold")
+    fig.subplots_adjust(wspace=0.16, bottom=0.14)
+    _save(fig, name)
+
+
+def softmax_next_token(name="fig_softmax_next.png"):
+    """The one numeric beat (rule 6), a do-it-together: three candidate next
+    tokens carry logits (2, 1, 0); softmax turns them into probabilities that
+    sum to 1, and the argmax is the predicted next token. Formula shown on the
+    figure (softmax was taught in Lecture 4 and used in Lecture 7) so it is
+    self-contained."""
+    tokens = ["K", "R", "G"]
+    logits = [2, 1, 0]
+    exps = ["e²=7.39", "e¹=2.72", "e⁰=1.00"]
+    probs = [0.665, 0.245, 0.090]
+    fig, (axl, axr) = plt.subplots(1, 2, figsize=(11.8, 4.6),
+                                   gridspec_kw={"width_ratios": [1, 1.15]})
+    # left: candidate chips with logits, then a probability bar chart
+    axl.set_xlim(0, 10)
+    axl.set_ylim(0, 10)
+    axl.axis("off")
+    axl.text(5.0, 9.4, "3 candidate next tokens, with logits", ha="center",
+             color=INK, fontsize=12.5, fontweight="bold")
+    for i, (t, lg) in enumerate(zip(tokens, logits)):
+        cx = 1.6 + i * 3.0
+        top = i == 0
+        _chip(axl, cx - 0.75, 8.1, 1.5, 0.8, t,
+              TEAL_SOFT if top else "#EFEFEA", txt=INK, fs=17,
+              edge=TEAL if top else MUTED, lw=2.2 if top else 1.4)
+        axl.text(cx, 7.15, f"logit = {lg}", ha="center", color=INK_SOFT,
+                 fontsize=12, fontweight="bold")
+    # probability bars
+    for i, (t, p) in enumerate(zip(tokens, probs)):
+        cx = 1.6 + i * 3.0
+        top = i == 0
+        bh = p * 5.0
+        axl.add_patch(FancyBboxPatch((cx - 0.75, 1.2), 1.5, bh,
+                      boxstyle="square,pad=0", facecolor=TEAL if top else "#CFE3E2",
+                      edgecolor="none", zorder=3))
+        axl.text(cx, 1.2 + bh + 0.25, f"{p:.3f}", ha="center", color=INK,
+                 fontsize=12.5, fontweight="bold" if top else "normal")
+        axl.text(cx, 0.75, t, ha="center", color=INK, fontsize=13,
+                 fontweight="bold" if top else "normal")
+    axl.text(5.0, 6.15, "softmax", ha="center", color=TEAL, fontsize=13,
+             fontweight="bold")
+    axl.annotate("", xy=(5.0, 5.4), xytext=(5.0, 5.95),
+                 arrowprops=dict(arrowstyle="-|>", color=TEAL, lw=2.2))
+    # right: the worked computation
+    axr.set_xlim(0, 1)
+    axr.set_ylim(0, 1)
+    axr.axis("off")
+    axr.text(0.0, 0.95, "softmax(z)ᵢ = e^{zᵢ} / Σⱼ e^{zⱼ}", fontsize=15,
+             color=INK, fontweight="bold")
+    axr.text(0.0, 0.83, "turns logits into probabilities that sum to 1",
+             fontsize=11, color=MUTED, style="italic")
+    cols_x = [0.02, 0.30, 0.62]
+    hdr = ["token", "e^{logit}", "probability"]
+    y0 = 0.66
+    for cx, h in zip(cols_x, hdr):
+        axr.text(cx, y0, h, fontsize=11.5, color=MUTED, fontweight="bold")
+    for i, (t, e, p) in enumerate(zip(tokens, exps, probs)):
+        yy = y0 - 0.12 * (i + 1)
+        top = i == 0
+        axr.text(cols_x[0], yy, t, fontsize=12.5, color=INK,
+                 fontweight="bold")
+        axr.text(cols_x[1], yy, e, fontsize=12, color=INK_SOFT)
+        axr.text(cols_x[2], yy, f"{p:.3f}", fontsize=12.5,
+                 color=TEAL if top else INK,
+                 fontweight="bold" if top else "normal")
+    axr.plot([0.0, 0.99], [0.235, 0.235], color=HAIRLINE, lw=1.2)
+    axr.text(0.0, 0.15, "sum = 7.39 + 2.72 + 1.00 = 11.11", fontsize=11.5,
+             color=INK_SOFT)
+    axr.add_patch(FancyBboxPatch((0.0, 0.0), 0.99, 0.10,
+                  boxstyle="round,pad=0.01,rounding_size=0.03",
+                  facecolor=TEAL_SOFT, edgecolor=TEAL, lw=2.0))
+    axr.text(0.495, 0.05, "argmax → predicted next token = K", ha="center",
+             va="center", color=TEAL, fontsize=12.5, fontweight="bold")
+    fig.subplots_adjust(wspace=0.2)
+    _save(fig, name)
+
+
+def llm_pipeline(mode="intro", name="fig_llm_pipeline.png"):
+    """The 3-stage LLM training pipeline, each stage in one sentence:
+    next-token PRETRAINING → supervised fine-tuning (SFT) → preference tuning
+    (RLHF). mode='intro' introduces all three; mode='rlhf' highlights the RLHF
+    stage and tags its reward as a human preference (completed after the RL
+    section)."""
+    fig, ax = plt.subplots(figsize=(12.2, 4.2))
+    ax.set_xlim(0, 12)
+    ax.set_ylim(0, 5)
+    ax.axis("off")
+    title = ("how an LLM is trained — three stages" if mode == "intro"
+             else "…and RLHF is the third stage: reward = human preference")
+    ax.text(6.0, 4.72, title, ha="center", color=INK, fontsize=14,
+            fontweight="bold")
+    stages = [
+        ("1. PRETRAINING", TEAL,
+         "predict the next token\non a huge text corpus",
+         "learns language & facts"),
+        ("2. SUPERVISED\nFINE-TUNING (SFT)", AMBER,
+         "train on curated\ninstruction → answer pairs",
+         "learns to follow instructions"),
+        ("3. PREFERENCE\nTUNING (RLHF)", RED,
+         "humans rank answers;\ntune toward the preferred",
+         "learns to be helpful & safe"),
+    ]
+    w = 3.5
+    xs = [0.35, 4.25, 8.15]
+    for i, ((head, col, body, foot), x) in enumerate(zip(stages, xs)):
+        hot = (mode == "rlhf" and i == 2)
+        ax.add_patch(FancyBboxPatch((x, 1.0), w, 2.9,
+                    boxstyle="round,pad=0.02,rounding_size=0.06",
+                    facecolor="#F7E4E3" if hot else WHITE,
+                    edgecolor=col, lw=3.2 if hot else 2.4))
+        ax.text(x + w / 2, 3.45, head, ha="center", va="center", color=col,
+                fontsize=12.5, fontweight="bold")
+        ax.text(x + w / 2, 2.5, body, ha="center", va="center",
+                color=INK, fontsize=11)
+        ax.text(x + w / 2, 1.45, foot, ha="center", va="center",
+                color=MUTED, fontsize=10, style="italic")
+        if i < len(stages) - 1:
+            ax.annotate("", xy=(xs[i + 1] - 0.05, 2.45),
+                        xytext=(x + w + 0.05, 2.45),
+                        arrowprops=dict(arrowstyle="-|>", color=INK_SOFT,
+                                        lw=2.0))
+    if mode == "rlhf":
+        ax.text(8.15 + w / 2, 0.55,
+                "the 'reward' comes from human preferences — that's RL",
+                ha="center", color=RED, fontsize=10.5, fontweight="bold")
+    else:
+        ax.text(6.0, 0.45,
+                "base model → instruction-follower → helpful assistant",
+                ha="center", color=MUTED, fontsize=10.5, style="italic")
+    _save(fig, name)
+
+
+def llm_scale(name="fig_llm_scale.png"):
+    """Scale is the engine: more data + more parameters + more compute → more
+    capability. Three escalating model bars with rough parameter counts."""
+    fig, ax = plt.subplots(figsize=(11.0, 4.2))
+    ax.set_xlim(0, 11)
+    ax.set_ylim(0, 6)
+    ax.axis("off")
+    ax.text(3.4, 5.6, "scale is the engine", ha="center", color=INK,
+            fontsize=14, fontweight="bold")
+    bars = [
+        ("small\n~100M params", 1.3, "#CFE3E2", "grammar, short answers"),
+        ("medium\n~10B params", 2.7, "#7FBFBE", "reasoning, coding"),
+        ("large\n~1T params", 4.1, TEAL, "broad, emergent skills"),
+    ]
+    for i, (lab, h, col, cap) in enumerate(bars):
+        cx = 1.3 + i * 2.0
+        ax.add_patch(FancyBboxPatch((cx - 0.7, 0.8), 1.4, h,
+                    boxstyle="round,pad=0.02,rounding_size=0.05",
+                    facecolor=col, edgecolor="none", zorder=3))
+        ax.text(cx, 0.8 + h + 0.28, lab, ha="center", va="bottom", color=INK,
+                fontsize=10.5, fontweight="bold")
+        ax.text(cx, 0.45, cap, ha="center", va="top", color=MUTED,
+                fontsize=9, style="italic")
+    ax.annotate("", xy=(6.1, 0.8), xytext=(0.4, 0.8),
+                arrowprops=dict(arrowstyle="-|>", color=INK_SOFT, lw=2.0))
+    ax.text(10.7, 3.0, "more data +\nparameters +\ncompute\n→ more capability",
+            ha="right", va="center", color=INK_SOFT, fontsize=12,
+            fontweight="bold")
+    _save(fig, name)
+
+
+def hallucination(mode="ido", name="fig_hallucination_ido.png"):
+    """Hallucination as a failure mode to design AROUND: the model answers
+    fluently and CONFIDENTLY even when it is wrong — here inventing a citation.
+    mode='ido' shows the guardrail; mode='youdo' leaves the guardrail blank for
+    Quiz 13 Q4."""
+    blank = mode == "youdo"
+    fig, ax = plt.subplots(figsize=(11.6, 4.6))
+    ax.set_xlim(0, 12)
+    ax.set_ylim(0, 6)
+    ax.axis("off")
+    ax.text(6.0, 5.7, "hallucination: fluent, confident — and sometimes wrong",
+            ha="center", color=INK, fontsize=13.5, fontweight="bold")
+    # user prompt bubble
+    ax.add_patch(FancyBboxPatch((0.6, 4.05), 6.4, 1.0,
+                boxstyle="round,pad=0.02,rounding_size=0.12",
+                facecolor=TEAL_SOFT, edgecolor=TEAL, lw=2.0))
+    # you-do uses a DIFFERENT same-shape fabrication than the I-do (transfer,
+    # not recall); Quiz 13 Q4 quotes the you-do reply verbatim.
+    if blank:
+        _prompt = "“What's the upper reference limit for this analyte?”"
+        _reply = "“It's 48 nmol/L — see Nguyen et al., Clin. Chem. 2021; 67:1043–1051.”"
+        _note = "✗ that value and paper are fabricated — plausible, but fake"
+    else:
+        _prompt = "“Cite a reference for this method's LOD.”"
+        _reply = "“See Smith et al., J. Clin. Mass Spectrom. 2019; 14:221–230.”"
+        _note = "✗ that paper does not exist — invented, but plausible"
+    ax.text(0.85, 4.55, _prompt,
+            ha="left", va="center", color=INK, fontsize=12)
+    # model reply bubble (confident but fabricated)
+    ax.add_patch(FancyBboxPatch((2.4, 2.35), 8.9, 1.35,
+                boxstyle="round,pad=0.02,rounding_size=0.12",
+                facecolor="#F7E4E3", edgecolor=RED, lw=2.2))
+    ax.text(2.7, 3.25, _reply,
+            ha="left", va="center", color=INK, fontsize=11.5)
+    ax.text(2.7, 2.7, _note,
+            ha="left", va="center", color=RED, fontsize=11,
+            fontweight="bold")
+    # guardrail box
+    gcol = AMBER if blank else TEAL
+    gface = AMBER_SOFT if blank else TEAL_SOFT
+    ax.add_patch(FancyBboxPatch((0.6, 0.5), 10.8, 1.35,
+                boxstyle="round,pad=0.02,rounding_size=0.06",
+                facecolor=gface, edgecolor=gcol, lw=2.4))
+    ax.text(1.0, 1.5, "GUARDRAIL", ha="left", va="center", color=gcol,
+            fontsize=11, fontweight="bold")
+    if blank:
+        ax.text(6.2, 1.05, "?  (what check keeps it honest?)", ha="center",
+                va="center", color=ROI_INK, fontsize=13, fontweight="bold")
+    else:
+        ax.text(6.2, 1.15,
+                "ground answers in RAG'd source documents; require a human to",
+                ha="center", va="center", color=INK, fontsize=11.5)
+        ax.text(6.2, 0.75,
+                "verify every citation/number before it reaches a report",
+                ha="center", va="center", color=INK, fontsize=11.5)
+    _save(fig, name)
+
+
+def rl_loop(mode="ido", name="fig_rl_loop_ido.png"):
+    """The reinforcement-learning loop in ONE diagram: an AGENT takes an ACTION
+    in an ENVIRONMENT, which returns a REWARD and a new state; the agent learns
+    by trial and feedback to earn more reward. mode='ido' labels the generic
+    loop; mode='youdo' recasts it as an auto-tuned LC gradient loop with the
+    agent/action/reward labels blanked for Quiz 13 Q2."""
+    blank = mode == "youdo"
+    fig, ax = plt.subplots(figsize=(11.0, 5.0))
+    ax.set_xlim(0, 11)
+    ax.set_ylim(0, 6)
+    ax.axis("off")
+    if blank:
+        ax.text(5.5, 5.7,
+                "your turn: label each role — agent? action? reward?",
+                ha="center", color=ROI_INK, fontsize=13.5, fontweight="bold")
+        # Show only the SCENARIO (boxes + arrows); the RL role of each is what
+        # the room assigns, so the slide never pre-pairs a role with its answer.
+        agent_lab, env_lab = "the tuning optimizer", "LC–MS instrument"
+        agent_sub = "chooses the settings"
+        env_sub = "+ the sample"
+        act_lab, rew_lab = "picks a gradient slope", "chromatogram resolution"
+        act_sub = "= ?"
+        rew_sub = "= ?"
+    else:
+        ax.text(5.5, 5.7, "reinforcement learning: learn by trial & feedback",
+                ha="center", color=INK, fontsize=13.5, fontweight="bold")
+        agent_lab, env_lab = "AGENT", "ENVIRONMENT"
+        agent_sub = "the learner / policy"
+        env_sub = "the world it acts in"
+        act_lab, rew_lab = "ACTION", "REWARD (+ new state)"
+        act_sub = "what it does"
+        rew_sub = "feedback: better or worse?"
+    # agent (left) and environment (right) boxes
+    ax.add_patch(FancyBboxPatch((0.7, 2.3), 3.2, 1.6,
+                boxstyle="round,pad=0.02,rounding_size=0.08",
+                facecolor=TEAL_SOFT, edgecolor=TEAL, lw=2.6))
+    hdr_fs = 12 if blank else 14
+    ax.text(2.3, 3.35, agent_lab, ha="center", va="center", color=TEAL,
+            fontsize=hdr_fs, fontweight="bold")
+    ax.text(2.3, 2.75, agent_sub, ha="center", va="center", color=INK_SOFT,
+            fontsize=10.5, style="italic")
+    ax.add_patch(FancyBboxPatch((7.1, 2.3), 3.2, 1.6,
+                boxstyle="round,pad=0.02,rounding_size=0.08",
+                facecolor=AMBER_SOFT, edgecolor=AMBER, lw=2.6))
+    ax.text(8.7, 3.35, env_lab, ha="center", va="center", color=ROI_INK,
+            fontsize=hdr_fs, fontweight="bold")
+    ax.text(8.7, 2.75, env_sub, ha="center", va="center", color=INK_SOFT,
+            fontsize=10.5, style="italic")
+    # action arrow (top, agent -> environment)
+    ax.annotate("", xy=(7.05, 4.35), xytext=(3.95, 4.35),
+                arrowprops=dict(arrowstyle="-|>", color=TEAL, lw=2.4,
+                                connectionstyle="arc3,rad=-0.26"))
+    ax.text(5.5, 5.32, act_lab, ha="center", color=TEAL, fontsize=12.5,
+            fontweight="bold")
+    ax.text(5.5, 4.98, act_sub, ha="center", color=MUTED, fontsize=10,
+            style="italic")
+    # reward arrow (bottom, environment -> agent); bulge UP into the empty
+    # middle so it never strikes through the labels below.
+    ax.annotate("", xy=(3.95, 2.0), xytext=(7.05, 2.0),
+                arrowprops=dict(arrowstyle="-|>", color=RED, lw=2.4,
+                                connectionstyle="arc3,rad=0.32"))
+    ax.text(5.5, 0.95, rew_lab, ha="center", color=RED, fontsize=12.5,
+            fontweight="bold")
+    ax.text(5.5, 0.55, rew_sub, ha="center", color=MUTED, fontsize=10,
+            style="italic")
+    ax.text(5.5, 0.12,
+            "repeat — keep the actions that earn more reward",
+            ha="center", color=INK_SOFT, fontsize=10.5, style="italic")
+    _save(fig, name)
+
+
+def rlhf_as_rl(name="fig_rlhf.png"):
+    """RLHF = RL where the reward comes from human preferences. Map each RL role
+    onto the LLM-training setting, and note it is the third pipeline stage."""
+    fig, ax = plt.subplots(figsize=(11.6, 4.4))
+    ax.set_xlim(0, 12)
+    ax.set_ylim(0, 5)
+    ax.axis("off")
+    ax.text(6.0, 4.7, "RLHF = RL where the reward is a human preference",
+            ha="center", color=INK, fontsize=14, fontweight="bold")
+    rows = [
+        ("AGENT", TEAL, "the LLM being tuned"),
+        ("ACTION", TEAL, "write an answer to a prompt"),
+        ("ENVIRONMENT", AMBER, "the prompt + a human rater"),
+        ("REWARD", RED, "how much a human PREFERS the answer"),
+    ]
+    ys = [3.55, 2.75, 1.95, 1.15]
+    for (role, col, meaning), y in zip(rows, ys):
+        ax.add_patch(FancyBboxPatch((1.1, y - 0.33), 2.9, 0.66,
+                    boxstyle="round,pad=0.02,rounding_size=0.08",
+                    facecolor=col, edgecolor=col, lw=2.0))
+        ax.text(2.55, y, role, ha="center", va="center", color=WHITE,
+                fontsize=12, fontweight="bold")
+        ax.annotate("", xy=(4.55, y), xytext=(4.05, y),
+                    arrowprops=dict(arrowstyle="-|>", color=col, lw=2.0))
+        ax.add_patch(FancyBboxPatch((4.65, y - 0.33), 6.2, 0.66,
+                    boxstyle="round,pad=0.02,rounding_size=0.08",
+                    facecolor=WHITE, edgecolor=col, lw=1.8))
+        ax.text(7.75, y, meaning, ha="center", va="center", color=INK,
+                fontsize=11.5, fontweight="bold")
+    ax.text(6.0, 0.45,
+            "this is stage 3 of the pipeline — no new machinery, just RL",
+            ha="center", color=MUTED, fontsize=10.5, style="italic")
+    _save(fig, name)
+
+
+def use_llm_chart(mode="ido", name="fig_use_llm_ido.png"):
+    """Using an LLM WITHOUT training one: prompting vs RAG vs fine-tuning, as a
+    decision chart anchored to one clinical report-drafting task. mode='ido'
+    shows all three options + when to use each; mode='youdo' presents the
+    Quiz 13 Q3 scenario with a word bank of the three options."""
+    fig, ax = plt.subplots(figsize=(12.4, 5.2))
+    ax.set_xlim(0, 13)
+    ax.set_ylim(0, 6)
+    ax.axis("off")
+    if mode == "ido":
+        ax.text(6.5, 5.65, "three ways to use an LLM — no training a new one",
+                ha="center", color=INK, fontsize=14, fontweight="bold")
+        rows = [
+            ("PROMPTING", TEAL, "just ask — put instructions\n& examples in the prompt",
+             "general task, no private data, fast"),
+            ("RAG", AMBER, "retrieve YOUR documents at\nquery time → into the prompt",
+             "answers must cite current / private docs"),
+            ("FINE-TUNING", RED, "further-train the model on\nyour labeled examples",
+             "need a consistent new style/skill + many examples"),
+        ]
+        ys = [4.45, 3.15, 1.85]
+        for (opt, col, what, when), y in zip(rows, ys):
+            ax.add_patch(FancyBboxPatch((0.3, y - 0.55), 2.9, 1.1,
+                        boxstyle="round,pad=0.02,rounding_size=0.06",
+                        facecolor=col, edgecolor=col, lw=2.0))
+            ax.text(1.75, y, opt, ha="center", va="center", color=WHITE,
+                    fontsize=12.5, fontweight="bold")
+            ax.add_patch(FancyBboxPatch((3.5, y - 0.55), 4.3, 1.1,
+                        boxstyle="round,pad=0.02,rounding_size=0.06",
+                        facecolor=WHITE, edgecolor=col, lw=1.8))
+            ax.text(5.65, y, what, ha="center", va="center", color=INK,
+                    fontsize=10.5, fontweight="bold")
+            ax.add_patch(FancyBboxPatch((8.1, y - 0.55), 4.6, 1.1,
+                        boxstyle="round,pad=0.02,rounding_size=0.06",
+                        facecolor="#F1F1EC", edgecolor=col, lw=1.8))
+            ax.text(10.4, y, when, ha="center", va="center", color=INK_SOFT,
+                    fontsize=10, style="italic")
+        ax.text(1.75, 5.05, "option", ha="center", color=MUTED, fontsize=11)
+        ax.text(5.65, 5.05, "what it does", ha="center", color=MUTED,
+                fontsize=11)
+        ax.text(10.4, 5.05, "use when", ha="center", color=MUTED, fontsize=11)
+        ax.text(6.5, 0.6,
+                "clinical example: drafting a report that must quote today's SOP → RAG",
+                ha="center", color=TEAL, fontsize=11, fontweight="bold")
+    else:
+        ax.text(6.5, 5.5, "your turn — which approach?", ha="center",
+                color=ROI_INK, fontsize=14, fontweight="bold")
+        ax.add_patch(FancyBboxPatch((1.2, 2.6), 10.6, 2.3,
+                    boxstyle="round,pad=0.02,rounding_size=0.06",
+                    facecolor=WHITE, edgecolor=INK_SOFT, lw=2.2))
+        ax.text(6.5, 4.35, "scenario", ha="center", color=MUTED, fontsize=11,
+                style="italic")
+        ax.text(6.5, 3.6,
+                "You want the assistant to answer questions from each",
+                ha="center", color=INK, fontsize=12.5)
+        ax.text(6.5, 3.15,
+                "instrument's CURRENT calibration log — updated every week.",
+                ha="center", color=INK, fontsize=12.5)
+        ax.text(6.5, 1.9,
+                "word bank:   PROMPTING   ·   RAG   ·   FINE-TUNING",
+                ha="center", color=INK_SOFT, fontsize=12, fontweight="bold")
+    _save(fig, name)
+
+
+def landscape_card(tool, color, problem, arch, impact, name):
+    """One landmark MS/biology DL tool in the shared 'problem → architecture you
+    now know → impact' frame (rule 2/8). A titled card with three labelled
+    bands so every tour slide reads identically."""
+    fig, ax = plt.subplots(figsize=(11.4, 4.4))
+    ax.set_xlim(0, 12)
+    ax.set_ylim(0, 5)
+    ax.axis("off")
+    # title bar
+    ax.add_patch(FancyBboxPatch((0.5, 4.05), 11.0, 0.8,
+                boxstyle="round,pad=0.02,rounding_size=0.08",
+                facecolor=color, edgecolor=color, lw=2.0))
+    ax.text(6.0, 4.45, tool, ha="center", va="center", color=WHITE,
+            fontsize=16, fontweight="bold")
+    bands = [
+        ("PROBLEM", problem, WHITE),
+        ("ARCHITECTURE", arch, TEAL_SOFT),
+        ("IMPACT", impact, AMBER_SOFT),
+    ]
+    ys = [3.05, 1.95, 0.85]
+    edges = [INK_SOFT, TEAL, AMBER]
+    for (lab, body, face), y, ec in zip(bands, ys, edges):
+        ax.add_patch(FancyBboxPatch((0.5, y - 0.48), 11.0, 0.96,
+                    boxstyle="round,pad=0.02,rounding_size=0.05",
+                    facecolor=face, edgecolor=ec, lw=1.8))
+        ax.text(0.8, y, lab, ha="left", va="center", color=ec,
+                fontsize=10, fontweight="bold")
+        ax.text(3.55, y, body, ha="left", va="center", color=INK,
+                fontsize=10.5)
+    _save(fig, name)
+
+
+def landscape_match(mode="ido", name="fig_landscape_match_ido.png"):
+    """The landscape tour as one matching grid: tool | problem | architecture
+    family | impact. mode='ido' is the full teaching grid (all five systems
+    shown before the match); mode='youdo' blanks the problem + architecture
+    columns and gives word banks for Quiz 13 Q1."""
+    rows = [
+        ("Casanovo", TEAL, "de novo peptide sequencing",
+         "Transformer (translation)", "reads peptides not in any database"),
+        ("Prosit", AMBER, "predict fragment spectrum + RT",
+         "deep sequence model (RNN/attn)", "rescores IDs → more confident hits"),
+        ("DIA-NN", RED, "ID + quantify in DIA runs",
+         "feed-forward neural net (MLP)", "robust high-throughput proteomics"),
+        ("DRIAMS", INK_SOFT, "resistance (R/S) from MALDI-TOF",
+         "1D CNN (spectrum classifier)", "faster antibiotic calls, routine data"),
+        ("AlphaFold", TEAL, "3D protein structure from sequence",
+         "Transformer / attention", "near-experimental accuracy — flagship"),
+    ]
+    fig, ax = plt.subplots(figsize=(12.8, 6.2))
+    ax.set_xlim(0, 13)
+    ax.set_ylim(0, 6.4)
+    ax.axis("off")
+    header = ("the tour on one page: tool → problem → architecture → impact"
+              if mode == "ido" else
+              "your turn: match each tool to its problem & architecture")
+    hcol = INK if mode == "ido" else ROI_INK
+    ax.text(6.5, 6.05, header, ha="center", color=hcol, fontsize=14.5,
+            fontweight="bold")
+    ax.text(1.6, 5.5, "tool", ha="center", color=MUTED, fontsize=11)
+    ax.text(4.7, 5.5, "problem", ha="center", color=MUTED, fontsize=11)
+    ax.text(8.0, 5.5, "architecture family", ha="center", color=MUTED,
+            fontsize=11)
+    ax.text(11.1, 5.5, "impact", ha="center", color=MUTED, fontsize=11)
+    ys = [4.75, 3.85, 2.95, 2.05, 1.15]
+    for (tool, col, prob, arch, imp), y in zip(rows, ys):
+        ax.add_patch(FancyBboxPatch((0.25, y - 0.4), 2.7, 0.8,
+                    boxstyle="round,pad=0.02,rounding_size=0.06",
+                    facecolor=col, edgecolor=col, lw=2.0))
+        ax.text(1.6, y, tool, ha="center", va="center", color=WHITE,
+                fontsize=11.5, fontweight="bold")
+        ax.add_patch(FancyBboxPatch((3.05, y - 0.4), 3.3, 0.8,
+                    boxstyle="round,pad=0.02,rounding_size=0.06",
+                    facecolor=WHITE, edgecolor=col, lw=1.6))
+        ax.text(4.7, y, "?" if mode == "youdo" else prob, ha="center",
+                va="center", color=INK if mode == "ido" else ROI_INK,
+                fontsize=9.5 if mode == "ido" else 15, fontweight="bold")
+        ax.add_patch(FancyBboxPatch((6.45, y - 0.4), 3.1, 0.8,
+                    boxstyle="round,pad=0.02,rounding_size=0.06",
+                    facecolor="#F1F1EC", edgecolor=col, lw=1.6))
+        ax.text(8.0, y, "?" if mode == "youdo" else arch, ha="center",
+                va="center", color=INK_SOFT if mode == "ido" else ROI_INK,
+                fontsize=9.5 if mode == "ido" else 15, fontweight="bold")
+        ax.add_patch(FancyBboxPatch((9.65, y - 0.4), 3.1, 0.8,
+                    boxstyle="round,pad=0.02,rounding_size=0.06",
+                    facecolor=WHITE, edgecolor=col, lw=1.6))
+        ax.text(11.2, y, imp, ha="center", va="center", color=INK,
+                fontsize=9, style="italic")
+    if mode == "youdo":
+        ax.text(6.5, 0.45,
+                "problem bank: de novo sequencing · spectrum+RT prediction · "
+                "DIA ID+quant · MALDI-TOF resistance · protein structure",
+                ha="center", color=INK_SOFT, fontsize=8.6)
+        ax.text(6.5, 0.1,
+                "architecture bank: Transformer (translation) · sequence model "
+                "(RNN/attn) · MLP · 1D CNN · Transformer/attention",
+                ha="center", color=INK_SOFT, fontsize=8.6)
+    _save(fig, name)
+
+
+def _lecture13_figures():
+    next_token_predict()
+    softmax_next_token()
+    llm_pipeline("intro", "fig_llm_pipeline.png")
+    llm_scale()
+    hallucination("ido", "fig_hallucination_ido.png")
+    hallucination("youdo", "fig_hallucination_youdo.png")
+    rl_loop("ido", "fig_rl_loop_ido.png")
+    rl_loop("youdo", "fig_rl_loop_youdo.png")
+    rlhf_as_rl()
+    use_llm_chart("ido", "fig_use_llm_ido.png")
+    use_llm_chart("youdo", "fig_use_llm_youdo.png")
+    landscape_card("Casanovo / DeepNovo", TEAL,
+                   "de novo peptide sequencing — read the peptide from an MS/MS spectrum, no database",
+                   "Transformer encoder–decoder — spectrum → peptide (Lec 7–8)",
+                   "identifies peptides missing from any database (novel, mutated, immunopeptides)",
+                   "fig_land_casanovo.png")
+    landscape_card("Prosit / AlphaPeptDeep", AMBER,
+                   "predict a peptide's fragment spectrum + retention time from its sequence",
+                   "deep sequence model — RNN/LSTM + attention (Lec 7–8)",
+                   "predicted spectra rescore search hits → more confident IDs; power DIA libraries",
+                   "fig_land_prosit.png")
+    landscape_card("DIA-NN", RED,
+                   "identify & quantify peptides in DIA runs where many signals overlap",
+                   "feed-forward neural nets — MLP (Lec 1–4)",
+                   "robust, high-throughput DIA proteomics — thousands of proteins per run",
+                   "fig_land_diann.png")
+    landscape_card("DRIAMS — MALDI-TOF resistance", INK_SOFT,
+                   "predict antibiotic resistance (R/S) from a routine clinical MALDI-TOF spectrum",
+                   "1D CNN — spectrum classifier (Lec 5)",
+                   "faster resistance calls from data the lab already collects — earlier right antibiotic",
+                   "fig_land_driams.png")
+    landscape_match("ido", "fig_landscape_match_ido.png")
+    landscape_match("youdo", "fig_landscape_match_youdo.png")
+
+
 FUNCS = {
     "maldi": maldi_real,
     "chatgpt": chatgpt_panel,
@@ -4841,6 +5438,49 @@ FUNCS = {
     "paradigm": lambda: (
         paradigm_chart("ido", "fig_paradigm_chart.png"),
         paradigm_chart("youdo", "fig_paradigm_youdo.png"),
+    ),
+    # ---- Lecture 13 ----
+    "llms": _lecture13_figures,
+    "next_token": next_token_predict,
+    "softmax_next": softmax_next_token,
+    "llm_pipeline": lambda: llm_pipeline("intro", "fig_llm_pipeline.png"),
+    "llm_scale": llm_scale,
+    "hallucination": lambda: (
+        hallucination("ido", "fig_hallucination_ido.png"),
+        hallucination("youdo", "fig_hallucination_youdo.png"),
+    ),
+    "rl_loop": lambda: (
+        rl_loop("ido", "fig_rl_loop_ido.png"),
+        rl_loop("youdo", "fig_rl_loop_youdo.png"),
+    ),
+    "rlhf": rlhf_as_rl,
+    "use_llm": lambda: (
+        use_llm_chart("ido", "fig_use_llm_ido.png"),
+        use_llm_chart("youdo", "fig_use_llm_youdo.png"),
+    ),
+    "landscape": lambda: (
+        landscape_card("Casanovo / DeepNovo", TEAL,
+                       "de novo peptide sequencing — read the peptide from an MS/MS spectrum, no database",
+                       "Transformer encoder–decoder — spectrum → peptide (Lec 7–8)",
+                       "identifies peptides missing from any database (novel, mutated, immunopeptides)",
+                       "fig_land_casanovo.png"),
+        landscape_card("Prosit / AlphaPeptDeep", AMBER,
+                       "predict a peptide's fragment spectrum + retention time from its sequence",
+                       "deep sequence model — RNN/LSTM + attention (Lec 7–8)",
+                       "predicted spectra rescore search hits → more confident IDs; power DIA libraries",
+                       "fig_land_prosit.png"),
+        landscape_card("DIA-NN", RED,
+                       "identify & quantify peptides in DIA runs where many signals overlap",
+                       "feed-forward neural nets — MLP (Lec 1–4)",
+                       "robust, high-throughput DIA proteomics — thousands of proteins per run",
+                       "fig_land_diann.png"),
+        landscape_card("DRIAMS — MALDI-TOF resistance", INK_SOFT,
+                       "predict antibiotic resistance (R/S) from a routine clinical MALDI-TOF spectrum",
+                       "1D CNN — spectrum classifier (Lec 5)",
+                       "faster resistance calls from data the lab already collects — earlier right antibiotic",
+                       "fig_land_driams.png"),
+        landscape_match("ido", "fig_landscape_match_ido.png"),
+        landscape_match("youdo", "fig_landscape_match_youdo.png"),
     ),
 }
 

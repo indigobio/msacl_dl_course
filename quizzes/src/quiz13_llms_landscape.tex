@@ -1,0 +1,191 @@
+% =====================================================================
+%  MSACL DS301 Deep Learning · Quiz 13 · LLMs + the DL-in-MS Landscape
+%  Academic problem-set style (single-source, \ifsolution toggle)
+%  SINGLE SOURCE — produces BOTH the student quiz and the answer key.
+%
+%  ANSWER TOGGLE
+%  -------------
+%  Student version (answers HIDDEN) — the default:
+%       pdflatex quiz13_llms_landscape.tex
+%  Answer key (answers SHOWN):
+%       pdflatex "\def\showsolutions{}\input{quiz13_llms_landscape.tex}"
+%  (or, to flip by hand, change \solutionfalse to \solutiontrue below.)
+% =====================================================================
+\documentclass[11pt]{article}
+
+\newif\ifsolution
+\ifdefined\showsolutions \solutiontrue \else \solutionfalse \fi
+% \solutiontrue   % <-- uncomment to hard-code the ANSWER KEY build
+
+\usepackage[letterpaper, margin=0.6in, top=0.7in, bottom=0.5in]{geometry}
+\usepackage{amsmath, amssymb}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, calc}
+\usepackage{fancyhdr}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textbf{MSACL DS301 --- Deep Learning}}
+\fancyhead[R]{\small\textbf{Quiz 13: LLMs + the DL-in-MS Landscape\ifsolution\ \textmd{(Answer Key)}\fi}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\newcommand{\blk}[1]{\underline{\hspace{#1}}}
+% Reveal-or-blank: shows the answer in the key, a blank rule on the student sheet.
+\newcommand{\rb}[2]{\ifsolution\textbf{#1}\else\blk{#2}\fi}
+% Boxed answer (key only) and blank writing space (student only).
+\newcommand{\keybox}[1]{\ifsolution\par\vspace{2pt}%
+  \fbox{\parbox{0.965\textwidth}{\small\textbf{Answer.}\; #1}}\par\fi}
+\newcommand{\work}[1]{\ifsolution\else\vspace{#1}\fi}
+
+% ---- course palette ------------------------------------------------------
+\definecolor{ink}{HTML}{1B2025}
+\definecolor{teal}{HTML}{0E7C7B}
+\definecolor{tealsoft}{HTML}{E3F0EF}
+\definecolor{amber}{HTML}{E09E2F}
+\definecolor{ambersoft}{HTML}{FBF0DC}
+\definecolor{redd}{HTML}{C4534F}
+\definecolor{redsoft}{HTML}{F7E4E3}
+\definecolor{inksoft}{HTML}{3D444C}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{3pt}
+\setlength{\abovedisplayskip}{5pt}
+\setlength{\belowdisplayskip}{5pt}
+
+\begin{document}
+
+\begin{center}
+{\Large \textbf{Quiz 13 --- LLMs + the DL-in-MS Landscape}}\\[2pt]
+{\normalsize Match the landmark tools, label a reinforcement-learning loop, choose how to use an LLM, and spot a hallucination}
+\end{center}
+
+\vspace{-2pt}
+\begin{center}
+\fbox{\parbox{0.92\textwidth}{\small
+\textbf{Instructions:}\; Answer all four questions --- every part is answerable from the pictures and
+rules on the slides. Intuition first; no calculators, no math beyond one softmax you did together in class.%
+\ifsolution\else\\[4pt]\textbf{Name:}\ \blk{6cm}\hfill\textbf{Date:}\ \blk{3.5cm}\fi
+}}
+\end{center}
+
+\vspace{-2pt}\hrule\vspace{5pt}
+
+% =========================== Q1 ===========================
+\textbf{1. Match each landmark tool to its problem and its architecture family.}\;
+{\small For each tool, write its \textbf{problem} and its \textbf{architecture family} on the two lines,
+using the word banks below (each item used once). All five appeared on the landscape tour.}
+
+\vspace{5pt}
+\renewcommand{\arraystretch}{1.7}
+\begin{tabular}{>{\raggedright\arraybackslash}p{2.6cm}
+                >{\raggedright\arraybackslash}p{6.4cm}
+                >{\raggedright\arraybackslash}p{6.4cm}}
+\textbf{\small tool} & \textbf{\small problem} & \textbf{\small architecture family}\\[-2pt]
+\textbf{Casanovo}  & \rb{de novo peptide sequencing}{5.6cm} & \rb{Transformer (translation)}{5.6cm}\\
+\textbf{Prosit}    & \rb{predict fragment spectrum + RT}{5.6cm} & \rb{deep sequence model (RNN/attention)}{5.6cm}\\
+\textbf{DIA-NN}    & \rb{identify \& quantify in DIA runs}{5.6cm} & \rb{feed-forward neural net (MLP)}{5.6cm}\\
+\textbf{DRIAMS}    & \rb{antibiotic resistance (R/S) from MALDI-TOF}{5.6cm} & \rb{1D CNN (spectrum classifier)}{5.6cm}\\
+\textbf{AlphaFold} & \rb{3D protein structure from sequence}{5.6cm} & \rb{Transformer / attention}{5.6cm}\\
+\end{tabular}
+
+\vspace{5pt}
+\begin{center}
+{\small \textbf{Problem bank:}\;\; de novo peptide sequencing \;$\cdot$\; predict fragment spectrum + RT
+\;$\cdot$\; identify \& quantify in DIA runs \;$\cdot$\; antibiotic resistance (R/S) from MALDI-TOF
+\;$\cdot$\; 3D protein structure from sequence}\\[3pt]
+{\small \textbf{Architecture bank:}\;\; Transformer (translation) \;$\cdot$\; deep sequence model (RNN/attention)
+\;$\cdot$\; feed-forward neural net (MLP) \;$\cdot$\; 1D CNN (spectrum classifier) \;$\cdot$\; Transformer / attention}
+\end{center}
+
+\keybox{\textbf{Casanovo} --- de novo peptide sequencing --- \textbf{Transformer (translation)}: reads an
+MS/MS spectrum and writes the peptide, spectrum-in/peptide-out, each peak a token (Lectures 7--8).\;
+\textbf{Prosit / AlphaPeptDeep} --- predict a peptide's fragment spectrum + retention time ---
+\textbf{deep sequence model (RNN/LSTM + attention}; AlphaPeptDeep a transformer): predicted spectra rescore
+IDs.\; \textbf{DIA-NN} --- identify \& quantify peptides in overlapping DIA runs ---
+\textbf{feed-forward neural net (MLP)} (Lectures 1--4).\; \textbf{DRIAMS} --- antibiotic resistance (R/S)
+from a routine MALDI-TOF spectrum --- \textbf{1D CNN} spectrum classifier (Lecture 5).\;
+\textbf{AlphaFold} --- 3D protein structure from sequence --- \textbf{Transformer / attention} (the Evoformer,
+Lectures 7--8).}
+
+\vspace{2pt}\hrule\vspace{5pt}
+
+% =========================== Q2 ===========================
+\textbf{2. Label the reinforcement-learning loop.}\; {\small An optimizer \textbf{auto-tunes an LC gradient}
+to maximize peak separation. Each cycle it \emph{picks a new gradient slope}, \emph{runs the sample}, and
+\emph{scores the resulting chromatogram's resolution}; it keeps the settings that score best. Fill in each
+role of the RL loop.}
+
+\vspace{4pt}
+\textbf{(a)} The \textbf{AGENT} (the learner) is\hfill $\rightarrow$\;\rb{the tuning optimizer}{5.6cm}
+
+\vspace{3pt}
+\textbf{(b)} The \textbf{ACTION} it takes each cycle is\hfill $\rightarrow$\;\rb{picking a gradient slope}{5.6cm}
+
+\vspace{3pt}
+\textbf{(c)} The \textbf{REWARD} it learns from is\hfill $\rightarrow$\;\rb{the chromatogram's resolution score}{5.6cm}
+
+\work{0.4cm}
+
+\keybox{\textbf{(a) AGENT = the tuning optimizer} --- the learner that chooses settings.\;
+\textbf{(b) ACTION = the gradient it picks} that cycle (e.g.\ the slope/steps).\;
+\textbf{(c) REWARD = the chromatogram's resolution / separation score} (higher is better).
+(The \emph{environment} is the LC--MS instrument + sample.) Just like AlphaGo, no one labels the ``right''
+gradient --- the optimizer discovers it by trying gradients and reading the reward. This is also exactly
+how RLHF tunes an LLM, with a \emph{human preference} as the reward.}
+
+\vspace{2pt}\hrule\vspace{5pt}
+
+% =========================== Q3 ===========================
+\textbf{3. Prompting, RAG, or fine-tuning?}\; {\small You want an assistant to answer questions from each
+instrument's \textbf{current calibration log} --- and those logs are \textbf{updated every week}.}
+
+\vspace{3pt}
+\textbf{(a)} Which approach fits best --- \emph{prompting}, \emph{RAG} (retrieval-augmented generation), or
+\emph{fine-tuning}?\hfill $\rightarrow$\;\rb{RAG}{3.4cm}
+
+\vspace{3pt}
+\textbf{(b)} In one sentence, why?
+
+\work{1.0cm}
+\ifsolution\else\blk{\linewidth}\fi
+
+\keybox{(a) \textbf{RAG.} (b) The answers must reflect the \textbf{current} calibration logs, which change weekly, so you
+\textbf{retrieve the up-to-date log at query time and have the model answer from it} --- keeping answers
+current and grounded (which also curbs hallucination). \textbf{Fine-tuning} would bake a stale snapshot
+into the weights and need re-training every change; \textbf{plain prompting} can't keep every current log in
+the prompt by hand. (RAG is also the hallucination guardrail from Q4.)}
+
+\vspace{2pt}\hrule\vspace{5pt}
+
+% =========================== Q4 ===========================
+\textbf{4. Spot the hallucination --- and add a guardrail.}\; {\small An LLM drafts a patient report and adds a
+\textbf{reference limit} to support a result: \emph{``It's 48 nmol/L --- see Nguyen et al., Clin.\ Chem.\ 2021;
+67:1043--1051.''} It sounds confident, but that value and paper are fabricated.}
+
+\vspace{3pt}
+\textbf{(a)} Why did this happen (in one phrase)?
+
+\work{0.8cm}
+\ifsolution\else\blk{\linewidth}\fi
+
+\vspace{2pt}
+\textbf{(b)} Name \textbf{one guardrail} that keeps this from reaching the final report.
+
+\work{0.8cm}
+\ifsolution\else\blk{\linewidth}\fi
+
+\keybox{(a) An LLM is trained to produce \textbf{plausible next tokens, not verified truth}, so it can
+\textbf{invent a citation (or fabricate/round a number)} that looks right but is fake --- a
+\emph{hallucination}. (b) Any one guardrail earns full credit, e.g.: \textbf{ground the draft in retrieved
+real documents (RAG)} so every claim traces to a source; \textbf{require a human to verify every citation and
+number} before release; or restrict the assistant to a checked reference database. The rule: treat LLM output
+as a \textbf{draft to verify}, never as the record.}
+
+\vspace{4pt}\hrule\vspace{3pt}
+{\small\itshape \ifsolution Answer key.\else Keep this sheet --- Lecture 14 turns an LLM into an agent that
+uses tools, with these same guardrails.\fi}
+
+\end{document}
