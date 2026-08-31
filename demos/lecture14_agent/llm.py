@@ -9,6 +9,9 @@
 """
 import json
 import os
+import sys
+import time
+import urllib.error
 import urllib.request
 
 
@@ -19,7 +22,7 @@ def make_llm(backend):
 # --------------------------------------------------------------------------- #
 # Real LLM: raw HTTP to any OpenAI-compatible endpoint (no SDK, no framework).
 # --------------------------------------------------------------------------- #
-def openai_chat(messages):
+def openai_chat(messages, retries=4):
     base = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
     key = os.environ.get("OPENAI_API_KEY", "")
     model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
@@ -35,8 +38,30 @@ def openai_chat(messages):
         base + "/chat/completions", data=body,
         headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        return json.loads(resp.read())["choices"][0]["message"]["content"].strip()
+    for attempt in range(retries + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                return json.loads(resp.read())["choices"][0]["message"]["content"].strip()
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode(errors="replace")[:300]
+            # 429 = rate limit OR no quota; 500/503 = transient server. Back off and retry.
+            if e.code in (429, 500, 503) and attempt < retries:
+                wait = float(e.headers.get("Retry-After", 2 ** attempt))
+                print(f"  (HTTP {e.code}; retry {attempt + 1}/{retries} in {wait:.0f}s)", file=sys.stderr)
+                time.sleep(wait)
+                continue
+            if e.code == 429:
+                raise SystemExit(
+                    "OpenAI API returned 429 (rate limit, or your key has no quota).\n"
+                    f"  detail: {detail}\n"
+                    "  fixes: wait and retry; check billing/quota at platform.openai.com;\n"
+                    "    try a smaller model (export OPENAI_MODEL=gpt-4o-mini); use a LOCAL\n"
+                    "    model (export OPENAI_BASE_URL=http://localhost:11434/v1 for Ollama);\n"
+                    "    or just run the offline demo:  python3 agent.py 3")
+            raise SystemExit(f"OpenAI API error {e.code}: {detail}")
+        except urllib.error.URLError as e:
+            raise SystemExit(f"Network error reaching {base}: {e.reason}\n"
+                             "  (offline fallback:  python3 agent.py 3)")
 
 
 # --------------------------------------------------------------------------- #

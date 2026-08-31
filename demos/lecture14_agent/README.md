@@ -31,6 +31,13 @@ python3 agent.py 3 --openai
 
 Pure standard library — nothing to install for the offline path.
 
+**`HTTP 429: Too Many Requests`?** That's the `--openai` path only. 429 means
+rate-limited or (most often with a new key) **no quota** — check billing at
+platform.openai.com. The code already retries with backoff; you can also try a
+smaller model (`export OPENAI_MODEL=gpt-4o-mini`), point at a **local** model
+(`export OPENAI_BASE_URL=http://localhost:11434/v1` for Ollama), or just run the
+offline demo (`python3 agent.py 3`) — it needs no key and never hits the network.
+
 ## What to say at each stage
 
 - **Stage 1 — "the raw LLM is a stateless text function."** Ask the concept
