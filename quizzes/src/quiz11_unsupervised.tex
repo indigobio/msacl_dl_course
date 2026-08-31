@@ -94,7 +94,7 @@
 
 \begin{center}
 {\Large \textbf{Quiz 11 --- Learning Without (Many) Labels}}\\[2pt]
-{\normalsize Read a latent map, match paradigms, compute a reconstruction error, and say why two views must agree}
+{\normalsize Read a latent map, match paradigms, compute a reconstruction error, and pick the augmentation that would corrupt contrastive pretraining}
 \end{center}
 
 \vspace{-2pt}
@@ -210,25 +210,34 @@ trade-off as Lecture~10.)}
 \vspace{2pt}\hrule\vspace{5pt}
 
 % =========================== Q4 ===========================
-\textbf{4. Why must the two views agree?}\; {\small In contrastive learning and in DINO, two
-\emph{augmented views} of the \emph{same} spectrum --- say one with added noise, one with a small
-$m/z$ shift --- are forced to land at the \textbf{same} point in embedding space.}
+\textbf{4. Which augmentation would corrupt it?}\; {\small Contrastive pretraining forces two
+\emph{augmented views} of the \emph{same} spectrum to land at the \textbf{same} point in embedding
+space. Three of the augmentations below are fine; \textbf{one} would corrupt the training.}
 
 \vspace{3pt}
-In one sentence, \emph{why} must the two views agree --- i.e.\ what does forcing agreement make
-the model learn?
+Mark each \textbf{SAFE} or \textbf{CORRUPT}:
 
-\work{1.2cm}
+\vspace{2pt}
+(a) add random intensity noise $\rightarrow$ \rb{SAFE}{2.6cm} \qquad
+(b) shift the $m/z$ axis by $0.2$ Da $\rightarrow$ \rb{SAFE}{2.6cm}
+
+\vspace{2pt}
+(c) replace it with a \emph{different} patient's spectrum $\rightarrow$ \rb{\textbf{CORRUPT}}{2.6cm} \qquad
+(d) scale all intensities by $\times 1.05$ $\rightarrow$ \rb{SAFE}{2.6cm}
+
+\vspace{3pt}
+Which one is corrupt, and in one sentence, what would forcing agreement then teach the model?
+
+\work{1.0cm}
 \ifsolution\else\blk{\linewidth}\\[6pt]\blk{\linewidth}\fi
 
-\keybox{The two views differ \emph{only} by nuisance augmentations (noise, an $m/z$ shift) while
-the underlying sample is identical, so \textbf{forcing their embeddings to agree makes the model
-learn the stable, real content of the spectrum and ignore the nuisance variation} ---
-augmentation-invariance. That invariance is exactly what you want for robust spectra: the same
-sample on a different day or instrument should still land in the same place. (Any equivalent
-answer --- ``so it learns features that don't depend on the augmentation / that generalise across
-instruments'' --- earns full credit. Caveat worth noting: the augmentations must preserve the
-biology, or agreement would teach it to ignore something real.)}
+\keybox{\textbf{(c) is corrupt}; (a), (b) and (d) are safe. A valid augmentation adds only the
+\emph{nuisance} variation the SAME sample would show run-to-run --- detector noise, a small $m/z$
+calibration drift, a global intensity rescale --- so forcing those views to agree makes the model
+\textbf{ignore the nuisance and keep the real content} (augmentation-invariance). But (c) is a
+\emph{genuinely different sample}: forcing its embedding to match would teach the model to
+\textbf{ignore real biological differences} --- it would treat two different patients as identical.
+Rule: augmentations must preserve the underlying biology.}
 
 \vspace{4pt}\hrule\vspace{3pt}
 {\small\itshape \ifsolution Answer key.\else Keep this sheet --- Lab 4 trains a real VAE on

@@ -24,7 +24,7 @@ slides:
       each I-do is followed by a you-do that IS a Quiz 11 item. Hand out Quiz 11
       now, blank; we hit all four items live — the two latent pictures (Q1), the
       four-way paradigm match (Q2), the reconstruction-error compute (Q3), and
-      the DINO/contrastive "why must the views agree?" (Q4). Lab 4 next hour
+      the DINO/contrastive safe-vs-corrupt augmentation call (Q4). Lab 4 next hour
       builds a VAE on real spectra, so everything here is the on-ramp.
 
   - type: bullets
@@ -201,7 +201,7 @@ slides:
     title: "Walk a line → one spectrum morphs into another"
     image: img/fig_latent_interp.png
     img_h: 4.6
-    callout: {kind: ms, text: "Pick two real spectra, A and B, find their latent codes, and walk a straight line between them. Decoding each stop gives a smooth MORPH — peaks slide and swap height from A into B. This only works because the VAE cloud is gap-free: every stop on the line is a valid, plausible spectrum. An AE's gaps would decode to garbage partway across.  💬 30 sec with your neighbor: walking stop 1 (A) → stop 5 (B), does the LEFT peak grow or shrink? (Answer in notes: it shrinks, 1.0 → 0.4, smoothly — every stop is a valid spectrum.)"}
+    callout: {kind: ms, text: "Pick two real spectra, A and B, find their latent codes, and walk a straight line between them. Decoding each stop gives a smooth MORPH — peaks slide and swap height from A into B. This only works because the VAE cloud is gap-free: every stop on the line is a valid, plausible spectrum. An AE's gaps would decode to garbage partway across."}
     notes: >
       The fun payoff and the clearest proof the cloud is smooth. Take two real
       spectra, A and B; encode each to its latent code; then walk a straight line
@@ -214,12 +214,8 @@ slides:
       somewhere in the middle you cross an empty gap the decoder was never
       trained on, and out comes garbage. This is exactly the Lab 4 "fun payoff"
       cell — sample latent points and interpolate between two spectra — so it's a
-      direct preview. 💬 DO-IT-TOGETHER (30 sec, to break the VAE stretch):
-      walking stop 1 → stop 5, the LEFT peak SHRINKS — it starts tall at stop 1
-      (spectrum A) and is clearly lower by stop 5 (spectrum B), while the middle
-      peak rises; that continuous trade of peak heights IS the smooth morph the
-      gap-free cloud buys you. Take the call, then next slide the room
-      makes the AE-vs-VAE identification itself (Quiz 11 Q1).
+      direct preview. Next slide the room makes the AE-vs-VAE identification
+      itself (Quiz 11 Q1).
 
   - type: image
     eyebrow: "VAEs · your turn (you-do = Q1) · 💬 pair"
@@ -322,28 +318,30 @@ slides:
       section: augmentation-invariance — make different views of the same thing
       agree — plus scale is enough to learn powerful, general features without
       labels, which is how modern foundation models pretrain (forward to Lecture
-      13). Next slide the room answers WHY the views must agree (Quiz 11 Q4).
+      13). Next slide the room decides WHICH augmentation would corrupt this
+      agreement — a spot-the-break DECIDE, not a definition restated (Quiz 11 Q4).
 
   - type: image
     eyebrow: "Self-supervised · your turn (you-do = Q4)"
-    title: "Your turn — why must the two views agree?"
+    title: "Your turn — which augmentation would corrupt it?"
     image: img/fig_contrastive.png
     img_h: 4.2
-    callout: {kind: check, text: "Your turn → Quiz 11, Q4. Two augmented views of the SAME spectrum are forced to land together. In one sentence: WHY must they agree — what does that force the model to learn? Worked answer in the notes."}
+    callout: {kind: check, text: "Your turn → Quiz 11, Q4. Contrastive pretraining forces two augmented VIEWS of the same spectrum to land together. Three augmentations are fine, ONE corrupts it — mark each SAFE or CORRUPT: (a) add intensity noise · (b) shift m/z 0.2 Da · (c) swap in a DIFFERENT patient's spectrum · (d) scale intensities ×1.05. Which is corrupt, and what would forcing agreement then teach the model? Worked answer in the notes."}
     notes: >
-      YOU-DO = Quiz 11 Q4 (the contrastive/DINO intuition; assesses the
-      self-supervised outcome). Expected answer (any equivalent phrasing earns
-      full credit): the two views differ only by nuisance augmentations — added
-      noise, an m/z shift — while the underlying sample is identical, so forcing
-      their embeddings to AGREE makes the model learn the stable, real content and
-      IGNORE the nuisance variation (augmentation-invariance). A good extension:
-      that invariance is exactly what you want for spectra, because the same
-      sample on a different day or instrument should still land in the same place.
-      And note the guardrail — the augmentations must preserve the biology; if a
-      "view" changed the actual signal, forcing agreement would teach the model to
-      ignore something real. Take one answer from the floor, then have them fill
-      Q4. That's the third and fourth Quiz 11 items done — one more paradigm to
-      name.
+      YOU-DO = Quiz 11 Q4 (a DECIDE beat, not "restate the definition": the room
+      must spot which augmentation breaks the trick). Answer: (c) is CORRUPT;
+      (a), (b), (d) are safe. The safe three add only the NUISANCE variation the
+      SAME sample would show run-to-run — detector noise, a small m/z calibration
+      drift, a global intensity rescale — so forcing those views to agree makes
+      the model ignore the nuisance and keep the real content
+      (augmentation-invariance, the whole point of contrastive/DINO). But (c)
+      swaps in a GENUINELY DIFFERENT sample: forcing its embedding to match would
+      teach the model to ignore real biological differences — it would treat two
+      different patients as identical. The durable rule the beat lands:
+      augmentations must preserve the underlying biology, or agreement teaches the
+      model to throw away something real. Take one SAFE/CORRUPT call with its
+      reason, then have them fill Q4 — that's the fourth Quiz 11 item; one more
+      paradigm to name.
 
   - type: image
     eyebrow: "Semi-supervised · the middle path · I-do"
@@ -416,13 +414,13 @@ slides:
       - "Explain an autoencoder (compress → reconstruct) and its uses: denoising, dimensionality reduction, anomaly/QC detection"
       - "Compute a reconstruction error (MSE) and turn it into a normal-vs-anomaly QC call against a threshold (Quiz 11 Q3)"
       - "Tell an AE latent from a VAE latent in a picture, and say why a VAE can sample and interpolate (Quiz 11 Q1)"
-      - "Name the four paradigms and why self-supervised views must agree (Quiz 11 Q2 & Q4) — and that semi-supervised pseudo-labeling exists"
-    callout: {kind: plain, text: "You have now worked every item on Quiz 11 live — the reconstruction-error compute (Q3), the two latent pictures (Q1), the four-way paradigm match (Q2), and the DINO/contrastive 'why agree?' (Q4). Keep the sheet — Lab 4 builds a VAE on real spectra."}
+      - "Name the four paradigms, and spot which augmentation would corrupt self-supervised pretraining — augmentations must preserve the biology (Quiz 11 Q2 & Q4)"
+    callout: {kind: plain, text: "You have now worked every item on Quiz 11 live — the reconstruction-error compute (Q3), the two latent pictures (Q1), the four-way paradigm match (Q2), and the safe-vs-corrupt augmentation call (Q4). Keep the sheet — Lab 4 builds a VAE on real spectra."}
     notes: >
       Recap = the Lecture 11 outcomes, each already exercised this hour and tied
       to a Quiz 11 item: the autoencoder + reconstruction-error compute (Q3), the
       AE-vs-VAE latent picture (Q1), the four-paradigm match (Q2), and the
-      self-supervised "views must agree" intuition (Q4). The sheet was done across
+      self-supervised safe-vs-corrupt augmentation decide (Q4). The sheet was done across
       the hour, not as an end block — a distributed worksheet. Frame the takeaway:
       most lab data is unlabeled, and you now have a menu for it — reconstruct to
       denoise or flag anomalies, learn a smooth latent to sample and interpolate,
