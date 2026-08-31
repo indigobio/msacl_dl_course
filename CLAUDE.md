@@ -145,6 +145,13 @@ pip install -r tools/requirements.txt      # one-time setup
   code between `### BEGIN SOLUTION` and `### END SOLUTION` lines; keep `assert`
   self-checks OUTSIDE those markers so students keep them. Regenerate student
   copies with the strip tool.
+- **Every lab ships a paper hint sheet** at `labs/handouts/labNN_hints.tex` (+
+  compiled `.pdf`), because most attendees are clinical chemists / physicians
+  with a weak coding background. The hint sheet gives multiple-choice code
+  options (one correct) for each marked blank, in the style of
+  `labs/handouts/lab02_hints.tex`, and explains why the wrong options fail. A
+  lab is not done until its hint sheet exists and compiles. Options must match
+  the notebook's actual blanks and its `assert` checks exactly.
 - Slides: `lectureNN_topic.yaml` in `slides/spec/`. Build to native pptx with
   `tools/spec2pptx.py`; never hand-edit `slides/pptx/`. Title-slide eyebrow
   template: `MSACL · DS301 Deep Learning · Segment <n> · Lecture <n>`.
