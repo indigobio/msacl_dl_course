@@ -1,0 +1,110 @@
+% =====================================================================
+%  MSACL DS301 Deep Learning · Lab 4 · Code Hint Sheet
+%  Multiple-choice code options for the three fill-in cells.
+%  Style matches labs/handouts/lab02_hints.tex and lab03_hints.tex.
+% =====================================================================
+\documentclass[11pt]{article}
+
+\usepackage[letterpaper, margin=0.55in, top=0.55in, bottom=0.4in]{geometry}
+\usepackage{amsmath, amssymb}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textbf{MSACL DS301 --- Deep Learning}}
+\fancyhead[R]{\small\textbf{Lab 4: Code Hint Sheet}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{1.5pt}
+\newcommand{\opt}[1]{\texttt{#1}}
+\setlist[itemize]{leftmargin=2.2em, itemsep=0pt, topsep=0pt, parsep=0pt}
+
+\begin{document}
+\small
+
+\begin{center}
+{\Large \textbf{Lab 4 --- Code Hint Sheet}}\\[2pt]
+{\normalsize A VAE for Spectra QC, Anomaly Detection \& Generation}
+\end{center}
+
+\vspace{-2pt}
+\begin{center}
+\fbox{\parbox{0.92\textwidth}{\small
+Stuck on a \textbf{YOUR TURN} cell? Each blank you need is below with a few options.
+Pick one, type it in, and \textbf{run the cell} --- the built-in \texttt{assert} checks will tell you
+whether it is right. Only the three marked cells need editing; run everything else as-is.
+The encoder, decoder, and the reparameterization trick are already written for you.
+}}
+\end{center}
+
+\vspace{2pt}\hrule\vspace{4pt}
+
+\textbf{Step 3 --- the bottleneck (latent) size.}\; {\small The narrow layer every spectrum must
+squeeze through (Lecture 11). Keep it \emph{small} so unfamiliar spectra can't be rebuilt --- that is
+what makes their reconstruction error spike. Value \opt{2} also lets us plot the latent space directly.}
+
+\textbf{Blank 1 --- \texttt{LATENT\_DIM}.}
+\begin{itemize}
+  \item[(a)] \opt{LATENT\_DIM = 2}
+  \item[(b)] \opt{LATENT\_DIM = 256}
+  \item[(c)] \opt{LATENT\_DIM = 1}
+\end{itemize}
+{\small (a) is right --- small enough to force real compression, and exactly \opt{2} so the 2-D latent
+plot in Step 9 works (the check requires \opt{LATENT\_DIM == 2}). (b) is \textbf{too big}: a wide
+bottleneck lets the network copy \emph{any} input straight through, so even weird spectra reconstruct
+well and the \textbf{anomaly detector stops working}. (c) is \textbf{too tight} and can't be plotted in
+2-D --- both (b) and (c) fail the \opt{== 2} check.}
+
+\vspace{3pt}\hrule\vspace{4pt}
+
+\textbf{Step 5 --- the combined VAE loss.}\; {\small A VAE is trained on \emph{two terms added
+together} (Lecture 11's recipe slide): the \opt{recon\_loss} (rebuild the spectrum accurately) plus the
+\opt{kl\_loss} (keep the latent cloud tidy), with the KL weighted by \opt{beta}. Both terms are already
+computed for you --- write the one line that combines them.}
+
+\textbf{Blank 2 --- \texttt{loss}.}
+\begin{itemize}
+  \item[(a)] \opt{loss = recon\_loss + beta * kl\_loss}
+  \item[(b)] \opt{loss = recon\_loss}
+  \item[(c)] \opt{loss = recon\_loss - beta * kl\_loss}
+\end{itemize}
+{\small (a) is the VAE objective: reconstruction \emph{plus} the weighted KL ``tidiness'' term. (b)
+drops the KL entirely --- that is just a plain autoencoder, and the check (loss must equal
+\opt{recon\_loss + BETA*kl\_loss}) fails. (c) \emph{subtracts} the KL, which rewards a messy latent and
+also fails the check --- and would blow training up. (Turning \opt{BETA} way \emph{up} instead makes
+reconstructions blurry --- tidiness beats accuracy.)}
+
+\vspace{3pt}\hrule\vspace{4pt}
+
+\textbf{Step 7 --- the anomaly threshold.}\; {\small Turn reconstruction error into a flag. Measure the
+error on the \emph{normal training} spectra, then flag anything well above that. A high percentile ---
+the \textbf{95th} --- expects to false-alarm on only $\sim$5\% of normal spectra. This is a
+sensitivity/specificity dial (Lecture 10 callback).}
+
+\textbf{Blank 3 --- \texttt{THRESHOLD}.}
+\begin{itemize}
+  \item[(a)] \opt{THRESHOLD = np.percentile(train\_errors, 95)}
+  \item[(b)] \opt{THRESHOLD = 0}
+  \item[(c)] \opt{THRESHOLD = train\_errors.max()}
+\end{itemize}
+{\small (a) is the 95th-percentile cut --- it lands strictly \emph{inside} the range of training errors,
+which is exactly what the check requires. (b) \opt{= 0} sits below every error, so it flags
+\textbf{everything} as an anomaly (all false alarms) and fails the ``inside the range'' check at the low
+end. (c) \opt{.max()} sits \emph{at} the very top, so it flags \textbf{almost nothing} (misses every
+anomaly) --- the opposite failure, and it too fails the check, which requires the threshold to sit
+strictly \emph{below} the max. You can raise the percentile for fewer false alarms or lower it to catch
+more; \opt{99} also passes (still below the max).}
+
+\vspace{4pt}\hrule\vspace{3pt}
+{\small\itshape Answers self-check in the notebook: if the \texttt{assert} cells pass ---
+\opt{LATENT\_DIM == 2}, the loss equals \opt{recon\_loss + BETA*kl\_loss} (a finite scalar, KL $\ge 0$),
+and the threshold falls strictly between the min and max training error --- you chose right. Then read the
+histograms \textbf{honestly}: resistant and normal spectra \emph{overlap} --- reconstruction error is a
+\textbf{QC / novelty} signal, not a resistance test. The payoff is the smooth VAE latent map (vs. the
+scattered plain-AE one) and the decoded spectrum morph.}
+
+\end{document}

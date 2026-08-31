@@ -74,6 +74,24 @@ in Phase 2 before a lab is built on it.
 - Reference loaders: BorgwardtLab/maldi-learn (id-CSV parsing, S/I/R cleaning),
   BorgwardtLab/maldi_amr (paper's task definitions), gdewael/maldi-nn.
 - Used in: lab02 (1D CNN), lab04 (VAE), lab05 tracks A/C; Lecture 10 shift example.
+- **Lab 4 reuse (VAE QC / anomaly / generation), built & run-verified (2026-08-31):**
+  `lab04_vae_spectra.ipynb` reuses the local `driams_c_saureus_oxacillin.npz` slice
+  (738 spectra, 6000-dim, TIC-normalized; 697 susceptible / 41 resistant). The
+  **susceptible** spectra are treated as *normal*: a small VAE trains on an 80% split
+  of them (557), then held-out normal (140) + all resistant (41) are scored by
+  **reconstruction-error** (per-spectrum MSE) and flagged above a 95th-percentile
+  threshold. Honest framing: recon-error is **novelty/QC detection**, not an R-vs-S
+  classifier (the histograms overlap on purpose) — the teaching point is the method
+  and the threshold as a sensitivity/specificity choice (Lecture 10 callback). Three
+  blanks (`LATENT_DIM = 2`; `loss = recon_loss + BETA*kl_loss`; `THRESHOLD =
+  np.percentile(train_errors, 95)`); all asserts are structural (latent shape `(n,2)`,
+  loss a finite scalar with `KL>=0` and `loss==recon+BETA*KL`, threshold inside the
+  training-error range, one recon error per scored spectrum, decoded length 6000,
+  interpolation returns `(7,6000)`) so a shrunk CPU smoke run still passes. Verified
+  end-to-end on CPU (`jupyter nbconvert --execute`): full solution ran all 11 code
+  cells in ~15 s with 0 errors; a reduced smoke copy (`/tmp/lab04_smoke.ipynb`, 120
+  normal-train / 3 epochs, forced CPU) also ran 11/11 cells, 0 errors, every assert
+  printed its success line.
 
 ### Lab 3 — transformer fine-tuning: DistilBERT + medical_abstracts (core), ESM-2 bonus
 - Core model: `distilbert/distilbert-base-uncased` (268 MB safetensors,
