@@ -278,3 +278,26 @@ examples over walls of plain text.
   pipeline output and before launching the next artifact. The pre-campaign work
   (Lectures 1-2 polish, figure toolkit, decisions) is committed as a baseline
   commit just before the first artifact (Lecture 4) commit.
+
+## 2026-08-31 — Autonomous rebuild campaign complete
+
+All lectures, labs, quizzes, worksheets, and handouts have been rebuilt under the
+draft → critique → revise pipeline (fresh disk-reading subagent per artifact,
+1-fixed-plus-1-optional review cap, exercise-accuracy as the #1 gate and
+`check_pptx_overlap.py` 0-FAIL as a hard layout gate). Final state:
+
+- **10 native-PPTX decks** (lectures 1,2,4,5,7,8,10,11,13,14) — all build with
+  0 overlap failures, 0 fractional-EMU, non-empty notes; the I-do→you-do→quiz
+  spine and illustrative-example rules applied throughout.
+- **Assessments:** quizzes 1,2,4,5,7,8,11,13,14; the Lecture 10 Architecture
+  Matchmaker worksheet; the Lecture 14 follow-along handout. (No quiz for lab
+  slots or Lecture 10, by design.)
+- **5 lab solutions** (lab01–05) with fill-in-the-blank blanks + structural
+  asserts, each with a paper hint sheet in `labs/handouts/`; Lab 5 also ships a
+  project one-pager. Labs 3/4/5 have persisted executed smoke evidence.
+- **Tooling:** `check_pptx_overlap.py` added; `spec2pptx.py` callout-over-image
+  overlap root cause fixed (cap image height, callout at true content bottom).
+
+Pre-class human TODOs (out of scope for the build): one real-T4 dry run for Lab 3
+(confirm the ~65% fine-tuned vs ~33% scratch gap and 6–9 min budget) and the
+repo-wide `RAW_BASE '<ORG>/<REPO>'` fill-in across lab02/04/05 before Colab publish.
