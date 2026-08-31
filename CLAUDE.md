@@ -159,7 +159,7 @@ pip install -r tools/requirements.txt      # one-time setup
   template: `MSACL · DS301 Deep Learning · Segment <n> · Lecture <n>`.
 - Write "Lecture <n>", never the "L<n>" shorthand ("L2" the regularization
   term is the exception).
-- Quizzes: `quizNN_topic.tex` (source of truth) plus compiled `quizzes/pdf/quizNN_topic.pdf` and `..._key.pdf`. **NN is the lecture number it belongs to, never a sequential count** — e.g. Lecture 7's quiz is `quiz07_...`, "Quiz 7" inside. Lab slots (3/6/9/12/15) and Lecture 10 (worksheet instead) have no quiz — numbers are skipped, not renumbered.
+- Quizzes: `quizNN_topic.tex` (source of truth) plus compiled `quizzes/pdf/quizNN_topic.pdf` and `..._key.pdf`. **NN is the lecture number it belongs to, never a sequential count** — e.g. Lecture 7's quiz is `quiz07_...`, "Quiz 7" inside. Only the Lab slots (3/6/9/12/15) have no quiz — numbers are skipped, not renumbered. (Lecture 10 has `quiz10_imbalanced_data.tex`.)
 - Data: never commit raw datasets; register every dataset in `data/README.md`
   and keep its slicing script in `data/prep/`.
 - Every course-design decision gets a dated entry in `course_plan/DECISIONS.md`.

@@ -63,11 +63,11 @@ At the conclusion of this short course, the participant will be able to:
 
 | Instrument | What it looks like | Where |
 |---|---|---|
-| Handout quizzes (numbered to match their lecture: 1, 2, 4, 5, 7, 8, 11, 13, 14 — no quiz for Lab slots or Lecture 10, which uses the Architecture Matchmaker worksheet instead) | ~5 questions/lecture mixing intuition and light computation, printed, reviewed immediately | after most lectures |
+| Handout quizzes (numbered to match their lecture: 1, 2, 4, 5, 7, 8, 10, 11, 13, 14 — no quiz only for the Lab slots) | ~4–5 questions/lecture mixing intuition and light computation, printed, reviewed immediately | after most lectures |
 | Lab checkpoints | fill-in-the-blank Colab cells with `assert` self-checks; paper hint sheets with multiple-choice code options | Labs 1–5 |
 | 💬 Pair prompts | 2–3 min think-pair-share inside lectures | all lectures |
 | Segment discussions (D1–D5) | 10 min structured "apply to your lab," prompts on handout | end of each segment |
-| Architecture Matchmaker | worksheet: 6 lab scenarios → representation + architecture + justification | Lecture 10 |
+| Quiz 10 | imbalanced-data evaluation + treatment: confusion-matrix precision/recall/specificity, AUROC vs. AUPRC, treatment match, a SMOTE point | Lecture 10 |
 | Capstone + project one-pager | guided mini-project with rubric; personal "first DL project plan" template | Lab 5 |
 
 Quiz policy: quizzes test **intuition first, with light math welcome** — the
@@ -300,25 +300,26 @@ would 'the head' predict?"*
 
 ## SEGMENT 4 — Monday afternoon: Making It Real
 
-### Lecture 10 · Your Data, Your Metrics: Representation, Evaluation, and Trust
+### Lecture 10 · No Perfect Data: Evaluation and Treatment
 
 **Outcomes** — participant can:
-- Choose a representation for a given MS data type: binned spectrum vector, peak list, raw 1D signal, image, or token sequence — and name the trade-offs.
-- Select and read the right metrics for a clinical question: sensitivity, specificity, ROC/AUC, precision-recall under class imbalance.
-- Choose strategies for imbalanced or scarce data: class weighting and focal loss, data curation, data augmentation, transfer learning.
-- Explain batch effects and instrument drift as distribution shift, and why external/temporal validation is mandatory.
-- Decide when deep learning is NOT the right tool (small tabular data → gradient-boosted trees; no labels; need for full interpretability) and name the regulatory reality in one sentence (ML-based devices face FDA/CLIA scrutiny; validation is the product).
+- Compute precision, recall (= sensitivity), and specificity from a confusion matrix by hand, and explain why accuracy is misleading when one class is rare.
+- Explain why AUROC flatters a rare-positive screen (a large true-negative pool keeps the false-positive rate tiny) and why AUPRC / the PR curve is the honest metric, whose baseline is the prevalence — report it with sensitivity.
+- Explain that a metric is only valid on the distribution it was tested on: batch effects / instrument drift shift the data, so external and temporal validation are mandatory (split by patient/isolate, never by spectrum).
+- Choose a treatment for imbalanced data — data curation, SMOTE / class weights / oversampling, focal loss, curriculum learning — matched to the symptom, and recognize that none of them adds new minority signal (only collecting more real minority data does).
+- Interpolate a SMOTE point by hand (synthetic = A + λ·(B−A)) and state why raw-spectrum SMOTE is risky in high dimensions.
 
-**Content & timing (60 min)**
-- 0:00–0:14 Representing MS data for DL: a decision chart mapping lab data types → representations → architectures from Lectures 1–8.
-- 0:14–0:26 Metrics that matter clinically: accuracy's failure under imbalance (99% accurate rare-pathogen detector that never fires); sensitivity/specificity; ROC and PR curves read as pictures.
-- 0:26–0:36 **Coping with imbalanced and scarce data**: class weights and focal loss ("turn up the volume on the rare and the hard cases" — one picture, no derivation); data curation (label quality beats label quantity); data augmentation (Lab 2 callback); transfer learning (Lecture 8 callback); when to just collect more data.
-- 0:36–0:44 Distribution shift in the lab: batch effects, new instrument, new site, reagent lot; external and temporal validation; a cautionary tale from published work (Phase 2 picks it).
-- 0:44–0:48 When NOT deep learning + one regulatory slide. 💬 woven into the worksheet below.
-- 0:48–1:00 **Architecture Matchmaker** worksheet in pairs: six realistic lab scenarios → representation + architecture + one validation risk each; rapid debrief.
+**Content & timing (60 min)** — one theme all hour: imbalanced data (real DRIAMS 697 susceptible / 41 resistant).
+- 0:00–0:13 **Part A — measure it:** the accuracy trap (94%-accurate detector that never fires); confusion matrix by hand → precision, recall (sensitivity), specificity.
+- 0:13–0:25 Why AUROC misleads under imbalance and why AUPRC / the PR curve tells the truth — with the numbers (the same operating point plotted on both curves; PR baseline = prevalence).
+- 0:25–0:30 One honesty note: a metric is only valid on the distribution you tested → external + temporal validation (DRIAMS across-site AUROC drop, Wiesmann et al. 2025).
+- 0:30–0:48 **Part B — treat it:** curation; SMOTE (a numeric do-it-together + honest caveat for high-dim spectra); class weights + focal loss (worked with real losses); curriculum learning (intuition); a match-the-treatment decide beat + "which adds new signal? → none."
+- 0:48–1:00 **Quiz 10** debrief in pairs (the distributed quiz, filled across the hour).
 
-**Assessment: Architecture Matchmaker worksheet** (collected discussion, not a
-quiz) — directly assesses course objectives 3–5.
+**Assessment: Quiz 10 (imbalanced-data evaluation + treatment)** — a distributed
+quiz filled across the hour (Q1 confusion-matrix rates, Q2 AUROC vs. AUPRC,
+Q3 treatment match + "no new signal," Q4 a SMOTE point) — directly assesses
+course objectives 3–5.
 
 ### Lecture 11 · Learning Without (Many) Labels
 

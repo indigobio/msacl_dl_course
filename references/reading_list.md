@@ -134,6 +134,33 @@ deep learning model to detect pneumonia in chest radiographs," *PLOS Medicine*
 [open access] — CNNs learned to recognize which hospital an X-ray came from
 rather than the disease. [Lecture 10, optional second example]
 
+## Imbalanced-data methods (Lecture 10 anchors)
+
+**Saito & Rehmsmeier — "The Precision-Recall Plot Is More Informative than the
+ROC Plot When Evaluating Binary Classifiers on Imbalanced Datasets"** — *PLOS
+ONE* 2015;10(3):e0118432. DOI:
+[10.1371/journal.pone.0118432](https://doi.org/10.1371/journal.pone.0118432)
+[open access] — the reference for why AUPRC beats AUROC under class imbalance:
+ROC is invariant to the class ratio, so a large true-negative pool keeps the
+false-positive rate tiny and AUROC looks good, while the PR baseline sits at the
+prevalence and stays honest. [Lecture 10 AUROC-vs-AUPRC]
+
+**Chawla, Bowyer, Hall, Kegelmeyer — "SMOTE: Synthetic Minority Over-sampling
+Technique"** — *Journal of Artificial Intelligence Research* 2002;16:321–357. DOI:
+[10.1613/jair.953](https://doi.org/10.1613/jair.953) [open access] — the origin
+of synthesizing new minority examples by interpolating between real ones
+(synthetic = A + λ·(B−A)); the Lecture 10 do-it-together. [Lecture 10 treatment]
+
+**Lin, Goyal, Girshick, He, Dollár — "Focal Loss for Dense Object Detection"** —
+*ICCV* 2017. [arXiv:1708.02002](https://arxiv.org/abs/1708.02002) — FL =
+(1−p)^γ·CE down-weights easy, confident examples so training focuses on the hard,
+rare ones; the Lecture 10 worked-number I-do. [Lecture 10 treatment]
+
+**Bengio, Louradour, Collobert, Weston — "Curriculum Learning"** — *ICML* 2009.
+DOI: [10.1145/1553374.1553380](https://doi.org/10.1145/1553374.1553380) —
+ordering training easy→hard (or class-balanced→true prevalence) so early training
+isn't swamped by the majority; the Lecture 10 intuition slide. [Lecture 10 treatment]
+
 ## Citation subtleties
 
 - DIA-NN: 2020 volume date, DOI issued 2019 (online Nov 2019).

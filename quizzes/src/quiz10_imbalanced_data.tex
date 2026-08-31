@@ -1,0 +1,211 @@
+% =====================================================================
+%  MSACL DS301 Deep Learning · Quiz 10 · Imbalanced Data
+%  Academic problem-set style (single-source, \ifsolution toggle)
+%  SINGLE SOURCE — produces BOTH the student quiz and the answer key.
+%
+%  ANSWER TOGGLE
+%  -------------
+%  Student version (answers HIDDEN) — the default:
+%       pdflatex quiz10_imbalanced_data.tex
+%  Answer key (answers SHOWN):
+%       pdflatex "\def\showsolutions{}\input{quiz10_imbalanced_data.tex}"
+%  (or, to flip by hand, change \solutionfalse to \solutiontrue below.)
+% =====================================================================
+\documentclass[11pt]{article}
+
+\newif\ifsolution
+\ifdefined\showsolutions \solutiontrue \else \solutionfalse \fi
+% \solutiontrue   % <-- uncomment to hard-code the ANSWER KEY build
+
+\usepackage[letterpaper, margin=0.6in, top=0.7in, bottom=0.5in]{geometry}
+\usepackage{amsmath, amssymb}
+\usepackage[table]{xcolor}
+\usepackage{array}
+\usepackage{fancyhdr}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textbf{MSACL DS301 --- Deep Learning}}
+\fancyhead[R]{\small\textbf{Quiz 10: Imbalanced Data\ifsolution\ \textmd{(Answer Key)}\fi}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\newcommand{\blk}[1]{\underline{\hspace{#1}}}
+% Reveal-or-blank: shows the answer in the key, a blank rule on the student sheet.
+\newcommand{\rb}[2]{\ifsolution\textbf{#1}\else\blk{#2}\fi}
+% Boxed answer (key only) and blank writing space (student only).
+\newcommand{\keybox}[1]{\ifsolution\par\vspace{2pt}%
+  \fbox{\parbox{0.965\textwidth}{\small\textbf{Answer.}\; #1}}\par\fi}
+\newcommand{\work}[1]{\ifsolution\else\vspace{#1}\fi}
+
+% ---- course palette (numeric grids) --------------------------------------
+\definecolor{ink}{HTML}{1B2025}
+\definecolor{teal}{HTML}{0E7C7B}
+\definecolor{tealsoft}{HTML}{E3F0EF}
+\definecolor{amber}{HTML}{E09E2F}
+\definecolor{ambersoft}{HTML}{FBF0DC}
+\definecolor{redd}{HTML}{C4534F}
+\definecolor{redsoft}{HTML}{F7E4E3}
+\definecolor{inksoft}{HTML}{3D444C}
+\definecolor{muted}{HTML}{8A9099}
+\definecolor{hair}{HTML}{D9D9D2}
+% square, centred cells for the confusion matrix
+\newcolumntype{G}{>{\centering\arraybackslash}p{28mm}}
+\newcommand{\gr}{\renewcommand{\arraystretch}{1.7}}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{3pt}
+\setlength{\abovedisplayskip}{5pt}
+\setlength{\belowdisplayskip}{5pt}
+
+\begin{document}
+
+\begin{center}
+{\Large \textbf{Quiz 10 --- Imbalanced Data}}\\[2pt]
+{\normalsize Compute precision / recall / specificity, choose AUROC vs.\ AUPRC, match a treatment, and interpolate a SMOTE point}
+\end{center}
+
+\vspace{-2pt}
+\begin{center}
+\fbox{\parbox{0.92\textwidth}{\small
+\textbf{Instructions:}\; Answer all four questions --- every part is answerable from the formulas and pictures on
+the slides. A rapid resistance screen was run on \textbf{500 isolates} (positive $=$ \emph{resistant}); Q1--Q2 use
+its confusion matrix. Compute each rate exactly; no calculators needed.%
+\ifsolution\else\\[4pt]\textbf{Name:}\ \blk{6cm}\hfill\textbf{Date:}\ \blk{3.5cm}\fi
+}}
+\end{center}
+
+\vspace{-1pt}
+\begin{center}\small
+\textbf{Formulas (from the slides):}\;
+$\text{recall (sensitivity)} = \dfrac{TP}{TP+FN}$ \quad
+$\text{specificity} = \dfrac{TN}{TN+FP}$ \quad
+$\text{precision} = \dfrac{TP}{TP+FP}$ \quad
+$\text{FPR} = \dfrac{FP}{FP+TN}$
+\end{center}
+
+\vspace{-2pt}\hrule\vspace{5pt}
+
+% =========================== Q1 ===========================
+\textbf{1. Three rates by hand.}\; {\small The screen's confusion matrix (rows $=$ the model's call, columns $=$
+truth):}
+
+\vspace{4pt}
+\begin{center}
+\gr\begin{tabular}{r|G|G|}
+\multicolumn{1}{r}{} & \multicolumn{1}{c}{\small truth: $+$ (resistant)} & \multicolumn{1}{c}{\small truth: $-$ (susceptible)}\\\cline{2-3}
+\small call: $+$ & \cellcolor{tealsoft}TP $=$ 16 & \cellcolor{ambersoft}FP $=$ 32 \\\cline{2-3}
+\small call: $-$ & \cellcolor{redsoft}FN $=$ 4 & \cellcolor{tealsoft}TN $=$ 448 \\\cline{2-3}
+\end{tabular}\\[3pt]
+{\footnotesize 20 resistant \;$\cdot$\; 480 susceptible \;$\cdot$\; 500 total}
+\end{center}
+
+\vspace{2pt}
+\textbf{(a)} recall (sensitivity) $=\ \dfrac{16}{16+4} =\ $ \rb{$16/20 = 0.80$ \,(80\%)}{3.4cm}
+\work{0.3cm}
+
+\textbf{(b)} specificity $=\ \dfrac{448}{448+32} =\ $ \rb{$448/480 = 0.93$ \,(93\%)}{3.4cm}
+\work{0.3cm}
+
+\textbf{(c)} precision $=\ \dfrac{16}{16+32} =\ $ \rb{$16/48 = 0.33$ \,(33\%)}{3.4cm}
+\work{0.3cm}
+
+\textbf{(d)} A model that ALWAYS calls ``susceptible'' scores accuracy $= 480/500 = 96\%$. The lab must not miss
+resistant isolates. \emph{Which rate(s) do you trust here, and why is accuracy misleading?}
+
+\work{1.0cm}
+\ifsolution\else\blk{\linewidth}\par\vspace{2pt}\blk{\linewidth}\fi
+
+\keybox{(a) recall $= 16/(16+4) = 16/20 = \mathbf{0.80}$ (\textbf{80\%}). (b) specificity $= 448/(448+32) = 448/480 =
+\mathbf{0.93}$ (\textbf{93\%}). (c) precision $= 16/(16+32) = 16/48 = \mathbf{0.33}$ (\textbf{33\%}). Accuracy $=
+(16+448)/500 = 464/500 = \mathbf{0.93}$ (93\%). (d) Trust \textbf{recall} (catch the resistant) reported \emph{with}
+\textbf{precision} (only 1 flag in 3 is real). Positives are rare (20 of 500), so accuracy is dominated by the 480
+susceptibles: an always-``susceptible'' model scores \textbf{96\%} yet catches \textbf{0 of 20} resistant. Accuracy
+hides both the missed cases and the false alarms.}
+
+\vspace{2pt}\hrule\vspace{5pt}
+
+% =========================== Q2 ===========================
+\textbf{2. AUROC or AUPRC?}\; {\small Same screen. Positives are \textbf{rare: 20 of 500 $= 4\%$ prevalence.} Plot
+this one operating point on each curve, then choose what to report across all thresholds.}
+
+\vspace{2pt}
+\textbf{(a)} ROC point: FPR $=\ \dfrac{32}{32+448} =\ $ \rb{$32/480 = 0.067$}{2.8cm}, \; TPR (recall) $=\ $
+\rb{$0.80$}{2.0cm}\; --- does it hug the top-left corner? \rb{yes (looks great)}{3.0cm}
+\work{0.3cm}
+
+\textbf{(b)} PR point: recall $=\ $ \rb{$0.80$}{2.0cm}, \; precision $=\ $ \rb{$0.33$}{2.0cm};\;
+the PR chance baseline sits at the prevalence $=\ $ \rb{$20/500 = 0.04$}{2.8cm}
+\work{0.3cm}
+
+\textbf{(c)} To report this screen across \emph{all thresholds}, would you trust the \textbf{AUROC} or the
+\textbf{AUPRC / PR curve}, and why?
+
+\work{1.0cm}
+\ifsolution\else\blk{\linewidth}\par\vspace{2pt}\blk{\linewidth}\fi
+
+\keybox{(a) FPR $= 32/(32+448) = 32/480 = \mathbf{0.067}$; TPR $= \mathbf{0.80}$ --- the point $(0.067,\,0.80)$
+\textbf{hugs the top-left}, so the ROC/AUROC \emph{looks excellent}. (b) PR point $=(\text{recall }\mathbf{0.80},\,
+\text{precision }\mathbf{0.33})$; PR baseline $=$ prevalence $= 20/500 = \mathbf{0.04}$ (ROC's baseline is $0.5$).
+(c) Trust the \textbf{AUPRC / PR curve} (reported with recall). At 4\% prevalence the 480 true-negatives dominate, so a
+tiny FPR keeps AUROC flatteringly high even though precision is only \textbf{0.33} (2 of 3 flags false). AUROC is
+invariant to the class ratio; AUPRC collapses toward the prevalence, so it stays honest as recall grows
+(Saito \& Rehmsmeier 2015).}
+
+\vspace{2pt}\hrule\vspace{5pt}
+
+% =========================== Q3 ===========================
+\textbf{3. Match the treatment.}\; {\small Match each situation to \emph{one} move from the menu:
+\textbf{curation} \;$\cdot$\; \textbf{class weights / SMOTE / oversample} \;$\cdot$\; \textbf{focal loss}
+\;$\cdot$\; \textbf{curriculum}. Each is used once.}
+
+\vspace{2pt}
+\textbf{(a)} Many mislabeled and junk runs contaminate the training set. $\rightarrow$\ \rb{curation}{5cm}
+\work{0.25cm}
+\textbf{(b)} Only 41 real resistant spectra; the model just predicts ``susceptible''. $\rightarrow$\
+\rb{class weights / SMOTE / oversample}{5cm}
+\work{0.25cm}
+\textbf{(c)} Easy cases are fine, but borderline isolates are missed. $\rightarrow$\ \rb{focal loss}{5cm}
+\work{0.25cm}
+\textbf{(d)} Training is unstable when very easy and very hard batches alternate. $\rightarrow$\
+\rb{curriculum}{5cm}
+\work{0.35cm}
+
+\textbf{(e)} \emph{Which of these four adds NEW resistant signal to the dataset?}
+
+\work{0.9cm}
+\ifsolution\else\blk{\linewidth}\par\fi
+
+\keybox{(a) \textbf{curation} --- clean the labels before anything fancier. (b) \textbf{class weights / SMOTE /
+oversample} --- make the rare class count. (c) \textbf{focal loss} --- up-weight the hard, low-confidence cases.
+(d) \textbf{curriculum} --- order easy$\to$hard, or class-balanced$\to$true prevalence. (e) \textbf{None of them.}
+Every move re-uses the same 41 resistant spectra (reweighting shouts them louder, SMOTE interpolates between them,
+focal loss focuses on them, curriculum reorders them) --- \emph{no new biological information enters}. Only
+\textbf{collecting more real resistant isolates} adds signal.}
+
+\vspace{2pt}\hrule\vspace{5pt}
+
+% =========================== Q4 ===========================
+\textbf{4. SMOTE by hand.}\; {\small SMOTE makes a new minority point on the segment between two real ones:
+\; $\text{synthetic} = A + \lambda\,(B-A)$. Use two $m/z$-bin intensities $A=(2,\,6)$ and $B=(4,\,10)$.}
+
+\vspace{2pt}
+\textbf{(a)} With $\lambda = 0.25$:\; synthetic $=\ (\,2 + 0.25\,(4-2),\ \ 6 + 0.25\,(10-6)\,) =\ $
+\rb{$(2.5,\ 7)$}{3cm}
+\work{0.4cm}
+
+\textbf{(b)} \emph{One sentence: why is raw-spectrum SMOTE risky in 6{,}000 dimensions?}
+
+\work{1.0cm}
+\ifsolution\else\blk{\linewidth}\par\vspace{2pt}\blk{\linewidth}\fi
+
+\keybox{(a) synthetic $= (2 + 0.25\cdot 2,\ 6 + 0.25\cdot 4) = (2 + 0.5,\ 6 + 1) = \mathbf{(2.5,\ 7)}$ --- a quarter
+of the way from $A$ toward $B$. (b) A straight-line blend of two real 6{,}000-dimensional spectra can produce a
+\textbf{non-physical} spectrum (a peak pattern no instrument would ever record), so pair SMOTE with \emph{curation}
+and domain augmentation ($m/z$ jitter), or simply \emph{oversample real} spectra.}
+
+\vspace{4pt}\hrule\vspace{3pt}
+{\small\itshape \ifsolution Answer key --- other defensible wording earns credit if the numbers match.%
+\else Keep this sheet --- it's your checklist for any rare-class assay in your own lab.\fi}
+
+\end{document}

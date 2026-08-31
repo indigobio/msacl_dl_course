@@ -1,0 +1,348 @@
+deck:
+  title: "Lecture 10 · No Perfect Data: Evaluation and Treatment"
+  eyebrow: "MSACL · DS301 Deep Learning · Segment 4 · Lecture 10"
+
+slides:
+  - type: title
+    title: "No perfect data: evaluation and treatment"
+    subtitle: "When one class is rare — measure it with precision/recall & AUPRC, then treat it with curation, SMOTE, focal loss, and curriculum"
+    notes: >
+      Monday afternoon, hour one of Segment 4 — the pivot from "how networks
+      work" to "how to use one honestly on YOUR assay." One theme all hour:
+      IMBALANCED DATA, the everyday reality of clinical mass spec — a handful of
+      resistant isolates against hundreds of susceptible ones, a few bad runs
+      against thousands of good. It breaks in two directions, and we take each
+      deeply rather than gloss five topics. PART A — MEASURE it right: accuracy
+      lies under imbalance, so compute precision, recall (= sensitivity), and
+      specificity by hand, and see why AUROC looks flattering while AUPRC tells
+      the truth. PART B — TREAT it: curation, SMOTE, class weights / focal loss,
+      and curriculum learning, each matched to a situation, with one honest
+      caveat — none of them manufactures new signal. The assessment is the
+      distributed QUIZ 10: hand it out blank now; we fill it across the hour and
+      finish with a quick pair debrief. Every worked example (I-do) is followed
+      by a "your turn" that points at a Quiz 10 question — the same distributed
+      spine as every lecture.
+
+  - type: bullets
+    eyebrow: "Lecture 10 · where this hour goes"
+    title: "One problem, two halves"
+    bullets:
+      - {text: "PART A — Measure it: the accuracy trap, then precision / recall / specificity by hand", time: "13 min"}
+      - {text: "Why AUROC misleads under imbalance, and why AUPRC / the PR curve is the honest metric", time: "12 min"}
+      - {text: "A metric is only valid on the distribution you tested — external + temporal validation", time: "5 min"}
+      - {text: "PART B — Treat it: curation, SMOTE, class weights / focal loss, curriculum learning", time: "18 min"}
+      - {text: "Quiz 10 (imbalanced-data evaluation + treatment) — filled across the hour, debriefed in pairs", time: "12 min"}
+    notes: >
+      Signpost the two halves. The whole hour lives on the real DRIAMS
+      S. aureus + oxacillin split from Lab 2 — 697 susceptible, 41 resistant —
+      so every number is a mass-spec number. Part A is the evaluation half: the
+      only arithmetic is one confusion matrix by hand, which most of you already
+      know from assay validation, plus reading two curves. Part B is the
+      treatment half: four concrete moves, one of them (SMOTE) worked with real
+      coordinates, one (focal loss) with real losses. Pace: a hands-on beat
+      about every 8-10 minutes, and the last ~12 minutes are the paired
+      quiz debrief, so the taught content runs ~45 minutes.
+
+  - type: image
+    eyebrow: "Part A · the accuracy trap · hook"
+    title: "The 94%-accurate detector that never fires"
+    image: img/fig_imbalance.png
+    img_h: 4.0
+    callout: {kind: ms, text: "Real DRIAMS counts: 697 susceptible vs. 41 resistant. A model that ALWAYS says 'susceptible' scores 697/738 = 94% accuracy — and catches ZERO of the 41 resistant. High accuracy, clinically useless. Under imbalance, accuracy measures the majority class, not the thing you care about."}
+    notes: >
+      Open with the trap, on REAL data (rule 2). These are the actual DRIAMS
+      S. aureus + oxacillin class counts from Lab 2's dataset: 697 susceptible,
+      41 resistant — about 6% positive (41/738 = 0.056). A lazy model that always
+      predicts the majority class ("susceptible") is right 697/738 = 94% of the
+      time and yet never flags a single resistant isolate — the exact failure
+      that would let a resistant infection go untreated. The point to land hard:
+      when one class is rare, ACCURACY is dominated by the common class and tells
+      you almost nothing about whether you catch the rare, important one. So we
+      need metrics that look at the rare class directly — precision, recall, and
+      specificity — computed next. (Same imbalance figure introduced in
+      Lecture 4's class-imbalance discussion, now the launch point for the
+      metrics we actually compute.)
+
+  - type: image
+    eyebrow: "Part A · three rates by hand · I-do"
+    title: "Precision, recall, specificity — worked by hand"
+    image: img/fig_confusion_ido.png
+    img_h: 4.5
+    callout: {kind: ms, text: "recall (sensitivity) = TP/(TP+FN) = 30/41 = 0.73 · specificity = TN/(TN+FP) = 637/697 = 0.91 · precision = TP/(TP+FP) = 30/90 = 0.33. Accuracy = 667/738 = 90% — yet ALWAYS-'susceptible' scores 94%. Precision 0.33 means 2 of every 3 isolates we flag are FALSE alarms."}
+    notes: >
+      I-DO, the one numeric mechanic of Part A, and the three formulas the
+      quiz needs ON THE DECK before it is asked (rule 3). Read the confusion
+      matrix: rows are the model's CALL (+ / −), columns the TRUTH (+ = resistant,
+      − = susceptible). TP = 30 resistant correctly caught, FN = 11 resistant
+      MISSED, FP = 60 susceptible wrongly flagged, TN = 637 susceptible correctly
+      cleared (the 41 R and 697 S of DRIAMS). Three rates:
+      RECALL / SENSITIVITY = TP/(TP+FN) = 30/(30+11) = 30/41 = 0.73 — we catch
+      about three of every four resistant isolates and MISS one in four.
+      SPECIFICITY = TN/(TN+FP) = 637/(637+60) = 637/697 = 0.91 — we correctly
+      clear 91% of susceptibles. PRECISION = TP/(TP+FP) = 30/(30+60) = 30/90 =
+      0.33 — of every three isolates we FLAG as resistant, only one truly is.
+      Precision is the new rate this hour (Lecture 4 had only sens/spec): with a
+      rare positive, even a modest false-positive count (60) swamps the true
+      positives (30). And the trap made exact: accuracy = (30+637)/738 = 667/738 =
+      90%, but always-"susceptible" scores 697/738 = 94% — HIGHER accuracy, zero
+      sensitivity. Every number is exact and matches the Quiz 10 Q1 key.
+      Next slide the room computes all three on a fresh matrix.
+
+  - type: image
+    eyebrow: "Part A · your turn (you-do) → Quiz 10"
+    title: "Your matrix — compute all three rates"
+    image: img/fig_confusion_youdo.png
+    img_h: 4.5
+    callout: {kind: check, text: "Your turn → Quiz 10, Q1. Same three formulas, new counts: TP=16, FN=4, FP=32, TN=448. Compute recall, specificity, and precision — then say which rate you trust under this heavy imbalance, and why accuracy (which an always-'susceptible' model scores 96%) is misleading. Worked answer in the notes."}
+    notes: >
+      YOU-DO = Quiz 10 Q1 (same three formulas, new numbers). A rapid
+      resistance screen on 500 isolates, positive = resistant: TP = 16, FN = 4,
+      FP = 32, TN = 448 (20 R / 480 S). RECALL = TP/(TP+FN) = 16/(16+4) = 16/20 =
+      0.80 (80%). SPECIFICITY = TN/(TN+FP) = 448/(448+32) = 448/480 = 0.93 (93%).
+      PRECISION = TP/(TP+FP) = 16/(16+32) = 16/48 = 0.33 (33%). Accuracy =
+      (16+448)/500 = 464/500 = 93%, yet an always-"susceptible" model scores
+      480/500 = 96% and catches 0 of 20 resistant. Which rate to trust? RECALL
+      (sensitivity) — the lab must not miss resistant isolates — reported with
+      PRECISION, because precision 0.33 warns that two-thirds of the flags are
+      false and someone must confirm them. Never accuracy alone. Every value is
+      identical to the Quiz 10 Q1 key. Take the three numbers from the floor, then
+      have them fill Q1.
+
+  - type: image
+    eyebrow: "Part A · why AUROC flatters · I-do"
+    title: "AUROC looks great — the same model's precision is 0.33"
+    image: img/fig_roc_pr.png
+    img_h: 4.4
+    callout: {kind: ms, text: "One classifier, two pictures. ROC point (FPR 0.086, TPR 0.73) HUGS the corner — AUROC looks excellent — because 60 false alarms among 697 negatives is still only an 8.6% FPR. But the PR point (recall 0.73, precision 0.33) shows only 1 flag in 3 is real. AUROC ignores class ratio; AUPRC collapses toward the prevalence."}
+    notes: >
+      The heart of Part A (rule 3: every number is from the I-do confusion
+      matrix). A classifier isn't one operating point — sweep the threshold and
+      you trace a whole curve. Take our I-do model's single point and plot it on
+      BOTH curves. ROC plots sensitivity (TPR 0.73) against 1−specificity
+      (FPR = FP/(FP+TN) = 60/697 = 0.086). That point (0.086, 0.73) hugs the
+      top-left corner, so the ROC — and its area, AUROC — looks excellent. WHY IT
+      LIES: there are 697 negatives, so even 60 false alarms are only 8.6% of
+      them; the false-positive RATE stays tiny no matter how many false flags we
+      raise. AUROC is invariant to the class ratio. The PR curve plots the SAME
+      model's precision (0.33) against recall (0.73): only one flag in three is a
+      real resistant isolate. The PR chance baseline is the prevalence itself
+      (41/738 = 0.056), not 0.5, so AUPRC collapses toward that floor and stays
+      honest and unforgiving. The rule (Saito & Rehmsmeier 2015): under
+      imbalance, report the PR curve / AUPRC with sensitivity, never AUROC or
+      accuracy alone. Next slide the room decides which to trust on its own
+      screen.
+
+  - type: image
+    eyebrow: "Part A · your turn (you-do) → Quiz 10"
+    title: "Your turn — which curve tells the truth?"
+    image: img/fig_roc_pr.png
+    img_h: 4.1
+    callout: {kind: check, text: "Your turn → Quiz 10, Q2. Your 500-isolate screen: compute the ROC point (FPR = FP/(FP+TN)) and the PR point (precision & recall) from TP=16, FN=4, FP=32, TN=448, note the PR baseline = prevalence 0.04, and DECIDE which to report across all thresholds — AUROC or AUPRC — and why. Worked answer in the notes."}
+    notes: >
+      YOU-DO = Quiz 10 Q2, a compute-then-decide beat (rule 8 spine), using
+      the same 500-isolate counts they just used in Part A. ROC point: TPR =
+      recall = 0.80; FPR = FP/(FP+TN) = 32/(32+448) = 32/480 = 0.067 — so (0.067,
+      0.80) again hugs the corner and AUROC looks great. PR point: (recall 0.80,
+      precision 0.33). Prevalence = 20/500 = 0.04, so the PR baseline sits at
+      0.04 while ROC's baseline is 0.5. DECISION: report AUPRC / the PR curve with
+      sensitivity — at 4% prevalence the 480 true negatives dominate, so AUROC is
+      flatteringly high while precision 0.33 reveals two of three flags are false.
+      Everything needed is on the prior AUROC/PR slide and the Q1 matrix. Take
+      the ROC and PR points from the floor, confirm, then have them finish Q2.
+
+  - type: image
+    eyebrow: "Part A · one honesty note (no quiz item)"
+    title: "A metric is only valid on the data you tested"
+    image: img/fig_shift_drop.png
+    img_h: 4.3
+    callout: {kind: ms, text: "Even a good PR curve is only a promise about the distribution you validated on. A new instrument, site, or reagent lot SHIFTS the data (left). Real tale (right): DRIAMS-trained resistance models lose 0.07–0.23 AUROC on a new site and decay within 18 months. So validate EXTERNALLY (new site/instrument) and TEMPORALLY (later runs), and split by patient/isolate — never by spectrum."}
+    notes: >
+      One folded-in honesty slide (no you-do — it frames the whole hour, not a
+      compute). Your beautiful precision/recall numbers are a promise about ONE
+      distribution: the data you tested on. Change the distribution and they can
+      collapse silently. BATCH EFFECTS are the everyday culprit — a different
+      MALDI instrument, a new site's prep, a fresh reagent lot — each shifts the
+      data cloud (left panel) though the biology is unchanged. The cautionary
+      tale is the SAME task as Lab 2: DRIAMS-trained antimicrobial-resistance
+      models taken to new specimens lose roughly 0.07–0.23 AUROC across sites, and
+      decay further within about 18 months (right panel; Wiesmann et al., J Clin
+      Microbiol 2025). So internal cross-validation is not enough: validate
+      EXTERNALLY (a held-out site/instrument the model never trained on) and
+      TEMPORALLY (later time periods), and guard against leakage by splitting on
+      patient or isolate, never putting two spectra of the same sample on both
+      sides. Keep this brief — it is the trust guardrail that Part B's treatments
+      must not paper over. Now, on to treating the imbalance itself.
+
+  - type: image
+    eyebrow: "Part B · the treatment menu"
+    title: "Treating imbalance — match the move to the problem"
+    image: img/fig_treatment_menu.png
+    img_h: 4.4
+    callout: {kind: ms, text: "Four moves, each for a different symptom. CURATE when runs are junk/mislabeled. REWEIGHT / SMOTE / oversample when the rare class is ignored. FOCAL LOSS when borderline cases are missed. CURRICULUM when training is unstable across easy/hard. The honest footer: none of these adds NEW resistant signal — only more real resistant spectra does."}
+    notes: >
+      The Part-B roadmap as a menu, not a text wall (rule 9). Each move answers a
+      different symptom, and we work the two quantitative ones (SMOTE, focal loss)
+      by hand on the next slides. CURATE: a few hundred clean, correctly-labeled
+      spectra beat thousands of noisy ones — fix mislabels and drop junk runs
+      first. REWEIGHT / SMOTE / OVERSAMPLE: make the rare class count — class
+      weights multiply its loss, oversampling repeats it, SMOTE synthesizes new
+      minority points. FOCAL LOSS: automatically turn up the hard, low-confidence
+      cases near the boundary. CURRICULUM: order the training diet so early
+      training isn't swamped. And the durable truth in the footer, which the
+      decide beat returns to: every one of these RE-USES the 41 resistant spectra
+      you already have — none manufactures new biological signal. Only collecting
+      more real resistant isolates does that. Read the card that matches your
+      symptom; we compute SMOTE next.
+
+  - type: image
+    eyebrow: "Part B · SMOTE · do-it-together"
+    title: "SMOTE: synthesize a new minority point between two real ones"
+    image: img/fig_smote.png
+    img_h: 4.6
+    callout: {kind: check, text: "SMOTE fills in the rare class by INTERPOLATING between two real minority points: synthetic = A + λ·(B−A). Do-it-together with two m/z-bin intensities, A=(2, 6) and B=(4, 10), λ=0.5 → (3, 8), a new 'resistant' point on the segment A–B. The caveat: a straight-line blend of two real 6000-dim spectra can be non-physical, so pair SMOTE with curation + m/z jitter."}
+    notes: >
+      Do-it-together (guided cell by cell), the one worked treatment number.
+      SMOTE = Synthetic Minority Over-sampling TEchnique (Chawla et al. 2002):
+      instead of just copying rare examples, it MANUFACTURES new ones on the line
+      between two real minority points. Formula on screen: synthetic = A +
+      λ·(B−A), with λ between 0 and 1 sliding the new point along the segment.
+      Work it with two toy features that stand in for two m/z-bin intensities:
+      A = (2, 6), B = (4, 10). At λ = 0.5, synthetic = (2 + 0.5·(4−2),
+      6 + 0.5·(10−6)) = (2 + 1, 6 + 2) = (3, 8) — exactly halfway, marked with the
+      star. Do it live: pick λ, compute each coordinate. THE CAVEAT (honest, MS-
+      anchored): our features are 2-D toys; a real spectrum is 6000-D, and a
+      straight-line average of two real spectra can invent a peak pattern no
+      instrument would ever produce — a non-physical spectrum. So in practice pair
+      SMOTE with curation and domain augmentation (small m/z shifts, intensity
+      jitter — the Lab 2 move), or simply oversample real spectra. Next slide the
+      quiz asks for λ = 0.25 (Quiz 10 Q4).
+
+  - type: image
+    eyebrow: "Part B · focal loss · I-do"
+    title: "Focal loss: turn the volume up on the hard cases"
+    image: img/fig_focal_volume.png
+    img_h: 4.5
+    callout: {kind: ms, text: "Focal loss reshapes the loss so easy, confident cases stop dominating: FL = (1−p)²·(−ln p). Easy p=0.90 → (0.10)²·0.105 = 0.001 (turned DOWN ~100×). Hard p=0.50 → (0.50)²·0.693 = 0.173 (barely touched). Under plain cross-entropy the hard case counts 6.6× the easy one; under focal loss, 165× — so training focuses on the boundary."}
+    notes: >
+      I-DO with the numbers (rule 6). Plain cross-entropy is −ln p on the true
+      class; every example counts by how wrong it is, but a sea of easy, already-
+      correct majority examples still adds up and drowns the rare, hard ones.
+      FOCAL LOSS (Lin et al. 2017) multiplies CE by a "focusing" factor (1−p)²
+      (this is γ = 2), which shrinks toward zero as the model grows confident
+      (p → 1). Work both cases on screen. EASY, confident (p = 0.90): plain CE =
+      −ln 0.90 = 0.105; factor = (1 − 0.90)² = (0.10)² = 0.01; FL = 0.01 × 0.105 =
+      0.00105 ≈ 0.001 — turned DOWN about 100×. HARD, on the boundary (p = 0.50):
+      plain CE = −ln 0.50 = 0.693; factor = (0.50)² = 0.25; FL = 0.25 × 0.693 =
+      0.173 — barely reduced. The ratio is the whole point: under plain CE the
+      hard case counts 0.693 / 0.105 = 6.6× the easy one; under focal loss it
+      counts 0.173 / 0.00105 = 165×. Focal loss makes the boundary cases roughly
+      165× louder than the easy majority, so the model spends its effort where it
+      actually needs to learn. No derivation, no separate quiz item — this is the I-do
+      that anchors the "focal loss" card the decide beat asks about.
+
+  - type: image
+    eyebrow: "Part B · curriculum learning · intuition"
+    title: "Curriculum: shape the training diet over time"
+    image: img/fig_curriculum.png
+    img_h: 4.2
+    callout: {kind: plain, text: "One idea, no math: don't feed the model the full, lopsided mix from day one. START on easy/clear cases with class-balanced batches (equal R and S), THEN mix in harder, borderline isolates, and FINALLY train on the true, rare-heavy prevalence. Easy → hard, or class-balanced → true prevalence — so early training isn't swamped by the majority."}
+    notes: >
+      Intuition only, no numbers (rule 9). Curriculum learning (Bengio et al.
+      2009) borrows from how we teach humans: start simple, build up. Two flavours
+      that help imbalance. (1) EASY → HARD: begin on clearly-separable spectra,
+      then introduce the ambiguous, borderline isolates once the model has the
+      basics — it's less likely to get stuck early. (2) CLASS-BALANCED → TRUE
+      PREVALENCE: in the first epochs sample equal numbers of resistant and
+      susceptible per batch so the rare class isn't drowned, then anneal the
+      sampling back toward the real 6%-resistant mix so the model finishes
+      calibrated to reality. Both reshape the ORDER and MIX of training data over
+      time; neither invents new resistant examples. It is the fourth card on the
+      treatment menu, and the "unstable across easy/hard batches" symptom points
+      here. Now the room matches all four moves to symptoms on the quiz.
+
+  - type: image
+    eyebrow: "Part B · your turn (you-do) → Quiz 10"
+    title: "Your turn — match the move, then the honest question"
+    image: img/fig_treatment_menu.png
+    img_h: 4.2
+    callout: {kind: check, text: "Your turn → Quiz 10, Q3–Q4. Match each situation to ONE move — curation · class-weights/SMOTE/oversample · focal loss · curriculum: (1) many mislabeled/junk runs · (2) only 41 real resistant spectra, the model ignores them · (3) easy cases fine but borderline isolates missed · (4) training unstable across very easy/hard batches. Then: which of these adds NEW resistant signal? Q4 finishes the SMOTE point. Worked answers in the notes."}
+    notes: >
+      YOU-DO = Quiz 10 Q3 (with Q4 next), a match-then-reason beat (not recognition — the
+      menu names the moves, but the room must diagnose which symptom each
+      situation is). Matches: (1) many mislabeled / junk runs → CURATION (clean
+      the labels before anything fancier); (2) only 41 real resistant spectra and
+      the model ignores them → CLASS WEIGHTS / SMOTE / OVERSAMPLE (make the rare
+      class count); (3) easy cases fine but borderline isolates missed → FOCAL
+      LOSS (up-weight the hard, low-confidence cases); (4) training unstable
+      across very easy/hard batches → CURRICULUM (order easy→hard / balanced→true).
+      Then the durable twist — WHICH ADDS NEW RESISTANT SIGNAL? NONE of them.
+      Every move reuses the same 41 resistant spectra: reweighting shouts them
+      louder, SMOTE interpolates between them, focal loss focuses on them,
+      curriculum reorders them — but no new biological information enters. Only
+      collecting more real resistant isolates adds signal. Take one match at a
+      time from the floor, then have them fill Q3 and answer the honest
+      question; Q4 is the SMOTE compute (λ = 0.25 → (2.5, 7)) they finish on the
+      sheet.
+
+  - type: bullets
+    eyebrow: "Assessment · Quiz 10"
+    title: "You've now worked all of Quiz 10 — keep the sheet"
+    bullets:
+      - "Q1 — the confusion matrix: recall 0.80, specificity 0.93, precision 0.33 (worked at the you-do)"
+      - "Q2 — the ROC point (FPR 0.067, TPR 0.80) vs. the PR point (0.80, 0.33); at 4% prevalence, trust AUPRC"
+      - "Q3 — match the four situations to curation / reweight-SMOTE / focal / curriculum, and the 'no new signal' question"
+      - "Q4 — SMOTE with λ = 0.25: A=(2,6), B=(4,10) → (2.5, 7), plus one caveat for raw-spectrum SMOTE"
+    callout: {kind: pair, text: "💬 60 sec: which single metric would you put on the validation report for your own rarest-class assay — and why NOT accuracy? Then hand in Quiz 10."}
+    notes: >
+      The recap of the distributed quiz (the I-do → you-do → quiz spine): Quiz 10
+      was filled across the hour, not saved for a block at the end. Q1 (recall
+      0.80, specificity 0.93, precision 0.33) and Q2 (ROC point FPR = 32/480 =
+      0.067 with TPR 0.80; PR point 0.80/0.33; prevalence 0.04 → trust AUPRC) were
+      worked live at the two metric you-dos. Q3 is the treatment match with the
+      no-new-signal answer, and Q4 is the SMOTE compute: λ = 0.25 on A = (2, 6),
+      B = (4, 10) → (2 + 0.25·2, 6 + 0.25·4) = (2.5, 7), plus the one-sentence
+      caveat that a straight-line blend of two real 6000-dim spectra can be
+      non-physical. The 60-second pair prompt (which metric, why not accuracy)
+      seeds the debrief; harvest the two payoff judgments — the AUROC-vs-AUPRC
+      call and "none add new signal" — then collect Quiz 10 (course objectives
+      3-5).
+
+  - type: bullets
+    eyebrow: "Lecture 10 · what you can do now"
+    title: "You can now…"
+    bullets:
+      - "Compute precision, recall (sensitivity), and specificity by hand — and say why accuracy lies under imbalance"
+      - "Explain why AUROC flatters a rare-positive screen and report AUPRC / the PR curve with sensitivity instead"
+      - "Demand external + temporal validation — a metric is only valid on the distribution you tested"
+      - "Treat imbalance with curation, SMOTE, class weights / focal loss, and curriculum — knowing none adds new signal"
+    callout: {kind: plain, text: "You have worked the whole of Quiz 10 live — the three rates (Q1), AUROC vs. AUPRC (Q2), the treatment match (Q3), and a SMOTE point (Q4). Keep the sheet; it's your checklist for any rare-class assay in your own lab."}
+    notes: >
+      Recap = the Lecture 10 outcomes, each already exercised this hour: the
+      three-rate confusion-matrix computation (Q1), the AUROC-vs-AUPRC reading
+      and decision (Q2), the external/temporal validation guardrail, and the
+      four treatments — curation, SMOTE (worked), class weights / focal loss
+      (worked), curriculum — with the honest "none add new signal" caveat
+      (Q3-Q4). Quiz 10 was the distributed assessment, filled across the hour and
+      now largely done. Frame the sheet as a reusable checklist they can run
+      against any imbalanced-data project in their own lab.
+
+  - type: bullets
+    eyebrow: "Lecture 10 · over to your lab · discussion"
+    title: "Next — learning without labels (Lecture 11 + Lab 4)"
+    bullets:
+      - "Most lab data is UNLABELED — Lecture 11 asks what you can learn without labels"
+      - "Autoencoders & VAEs: reconstruction error as an anomaly/QC score — a precision/recall threshold, straight back to today"
+      - "Lab 4 trains a VAE on normal spectra and flags anomalies — your metrics knowledge picks the threshold"
+      - "💬 Discussion D4: what does 'abnormal' look like in YOUR instrument's output, and would reconstruction error catch it before a human does?"
+    callout: {kind: pair, text: "💬 Discussion D4: name one place in your workflow where a rare event hides in a majority-normal stream — and which metric, not accuracy, would tell you if a model caught it."}
+    notes: >
+      Close by bridging forward and back. Forward: Lecture 11 tackles the common
+      case where labels are scarce or absent — autoencoders and VAEs — and its
+      anomaly threshold is exactly a precision/recall decision on a rare positive,
+      so this hour's metrics carry straight into Lab 4. Back: the imbalance
+      treatments and the external/temporal-validation guardrail are the tools for
+      every rare-class project they plan. Run Discussion D4 as a think-pair-share
+      tied to their own bench: where does a rare event hide in a majority-normal
+      stream, and which metric would they trust to know a model caught it? Harvest
+      two or three, then hand the last minutes to finishing Quiz 10 as Lab 4
+      context loads.

@@ -3937,69 +3937,6 @@ def transfer_learning(name="fig_transfer_learning.png"):
 #  file's loss_curves / fit_trio / trainval_curves (matplotlib, not photos).
 # ============================================================================
 
-def data_representation_chart(mode="ido", name="fig_repr_chart.png"):
-    """The Lecture-10 decision chart: MS/lab data type -> representation ->
-    architecture (Lectures 1-8), one row per data shape, each architecture box
-    carrying a one-line trade-off. mode='ido' is the full teaching chart used
-    to work Scenario 0 live; the same PNG is reused as the you-do reference so
-    the room reads their worksheet scenario straight off it (rules 3/8)."""
-    rows = [
-        ("binned spectrum / raw 1D signal\n(dense, evenly sampled)", TEAL,
-         "intensity vector\n(TIC-normalized)", "1D CNN   (Lecture 5)",
-         "learns peak shapes; needs more data than trees"),
-        ("peak list\n(sparse m/z + intensity)", AMBER,
-         "peak-as-token set", "Transformer   (Lecture 8)",
-         "compact; drops the empty baseline"),
-        ("image\n(imaging-MS, LC×MS heatmap, gel)", RED,
-         "pixel grid / patches", "2D CNN or ViT   (Lecture 5/8)",
-         "sees 2D shape; needs many labeled images"),
-        ("token sequence\n(peptide, DNA/RNA)", TEAL,
-         "1 token / residue + position", "Transformer   (Lecture 7/8)",
-         "handles order + length; fine-tune a pretrained one"),
-        ("small tabular panel\n(hundreds × a few analytes)", INK_SOFT,
-         "feature table", "NOT deep learning → boosted trees",
-         "trees win on small tables; more interpretable"),
-    ]
-    fig, ax = plt.subplots(figsize=(12.6, 6.6))
-    ax.set_xlim(0, 13)
-    ax.set_ylim(0, 7)
-    ax.axis("off")
-    header = ("pick a representation, then the architecture"
-             if mode == "ido" else
-             "your turn: read your worksheet scenario's row off the chart")
-    hcol = INK if mode == "ido" else ROI_INK
-    ax.text(6.5, 6.65, header, ha="center", va="center", fontsize=15,
-            color=hcol, fontweight="bold")
-    ax.text(2.15, 6.05, "data type", ha="center", color=MUTED, fontsize=12.5)
-    ax.text(6.5, 6.05, "representation", ha="center", color=MUTED, fontsize=12.5)
-    ax.text(10.6, 6.05, "architecture  (Lectures 1-8)", ha="center",
-            color=MUTED, fontsize=12.5)
-    ys = [5.15, 4.12, 3.09, 2.06, 1.03]
-    for (dtype, col, rep, arch, trade), y in zip(rows, ys):
-        ax.add_patch(FancyBboxPatch((0.25, y - 0.44), 3.8, 0.88,
-                    boxstyle="round,pad=0.02,rounding_size=0.06",
-                    facecolor=WHITE, edgecolor=col, lw=2.2))
-        ax.text(2.15, y, dtype, ha="center", va="center", fontsize=11,
-                color=INK, fontweight="bold")
-        ax.annotate("", xy=(4.85, y), xytext=(4.15, y),
-                    arrowprops=dict(arrowstyle="-|>", color=col, lw=2.0))
-        ax.add_patch(FancyBboxPatch((4.95, y - 0.44), 3.1, 0.88,
-                    boxstyle="round,pad=0.02,rounding_size=0.06",
-                    facecolor="#F1F1EC", edgecolor=col, lw=2.0))
-        ax.text(6.5, y, rep, ha="center", va="center", fontsize=11,
-                color=INK_SOFT, fontweight="bold")
-        ax.annotate("", xy=(8.85, y), xytext=(8.15, y),
-                    arrowprops=dict(arrowstyle="-|>", color=col, lw=2.0))
-        ax.add_patch(FancyBboxPatch((8.95, y - 0.44), 3.8, 0.88,
-                    boxstyle="round,pad=0.02,rounding_size=0.06",
-                    facecolor=col, edgecolor=col, lw=2.0))
-        ax.text(10.85, y + 0.13, arch, ha="center", va="center", fontsize=11,
-                color=WHITE, fontweight="bold")
-        ax.text(10.85, y - 0.24, trade, ha="center", va="center",
-                fontsize=8.2, color=WHITE, style="italic")
-    _save(fig, name)
-
-
 def _confusion_cells(ax, tp, fn, fp, tn, x0, ytop, cell, blank):
     """Draw a 2x2 confusion matrix (rows = model call, cols = truth)."""
     def val(v):
@@ -4036,75 +3973,82 @@ def _confusion_cells(ax, tp, fn, fp, tn, x0, ytop, cell, blank):
 
 def confusion_matrix(tp, fn, fp, tn, mode="ido", name="fig_confusion_ido.png",
                      positive="resistant", negative="susceptible"):
-    """A worked confusion matrix with sensitivity = TP/(TP+FN) and
-    specificity = TN/(TN+FP) (rule 6). mode='ido' fills every number and shows
-    the accuracy trap; mode='youdo' shows the counts but leaves sensitivity /
-    specificity as '?' for the worksheet Metrics question (rules 3/8)."""
+    """A worked confusion matrix with the THREE rates the room needs under
+    imbalance (rule 6): recall/sensitivity = TP/(TP+FN), specificity =
+    TN/(TN+FP), and precision = TP/(TP+FP). mode='ido' fills every number and
+    shows the accuracy trap; mode='youdo' shows the counts but leaves the three
+    rates as '?' for the worksheet Part-A question (rules 3/8)."""
     total = tp + fn + fp + tn
     pos = tp + fn
     neg = tn + fp
+    flagged = tp + fp
     sens = tp / pos
     spec = tn / neg
+    prec = tp / flagged
     acc = (tp + tn) / total
     always_neg = neg / total
     blank = mode == "youdo"
-    fig, ax = plt.subplots(figsize=(11.6, 5.2))
+    fig, ax = plt.subplots(figsize=(11.8, 5.4))
     ax.set_xlim(0, 12)
     ax.set_ylim(0, 6)
     ax.axis("off")
-    _confusion_cells(ax, tp, fn, fp, tn, 1.7, 5.1, 1.5, blank=False)
-    ax.text(2.95, 5.72, f"+ = {positive}   ·   − = {negative}", ha="center",
-            color=MUTED, fontsize=11.5, style="italic")
-    # right column: formulas + worked (or ?) values
-    fx = 6.5
-    ax.text(fx, 5.35, "sensitivity = TP / (TP + FN)", ha="left",
-            color=INK, fontsize=15, fontweight="bold")
-    ax.text(fx, 4.75,
-            ("= ?" if blank else
-             f"= {tp:g} / {pos:g} = {sens:.2f}  ({sens*100:.0f}%)"),
-            ha="left", color=TEAL, fontsize=15, fontweight="bold")
-    ax.text(fx, 3.95, "specificity = TN / (TN + FP)", ha="left",
-            color=INK, fontsize=15, fontweight="bold")
-    ax.text(fx, 3.35,
-            ("= ?" if blank else
-             f"= {tn:g} / {neg:g} = {spec:.2f}  ({spec*100:.0f}%)"),
-            ha="left", color=TEAL, fontsize=15, fontweight="bold")
-    # the accuracy trap box -- give the text its own auto-fitting box so the
-    # longest line can never poke past the edges (a fixed patch was too narrow).
+    _confusion_cells(ax, tp, fn, fp, tn, 1.7, 5.05, 1.4, blank=False)
+    ax.text(2.68, 5.62, f"+ = {positive}   ·   − = {negative}", ha="center",
+            color=MUTED, fontsize=11, style="italic")
+    # right column: three formulas + worked (or ?) values
+    fx = 6.15
+    rows = [
+        ("recall (sensitivity) = TP / (TP + FN)",
+         f"= {tp:g} / {pos:g} = {sens:.2f}  ({sens*100:.0f}%)", TEAL),
+        ("specificity = TN / (TN + FP)",
+         f"= {tn:g} / {neg:g} = {spec:.2f}  ({spec*100:.0f}%)", TEAL),
+        ("precision = TP / (TP + FP)",
+         f"= {tp:g} / {flagged:g} = {prec:.2f}  ({prec*100:.0f}%)", ROI_INK),
+    ]
+    y = 5.35
+    for label, worked, col in rows:
+        ax.text(fx, y, label, ha="left", color=INK, fontsize=13.5,
+                fontweight="bold")
+        ax.text(fx, y - 0.5, ("= ?" if blank else worked), ha="left",
+                color=col, fontsize=13.5, fontweight="bold")
+        y -= 1.28
+    # the accuracy trap box -- auto-fitting bbox so long lines never overflow.
     if blank:
         trap = ("accuracy = ?  — but a model that ALWAYS\n"
                 f"says “{negative}” scores {neg:g}/{total:g} = "
-                f"{always_neg*100:.0f}% and catches 0 of {pos:g}.\n"
-                "So which metric do you trust here?")
+                f"{always_neg*100:.0f}%,\ncatching 0 of {pos:g}. "
+                "Which rate do you trust?")
     else:
-        trap = (f"accuracy = {tp+tn:g}/{total:g} = {acc*100:.1f}%  — yet a model\n"
-                f"that ALWAYS says “{negative}” scores {neg:g}/{total:g} = "
-                f"{always_neg*100:.0f}%\nand catches 0 of {pos:g} {positive}. "
-                "Accuracy lies under imbalance.")
-    ax.text(fx + 2.6, 1.57, trap, ha="center", va="center", color=INK,
+        trap = (f"accuracy = {tp+tn:g}/{total:g} = {acc*100:.0f}%  — yet ALWAYS\n"
+                f"“{negative}” scores {neg:g}/{total:g} = "
+                f"{always_neg*100:.0f}% and catches 0 of {pos:g}.\n"
+                "Precision 0.33: 2 of 3 flags are FALSE.")
+    ax.text(2.55, 1.15, trap, ha="center", va="center", color=INK,
             fontsize=10.5, fontweight="bold",
-            bbox=dict(boxstyle="round,pad=0.6", facecolor="#F7E4E3",
+            bbox=dict(boxstyle="round,pad=0.5", facecolor="#F7E4E3",
                       edgecolor=RED, linewidth=2.0))
     _save(fig, name)
 
 
 def roc_pr_curves(name="fig_roc_pr.png"):
-    """ROC and PR curves read as pictures: a good curve (teal) hugs the
-    top-left / stays high, a chance curve (red dashed) is the diagonal / the
-    prevalence baseline. Annotated good-vs-bad teaching schematic in the same
-    category as this file's loss_curves / trainval_curves galleries."""
-    fig, (axr, axp) = plt.subplots(1, 2, figsize=(11.8, 4.6))
+    """Same classifier, two pictures, with the I-do operating point marked on
+    BOTH (rule 3): ROC point (FPR 0.086, TPR 0.73) hugs the top-left and LOOKS
+    great, while the PR point (recall 0.73, precision 0.33) exposes that only 1
+    flag in 3 is real. ROC's baseline is the diagonal (0.5); PR's baseline is
+    the prevalence (0.056) — the honest floor under imbalance (Saito &
+    Rehmsmeier 2015)."""
+    fig, (axr, axp) = plt.subplots(1, 2, figsize=(11.8, 4.7))
+    # ---- ROC panel ----
     fpr = np.linspace(0, 1, 200)
     good = 1 - (1 - fpr) ** 3          # concave, hugs the top-left
-    ok = 1 - (1 - fpr) ** 1.6
-    axr.plot(fpr, good, color=TEAL, lw=3.0, zorder=4, label="good  (AUC ≈ 0.9)")
-    axr.plot(fpr, ok, color=AMBER, lw=2.4, zorder=3, label="fair  (AUC ≈ 0.75)")
+    axr.plot(fpr, good, color=TEAL, lw=3.0, zorder=4, label="our model")
     axr.plot([0, 1], [0, 1], color=RED, lw=2.2, ls="--", zorder=2,
              label="chance  (AUC = 0.5)")
-    axr.scatter([0], [1], s=70, color=INK, zorder=5)
-    axr.annotate("perfect corner:\nall TP, no FP", xy=(0.0, 1.0),
-                 xytext=(0.28, 0.86), fontsize=10.5, color=INK_SOFT,
-                 arrowprops=dict(arrowstyle="-", color=INK_SOFT, lw=1.0))
+    axr.scatter([0.086], [0.73], s=95, color=INK, zorder=6)
+    axr.annotate("our point: FPR 0.086, TPR 0.73\n— hugs the corner, LOOKS great",
+                 xy=(0.086, 0.73), xytext=(0.24, 0.42), fontsize=10,
+                 color=INK, fontweight="bold",
+                 arrowprops=dict(arrowstyle="-|>", color=INK, lw=1.4))
     axr.set_title("ROC — sensitivity vs. 1−specificity", fontsize=13,
                   color=INK, fontweight="bold")
     axr.set_xlabel("false-positive rate  (1 − specificity)", fontsize=11)
@@ -4114,25 +4058,25 @@ def roc_pr_curves(name="fig_roc_pr.png"):
     axr.legend(loc="lower right", frameon=False, fontsize=10)
     for sp in ("top", "right"):
         axr.spines[sp].set_visible(False)
-    # PR panel
+    # ---- PR panel ----
     rec = np.linspace(0, 1, 200)
-    good_p = 0.97 - 0.12 * rec ** 3
-    bad_p = 0.14 + 0.05 * (1 - rec)
-    axp.plot(rec, good_p, color=TEAL, lw=3.0, zorder=4,
-             label="good  (stays high)")
-    axp.plot(rec, bad_p, color=AMBER, lw=2.4, zorder=3, label="weak model")
-    axp.axhline(0.10, color=RED, lw=2.2, ls="--", zorder=2,
-                label="baseline = prevalence (0.10)")
-    axp.annotate("good: precision holds\nas recall grows", xy=(0.60, good_p[120]),
-                 xytext=(0.02, 0.50), ha="left", fontsize=10.5, color=INK_SOFT,
-                 arrowprops=dict(arrowstyle="-", color=INK_SOFT, lw=1.0))
-    axp.set_title("PR — precision vs. recall (the honest one under imbalance)",
+    # a curve that passes through the marked (0.73, 0.33) operating point
+    good_p = 0.62 - 0.40 * rec ** 2
+    axp.plot(rec, good_p, color=TEAL, lw=3.0, zorder=4, label="our model")
+    axp.axhline(0.056, color=RED, lw=2.2, ls="--", zorder=2,
+                label="baseline = prevalence (0.056)")
+    axp.scatter([0.73], [0.33], s=95, color=INK, zorder=6)
+    axp.annotate("same model: recall 0.73, precision 0.33\n— only 1 flag in 3 is real",
+                 xy=(0.73, 0.33), xytext=(0.02, 0.72), ha="left", fontsize=10,
+                 color=INK, fontweight="bold",
+                 arrowprops=dict(arrowstyle="-|>", color=INK, lw=1.4))
+    axp.set_title("PR — precision vs. recall (honest under imbalance)",
                   fontsize=12, color=INK, fontweight="bold")
     axp.set_xlabel("recall  (= sensitivity)", fontsize=11)
     axp.set_ylabel("precision", fontsize=11)
     axp.set_xlim(0, 1)
     axp.set_ylim(0, 1.02)
-    axp.legend(loc="center right", frameon=False, fontsize=10)
+    axp.legend(loc="upper right", frameon=False, fontsize=10)
     for sp in ("top", "right"):
         axp.spines[sp].set_visible(False)
     fig.subplots_adjust(wspace=0.28)
@@ -4140,72 +4084,211 @@ def roc_pr_curves(name="fig_roc_pr.png"):
 
 
 def focal_loss_volume(name="fig_focal_volume.png"):
-    """'Turn up the volume on the rare and the hard cases' — one picture, no
-    derivation. Three example groups as equalizer bars: the easy majority is
-    turned DOWN, the rare class (class weights) and the hard / low-confidence
-    cases (focal loss) are turned UP."""
-    fig, ax = plt.subplots(figsize=(11.0, 4.6))
-    ax.set_xlim(0, 12)
-    ax.set_ylim(0, 6)
-    ax.axis("off")
+    """Focal loss with the NUMBERS (rule 6): FL = (1−p)^2 · (−ln p), gamma=2.
+    An easy, confident case (p=0.90) is turned DOWN ~100x to FL 0.001; a hard,
+    boundary case (p=0.50) barely moves, FL 0.173. Under plain cross-entropy
+    the hard case counts 6.6x the easy one; under focal loss, 165x — so
+    training focuses on the cases near the decision boundary."""
+    fig, (axl, axr) = plt.subplots(1, 2, figsize=(11.8, 4.7),
+                                   gridspec_kw={"width_ratios": [1.05, 1]})
+    # ---- LEFT: the equalizer intuition ----
+    axl.set_xlim(0, 8)
+    axl.set_ylim(0, 6)
+    axl.axis("off")
     groups = [
-        (2.2, 1.0, TEAL, "easy majority\n(common, confident)", "turned DOWN",
-         "down"),
-        (6.0, 3.7, AMBER, "rare class\n(few examples)", "class weights ↑", "up"),
-        (9.8, 4.0, RED, "hard cases\n(low-confidence,\nnear the boundary)",
-         "focal loss ↑", "up"),
+        (2.0, 0.7, TEAL, "easy majority\n(p = 0.90)", "turned DOWN", "down"),
+        (6.0, 4.0, RED, "hard case\n(p = 0.50,\nat the boundary)",
+         "kept UP", "up"),
     ]
-    base = 0.9
+    base = 1.0
     for cx, h, col, label, tag, direction in groups:
-        ax.add_patch(FancyBboxPatch((cx - 0.7, base), 1.4, h,
-                    boxstyle="round,pad=0.02,rounding_size=0.05",
-                    facecolor=col, edgecolor=col, lw=1.5))
-        ax.text(cx, base + h + 0.32, tag, ha="center", color=col,
-                fontsize=12, fontweight="bold")
+        axl.add_patch(FancyBboxPatch((cx - 0.75, base), 1.5, h,
+                     boxstyle="round,pad=0.02,rounding_size=0.05",
+                     facecolor=col, edgecolor=col, lw=1.5))
+        axl.text(cx, base + h + 0.3, tag, ha="center", color=col,
+                 fontsize=12.5, fontweight="bold")
         arrow = "↓" if direction == "down" else "↑"
-        ax.text(cx, base + h / 2, arrow, ha="center", va="center",
-                color=WHITE, fontsize=26, fontweight="bold")
-        ax.text(cx, base - 0.6, label, ha="center", va="top", color=INK,
-                fontsize=11, fontweight="bold")
-    ax.axhline(base, xmin=0.04, xmax=0.96, color=HAIRLINE, lw=1.4)
-    ax.text(0.4, base - 0.05, "loss\nweight", ha="center", va="top",
-            color=MUTED, fontsize=10)
-    ax.text(6.0, 5.72, "turn up the volume on the rare and the hard cases",
-            ha="center", color=INK, fontsize=14, fontweight="bold")
+        axl.text(cx, base + h / 2, arrow, ha="center", va="center",
+                 color=WHITE, fontsize=26, fontweight="bold")
+        axl.text(cx, base - 0.55, label, ha="center", va="top", color=INK,
+                 fontsize=11, fontweight="bold")
+    axl.axhline(base, xmin=0.05, xmax=0.95, color=HAIRLINE, lw=1.4)
+    axl.text(0.5, base - 0.05, "loss\nweight", ha="center", va="top",
+             color=MUTED, fontsize=10)
+    axl.text(4.0, 5.72, "focal loss keeps the hard cases loud",
+             ha="center", color=INK, fontsize=13.5, fontweight="bold")
+    # ---- RIGHT: the numbers, as an auto-fit text block ----
+    axr.set_xlim(0, 8)
+    axr.set_ylim(0, 6)
+    axr.axis("off")
+    axr.text(4.0, 5.55, "FL = (1 − p)$^2$ · (−ln p)", ha="center",
+             color=INK, fontsize=15, fontweight="bold")
+    lines = [
+        ("easy  p = 0.90", "(0.10)$^2$=0.01  ·  −ln0.90=0.105",
+         "FL = 0.001", TEAL),
+        ("hard  p = 0.50", "(0.50)$^2$=0.25  ·  −ln0.50=0.693",
+         "FL = 0.173", RED),
+    ]
+    y = 4.35
+    for head, mid, res, col in lines:
+        axr.text(4.0, y, head + "\n" + mid + "\n" + res, ha="center",
+                 va="center", color=INK, fontsize=11.5, fontweight="bold",
+                 bbox=dict(boxstyle="round,pad=0.45",
+                           facecolor=(TEAL_SOFT if col is TEAL else "#F7E4E3"),
+                           edgecolor=col, linewidth=2.0))
+        y -= 1.9
+    axr.text(4.0, 0.5,
+             "hard vs easy:  plain CE 6.6×  →  focal 165×",
+             ha="center", va="center", color=ROI_INK, fontsize=12.5,
+             fontweight="bold",
+             bbox=dict(boxstyle="round,pad=0.4", facecolor=AMBER_SOFT,
+                       edgecolor=AMBER, linewidth=2.0))
+    fig.subplots_adjust(wspace=0.12)
     _save(fig, name)
 
 
-def scarce_data_toolkit(name="fig_scarce_toolkit.png"):
-    """The scarce-data menu as five cards (rule 9, no text wall): curate,
-    augment (Lab 2), reweight/focal, transfer-learn (Lecture 8), collect more."""
-    fig, ax = plt.subplots(figsize=(12.2, 4.2))
-    ax.set_xlim(0, 12.4)
-    ax.set_ylim(0, 4)
+def smote_interpolation(mode="ido", name="fig_smote.png"):
+    """SMOTE = synthetic minority over-sampling by interpolation (rule 6). Two
+    toy features are two m/z-bin intensities: the majority (susceptible) cloud
+    is dense, the minority (resistant) points are few. A NEW synthetic point is
+    made ON the segment between two real minority points A=(2,6), B=(4,10):
+    synthetic = A + lambda*(B-A). I-do lambda=0.5 -> (3,8); the caveat box warns
+    that straight-line blends of two real 6000-dim spectra can be non-physical."""
+    rng = np.random.default_rng(7)
+    fig, ax = plt.subplots(figsize=(9.6, 5.6))
+    # majority cloud (susceptible)
+    mx = rng.normal(7.0, 1.4, 90)
+    my = rng.normal(4.0, 1.5, 90)
+    ax.scatter(mx, my, s=34, color=TEAL, alpha=0.35, edgecolor="none",
+               zorder=2, label="susceptible (majority)")
+    # minority points (resistant), with A and B highlighted
+    minx = [2, 4, 3.1, 1.4, 4.8]
+    miny = [6, 10, 8.7, 8.2, 6.7]
+    ax.scatter(minx, miny, s=70, color=RED, edgecolor=INK, lw=0.8, zorder=4,
+               label="resistant (minority)")
+    A = (2, 6)
+    B = (4, 10)
+    lam = 0.5 if mode == "ido" else 0.25
+    syn = (A[0] + lam * (B[0] - A[0]), A[1] + lam * (B[1] - A[1]))
+    ax.plot([A[0], B[0]], [A[1], B[1]], color=AMBER, lw=2.4, ls="--", zorder=3)
+    ax.text(A[0] - 0.15, A[1] - 0.55, "A (2, 6)", ha="right", color=RED,
+            fontsize=12, fontweight="bold")
+    ax.text(B[0] + 0.2, B[1] + 0.1, "B (4, 10)", ha="left", color=RED,
+            fontsize=12, fontweight="bold")
+    if mode == "ido":
+        ax.scatter([syn[0]], [syn[1]], s=150, marker="*", color=AMBER,
+                   edgecolor=INK, lw=1.0, zorder=5)
+        ax.annotate(f"synthetic = A + 0.5·(B−A)\n= ({syn[0]:g}, {syn[1]:g})",
+                    xy=syn, xytext=(4.6, 7.3), fontsize=11.5, color=ROI_INK,
+                    fontweight="bold",
+                    arrowprops=dict(arrowstyle="-|>", color=AMBER, lw=1.8))
+    else:
+        ax.scatter([syn[0]], [syn[1]], s=150, marker="*",
+                   facecolor="none", edgecolor=ROI_INK, lw=1.6, zorder=5)
+        ax.annotate("synthetic = A + 0.25·(B−A)\n= ( ? , ? )",
+                    xy=syn, xytext=(4.6, 6.6), fontsize=11.5, color=ROI_INK,
+                    fontweight="bold",
+                    arrowprops=dict(arrowstyle="-|>", color=ROI_INK, lw=1.6))
+    ax.set_xlabel("intensity, m/z bin 1", fontsize=11)
+    ax.set_ylabel("intensity, m/z bin 2", fontsize=11)
+    ax.set_xlim(0, 11)
+    ax.set_ylim(0, 12)
+    ax.legend(loc="lower right", frameon=False, fontsize=10.5)
+    for sp in ("top", "right"):
+        ax.spines[sp].set_visible(False)
+    ax.text(0.3, 11.4,
+            "caveat: a straight-line blend of two real 6000-dim spectra can be\n"
+            "NON-physical — pair SMOTE with curation + m/z-jitter, or oversample\n"
+            "real spectra.",
+            ha="left", va="top", color=INK, fontsize=9.8, fontweight="bold",
+            bbox=dict(boxstyle="round,pad=0.4", facecolor="#F7E4E3",
+                      edgecolor=RED, linewidth=1.6))
+    _save(fig, name)
+
+
+def curriculum_learning(name="fig_curriculum.png"):
+    """Curriculum learning as intuition (rule 9, no numbers): order the training
+    diet easy -> hard, or start CLASS-BALANCED (equal R and S per batch) and
+    anneal toward the true prevalence, so early training isn't swamped by the
+    majority."""
+    fig, ax = plt.subplots(figsize=(11.4, 4.4))
+    ax.set_xlim(0, 12)
+    ax.set_ylim(0, 5)
     ax.axis("off")
-    cards = [
-        (TEAL, "curate labels", "quality beats\nquantity"),
-        (AMBER, "augment", "jitter / shift\nspectra (Lab 2)"),
-        (RED, "reweight", "class weights /\nfocal loss"),
-        (TEAL, "transfer-learn", "fine-tune a\npretrained body\n(Lecture 8)"),
-        (INK_SOFT, "collect more", "sometimes the\nonly real fix"),
+    ax.text(6.0, 4.68, "curriculum: shape the training diet over time",
+            ha="center", color=INK, fontsize=13.5, fontweight="bold")
+    stages = [
+        (TEAL, "start", "easy / clear cases\n· balanced batches\n(equal R and S)"),
+        (AMBER, "then", "mix in harder,\nborderline isolates"),
+        (RED, "finally", "train on the true\nmix — real prevalence\n(rare R)"),
     ]
-    w = 2.05
-    gap = 0.28
-    x = 0.55
-    for col, head, body in cards:
-        ax.add_patch(FancyBboxPatch((x, 0.6), w, 2.7,
-                    boxstyle="round,pad=0.02,rounding_size=0.08",
+    w = 3.1
+    gap = 0.95
+    x = 0.6
+    cxs = []
+    for col, head, body in stages:
+        ax.add_patch(FancyBboxPatch((x, 1.15), w, 2.55,
+                    boxstyle="round,pad=0.02,rounding_size=0.06",
                     facecolor=WHITE, edgecolor=col, lw=2.4))
-        ax.add_patch(FancyBboxPatch((x, 2.55), w, 0.75,
-                    boxstyle="round,pad=0.02,rounding_size=0.08",
+        ax.add_patch(FancyBboxPatch((x, 3.0), w, 0.7,
+                    boxstyle="round,pad=0.02,rounding_size=0.06",
                     facecolor=col, edgecolor=col, lw=2.4))
-        ax.text(x + w / 2, 2.92, head, ha="center", va="center", color=WHITE,
-                fontsize=12.5, fontweight="bold")
-        ax.text(x + w / 2, 1.55, body, ha="center", va="center", color=INK,
+        ax.text(x + w / 2, 3.35, head, ha="center", va="center", color=WHITE,
+                fontsize=13, fontweight="bold")
+        ax.text(x + w / 2, 2.0, body, ha="center", va="center", color=INK,
                 fontsize=11)
+        cxs.append(x + w / 2)
         x += w + gap
-    ax.text(6.2, 3.72, "scarce or imbalanced data? work down this menu",
-            ha="center", color=INK, fontsize=13, fontweight="bold")
+    for x0, x1 in zip(cxs[:-1], cxs[1:]):
+        ax.annotate("", xy=(x1 - w / 2 - 0.12, 2.4),
+                    xytext=(x0 + w / 2 + 0.12, 2.4),
+                    arrowprops=dict(arrowstyle="-|>", color=INK_SOFT, lw=2.2))
+    ax.text(6.0, 0.55, "easy → hard, or class-balanced → true prevalence",
+            ha="center", color=MUTED, fontsize=11.5, style="italic")
+    _save(fig, name)
+
+
+def treatment_menu(name="fig_treatment_menu.png"):
+    """The imbalanced-data treatment menu as four cards mapped to a SITUATION
+    (rule 9, no text wall), with the durable footer: none of these adds NEW
+    minority signal — only collecting more real resistant spectra does."""
+    fig, ax = plt.subplots(figsize=(12.2, 4.8))
+    ax.set_xlim(0, 12.4)
+    ax.set_ylim(0, 5)
+    ax.axis("off")
+    ax.text(6.2, 4.72, "imbalanced data? match the move to the problem",
+            ha="center", color=INK, fontsize=13.5, fontweight="bold")
+    cards = [
+        (TEAL, "curate", "junk / mislabeled\nruns", "clean labels beat\nmore noisy ones"),
+        (AMBER, "reweight /\nSMOTE", "rare class\nignored",
+         "class weights,\noversample, SMOTE"),
+        (RED, "focal loss", "borderline cases\nmissed", "up-weight the\nhard, low-conf."),
+        (INK_SOFT, "curriculum", "unstable across\neasy/hard", "order easy→hard /\nbalanced→true"),
+    ]
+    w = 2.65
+    gap = 0.3
+    x = 0.5
+    for col, head, situ, body in cards:
+        ax.add_patch(FancyBboxPatch((x, 1.35), w, 2.75,
+                    boxstyle="round,pad=0.02,rounding_size=0.06",
+                    facecolor=WHITE, edgecolor=col, lw=2.4))
+        ax.add_patch(FancyBboxPatch((x, 3.35), w, 0.75,
+                    boxstyle="round,pad=0.02,rounding_size=0.06",
+                    facecolor=col, edgecolor=col, lw=2.4))
+        ax.text(x + w / 2, 3.72, head, ha="center", va="center", color=WHITE,
+                fontsize=12, fontweight="bold")
+        ax.text(x + w / 2, 2.75, "if: " + situ, ha="center", va="center",
+                color=RED, fontsize=10, fontweight="bold", style="italic")
+        ax.text(x + w / 2, 1.9, body, ha="center", va="center", color=INK,
+                fontsize=10.5)
+        x += w + gap
+    ax.add_patch(FancyBboxPatch((0.5, 0.35), 11.4, 0.72,
+                boxstyle="round,pad=0.02,rounding_size=0.06",
+                facecolor=AMBER_SOFT, edgecolor=AMBER, lw=2.2))
+    ax.text(6.2, 0.71,
+            "none of these adds NEW resistant signal — only more real resistant "
+            "spectra does.", ha="center", va="center", color=INK, fontsize=12,
+            fontweight="bold")
     _save(fig, name)
 
 
@@ -4264,56 +4347,17 @@ def distribution_shift_drop(name="fig_shift_drop.png"):
     _save(fig, name)
 
 
-def when_not_deep_learning(name="fig_not_dl.png"):
-    """Three red-flag cards for when NOT to reach for deep learning, plus the
-    one-sentence regulatory reality as a banner (rule 9, no text wall)."""
-    fig, ax = plt.subplots(figsize=(12.0, 4.6))
-    ax.set_xlim(0, 12)
-    ax.set_ylim(0, 5)
-    ax.axis("off")
-    ax.text(6, 4.72, "when NOT deep learning", ha="center", color=RED,
-            fontsize=15, fontweight="bold")
-    cards = [
-        ("small tabular data", "hundreds of rows,\na few analytes",
-         "→ gradient-boosted\ntrees usually win"),
-        ("few or no labels", "supervised DL\nstarves without\nlabeled examples",
-         "→ self-supervised,\nclassic methods,\nor collect more"),
-        ("need full\ninterpretability", "a clinician must\nexplain every call",
-         "→ a simpler,\nauditable model"),
-    ]
-    w = 3.4
-    gap = 0.45
-    x = 0.75
-    for head, body, verdict in cards:
-        ax.add_patch(FancyBboxPatch((x, 1.5), w, 2.7,
-                    boxstyle="round,pad=0.02,rounding_size=0.06",
-                    facecolor=WHITE, edgecolor=RED, lw=2.4))
-        ax.text(x + w / 2, 3.75, head, ha="center", va="center", color=RED,
-                fontsize=12.5, fontweight="bold")
-        ax.text(x + w / 2, 2.95, body, ha="center", va="center", color=INK,
-                fontsize=10.5)
-        ax.text(x + w / 2, 2.0, verdict, ha="center", va="center", color=TEAL,
-                fontsize=10.5, fontweight="bold")
-        x += w + gap
-    ax.add_patch(FancyBboxPatch((0.75, 0.35), 10.5, 0.85,
-                boxstyle="round,pad=0.02,rounding_size=0.06",
-                facecolor=TEAL_SOFT, edgecolor=TEAL, lw=2.2))
-    ax.text(6.0, 0.77,
-            "regulatory reality: ML-based devices face FDA / CLIA scrutiny — "
-            "the validation IS the product.", ha="center", va="center",
-            color=INK, fontsize=12, fontweight="bold")
-    _save(fig, name)
-
-
 def _lecture10_figures():
-    data_representation_chart("ido", "fig_repr_chart.png")
-    confusion_matrix(30, 10, 48, 912, "ido", "fig_confusion_ido.png")
-    confusion_matrix(16, 4, 24, 456, "youdo", "fig_confusion_youdo.png")
+    # Part A -- evaluation under imbalance (I-do 30/11/60/637, you-do 16/4/32/448)
+    confusion_matrix(30, 11, 60, 637, "ido", "fig_confusion_ido.png")
+    confusion_matrix(16, 4, 32, 448, "youdo", "fig_confusion_youdo.png")
     roc_pr_curves()
-    focal_loss_volume()
-    scarce_data_toolkit()
     distribution_shift_drop()
-    when_not_deep_learning()
+    # Part B -- treating imbalance
+    treatment_menu()
+    smote_interpolation("ido", "fig_smote.png")
+    focal_loss_volume()
+    curriculum_learning()
 
 
 def _lecture8_figures():
@@ -6310,18 +6354,19 @@ FUNCS = {
         tokenization_decision("youdo", "fig_tokenization_youdo.png"),
     ),
     "transfer": transfer_learning,
-    # ---- Lecture 10 ----
+    # ---- Lecture 10 (imbalanced data: evaluation + treatment) ----
     "metrics": _lecture10_figures,
-    "repr_chart": lambda: data_representation_chart("ido", "fig_repr_chart.png"),
+    "imbalanced": _lecture10_figures,
     "confusion": lambda: (
-        confusion_matrix(30, 10, 48, 912, "ido", "fig_confusion_ido.png"),
-        confusion_matrix(16, 4, 24, 456, "youdo", "fig_confusion_youdo.png"),
+        confusion_matrix(30, 11, 60, 637, "ido", "fig_confusion_ido.png"),
+        confusion_matrix(16, 4, 32, 448, "youdo", "fig_confusion_youdo.png"),
     ),
     "roc_pr": roc_pr_curves,
     "focal_volume": focal_loss_volume,
-    "scarce_toolkit": scarce_data_toolkit,
+    "treatment_menu": treatment_menu,
+    "smote": lambda: smote_interpolation("ido", "fig_smote.png"),
+    "curriculum": curriculum_learning,
     "shift_drop": distribution_shift_drop,
-    "not_dl": when_not_deep_learning,
     # ---- Lecture 11 ----
     "unsupervised": _lecture11_figures,
     "ae_bottleneck": autoencoder_bottleneck,

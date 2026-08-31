@@ -318,3 +318,33 @@ references (Lecture 10/13, quizzes, worksheet, reading list) are unchanged since
 they follow the Lecture 8 introduction. A fuller Casanovo mini-session remains a
 possible future addition (candidate home: Lecture 8, where the encoder–decoder
 machinery lives).
+
+## 2026-08-31 — Lecture 10 refocused on imbalanced data; worksheet → Quiz 10
+
+Lecture 10 was "Your Data, Your Metrics: Representation, Evaluation, and Trust,"
+which grazed five topics (representation chart, metrics, imbalance, distribution
+shift, when-not-DL) and landed none deeply. Instructor decision: **refocus the
+whole hour on IMBALANCED DATA** — its evaluation and its treatment — done deeply.
+New title: **"No Perfect Data: Evaluation and Treatment."**
+
+- **Part A (measure it):** the accuracy trap (real DRIAMS 697 S / 41 R); confusion
+  matrix by hand → precision (NEW this hour), recall (sensitivity), specificity;
+  why AUROC flatters a rare positive while AUPRC / the PR curve is honest (with
+  the numbers — same operating point on both curves, PR baseline = prevalence);
+  one folded honesty slide on external + temporal validation.
+- **Part B (treat it):** data curation; SMOTE (numeric do-it-together A=(2,6),
+  B=(4,10), λ=0.5→(3,8), with a high-dim non-physical-spectrum caveat); class
+  weights + focal loss (worked: easy p=0.9→FL 0.001, hard p=0.5→FL 0.173, 165× vs
+  plain-CE 6.6×); curriculum learning (intuition); match-the-treatment decide beat
+  + the durable "which adds NEW signal? → none, only more real minority data."
+- **CUT:** the representation decision-chart and the when-NOT-deep-learning content
+  (and their figures fig_repr_chart / fig_not_dl / fig_scarce_toolkit, git-removed).
+
+**Assessment change:** the Architecture Matchmaker WORKSHEET is retired entirely;
+Lecture 10 now has **Quiz 10 (`quiz10_imbalanced_data.tex`)** — a distributed quiz
+filled across the hour (Q1 confusion-matrix rates, Q2 AUROC vs. AUPRC, Q3 treatment
+match + "no new signal," Q4 a SMOTE point), matching the I-do → you-do → quiz spine
+of the other lectures. Quiz-numbering updated: only the Lab slots (3/6/9/12/15) now
+skip a quiz; Lecture 10 joins 1,2,4,5,7,8,11,13,14. Deck renamed
+lecture10_data_metrics.yaml → lecture10_imbalanced_data.yaml (18 → 16 slides).
+Learning_outcomes.md and CLAUDE.md updated accordingly.
