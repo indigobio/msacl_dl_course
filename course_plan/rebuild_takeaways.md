@@ -66,10 +66,11 @@ excludes amber annotation boxes drawn on images (no false positives on the
 approved L1/2/4/5/7 decks). **Every build must end with**
 `python tools/check_pptx_overlap.py <pptx>` and show 0 FAIL.
 
-ROOT CAUSE still open: `tools/spec2pptx.py::slide_image` places the callout at
-`min(y, Inches(6.5))`, so when a figure is tall the callout is clamped ON TOP of
-it instead of below. This produced real collisions on lecture08 slides 6/7/8/11.
-FIX (do at the next safe window, then rebuild --all and re-check): never place a
-callout above the true content bottom returned by `_place_image`; if the callout
-would run off-slide, shrink the image (reduce `img_h`) instead of overlapping.
-Apply the same "callout top >= content bottom" rule to slide_pipeline/grid/bullets.
+ROOT CAUSE FIXED (2026-08-31): `tools/spec2pptx.py::slide_image` used to place
+the callout at `min(y, Inches(6.5))`, clamping it ON TOP of a tall figure. Now
+`slide_image` caps the image height so the whole stack (image + caption + calc +
+callout) fits above the slide bottom, and places the callout at the TRUE content
+bottom `y` (never above it). Tall figures shrink instead of colliding. After the
+fix, `spec2pptx.py --all` + `check_pptx_overlap.py --all` reports 0 FAIL across
+all 7 decks (lecture08 slides 6/7/8/11 and lecture10 slides 3/4 now clean).
+Builds since keep 0 fractional-EMU and non-empty notes.

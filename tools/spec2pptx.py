@@ -337,8 +337,23 @@ def slide_image(slide, prs, s):
     _title(slide, s["title"])
     # img_h (optional) lets a tall/near-square figure use more vertical space;
     # default 3.5in keeps every existing deck (e.g. lecture05) byte-compatible.
-    max_h = Inches(s.get("img_h", 3.5))
-    y = _place_image(slide, s["image"], MARGIN, Inches(2.0), Inches(12.1), max_h, s.get("caption"), s.get("boxes"))
+    # Cap the image so the whole stack (image + caption + calc + callout) fits
+    # ABOVE the slide bottom, so the callout can never be clamped on top of a
+    # tall figure (the recurring "boxes overlapping" bug). See
+    # tools/check_pptx_overlap.py.
+    top = Inches(2.0)
+    # Space that must remain below the image bottom (caption is added inside
+    # _place_image, so reserve it here when a caption is present).
+    reserve = Inches(0.1)
+    if s.get("caption"):
+        reserve += Inches(0.55)
+    if s.get("calc"):
+        reserve += Inches(0.55)
+    if s.get("callout"):
+        reserve += Inches(1.0) + Inches(0.15)  # callout box + bottom margin
+    avail_h = int(Inches(7.5)) - int(top) - int(reserve)
+    max_h = min(int(Inches(s.get("img_h", 3.5))), avail_h)
+    y = _place_image(slide, s["image"], MARGIN, top, Inches(12.1), max_h, s.get("caption"), s.get("boxes"))
     y += Inches(0.1)
     if s.get("calc"):
         _, tf = _text(slide, MARGIN, y, Inches(12.1), Inches(0.5))
@@ -348,7 +363,8 @@ def slide_image(slide, prs, s):
         _set(r, 15, INK_SOFT, font=MONO)
         y += Inches(0.55)
     if s.get("callout"):
-        _callout(slide, s["callout"], min(y, Inches(6.5)))
+        # Place the callout at the true content bottom, never above it.
+        _callout(slide, s["callout"], int(y))
 
 
 def slide_pipeline(slide, prs, s):
