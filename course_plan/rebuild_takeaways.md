@@ -56,3 +56,20 @@ open decisions. Keep it terse.
 - **Sourcing:** synthetic course-palette panels are a clean fallback when a real
   image is language/rights-encumbered. Wikimedia license via
   `action=query&prop=imageinfo&iiprop=extmetadata` with a descriptive User-Agent.
+
+## Layout sanity check (2026-08-30) — overlaps
+
+`tools/check_pptx_overlap.py` opens each built .pptx and flags (A) any shape
+running past the slide bottom and (B) the callout box colliding with the
+figure/table/caption above it — the recurring "boxes overlapping" bug. It
+excludes amber annotation boxes drawn on images (no false positives on the
+approved L1/2/4/5/7 decks). **Every build must end with**
+`python tools/check_pptx_overlap.py <pptx>` and show 0 FAIL.
+
+ROOT CAUSE still open: `tools/spec2pptx.py::slide_image` places the callout at
+`min(y, Inches(6.5))`, so when a figure is tall the callout is clamped ON TOP of
+it instead of below. This produced real collisions on lecture08 slides 6/7/8/11.
+FIX (do at the next safe window, then rebuild --all and re-check): never place a
+callout above the true content bottom returned by `_place_image`; if the callout
+would run off-slide, shrink the image (reduce `img_h`) instead of overlapping.
+Apply the same "callout top >= content bottom" rule to slide_pipeline/grid/bullets.

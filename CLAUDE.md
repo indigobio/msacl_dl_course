@@ -134,6 +134,7 @@ tools/                    Build scripts (see Toolchain)
 ```
 python tools/strip_solutions.py --all      # regenerate labs/student/ from labs/solutions/
 python tools/spec2pptx.py --all            # regenerate slides/pptx/ from slides/spec/*.yaml
+python tools/check_pptx_overlap.py --all   # sanity-check decks for box overlaps / off-slide content
 python tools/make_quiz_pdf.py --all        # regenerate quizzes/pdf/ from quizzes/src/
 pip install -r tools/requirements.txt      # one-time setup
 ```
