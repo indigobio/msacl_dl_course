@@ -100,7 +100,30 @@ in Phase 2 before a lab is built on it.
 - Fallback if 5-class ~65% accuracy demotivates in dry runs:
   `armanc/pubmed-rct20k` (sentence-role classification, `max_length=64`, ~4×
   faster, ~80%+ accuracy; license unspecified).
-- Used in: lab03.
+- **Built & run-verified (2026-08-30):** `labs/solutions/lab03_finetuning.ipynb`
+  authored to Colab/T4 sizes (4,000 train / 1,000 eval, `max_length=256`, 3 epochs,
+  `fp16` auto-on with CUDA). Three blanks (attach head `num_labels=5`; freeze
+  `model.distilbert.parameters()`; `FINETUNE_LR = 2e-5`); all `assert`s are
+  structural (logits `[batch,5]`, labels 0..4, frozen-run trainable count == 594,437
+  head params, from-scratch embeddings ≠ pretrained, three-result comparison) so a
+  reduced smoke run still passes without asserting accuracy magnitudes. Verified via
+  a shrunk CPU copy (`/tmp/lab03_smoke.ipynb`: 200/100, 1 epoch, peptides 600): all 13
+  code cells ran with saved execution counts + outputs, 0 error outputs, every assert
+  passed — the frozen-run trainable count printed exactly 594,437 (`jupyter nbconvert
+  --to notebook --execute --output /tmp/lab03_smoke.ipynb`, exit 0).
+  Verified in transformers 5.x: `TrainingArguments` uses `eval_strategy` (not
+  `evaluation_strategy`); metrics via `sklearn.metrics.accuracy_score` (the
+  `evaluate` library is not required).
+
+#### Synthetic peptide set (Lab 3 ESM-2 bonus) — SYNTHETIC, generated in-notebook
+- Source: **generated deterministically inside the notebook** (`np.random.default_rng(0)`);
+  no download, no external data, no license constraints — clean to redistribute.
+- Task: binary — a peptide is **class 1 ("cationic", AMP-like)** iff net charge
+  `(#K + #R) − (#D + #E) ≥ 3`, else class 0. Random peptides over the 20 standard
+  amino acids, length 12–25; drawn until **class-balanced** at `N_PEPTIDES` (3,000
+  full / 600 smoke, 50/50). Demo-only, not graded; fine-tunes `facebook/esm2_t6_8M_UR50D`
+  (8M params, MIT) in ~30 s to show the *same recipe, different alphabet*.
+- Used in: lab03 (bonus cell).
 
 ### PeakOnly annotated ROIs — chromatographic peak QC (Lecture 5 segment, Lab 5 Track B)
 - Source: Melnikov et al., *Anal Chem* 2020 (peakonly). Annotated data hosted on
