@@ -5973,6 +5973,9 @@ _REACT_YOUDO = [
     ("mean = 1,850 · run B-04 = 420", None),
     ("B-04 (420) is far below the mean of 1,850, so that run underperformed.", "R"),
     ('write_summary(flag="B-04")', "A"),
+    ("summary drafted", None),
+    ('Answer: "B-04 is low (420 vs mean 1,850). The cause is a clogged '
+     'emitter — I recommend replacing it."', "ANS"),
 ]
 
 
@@ -6035,14 +6038,24 @@ def react_transcript(mode="ido", name="fig_react_transcript_ido.png"):
                     family=fam)
     else:
         ax.text(6.5, n + 0.9,
-                "your turn — label each numbered step:  R (reason)  or  A (act)?",
-                ha="center", color=ROI_INK, fontsize=13.5, fontweight="bold")
+                "your turn — (a) label each step  R (reason)  or  A (act)   ·   "
+                "(b) spot the claim no tool showed",
+                ha="center", color=ROI_INK, fontsize=12.5, fontweight="bold")
         step = 0
         for i, (text, lab) in enumerate(rows):
             y = n - i
             if lab is None:  # observation context, not a numbered step
                 ax.text(3.0, y, "→ " + text, ha="left", va="center",
                         color=MUTED, fontsize=10, style="italic")
+                continue
+            if lab == "ANS":  # final answer — hides one unsupported claim
+                ax.add_patch(FancyBboxPatch((0.4, y - 0.34), 12.3, 0.68,
+                            boxstyle="round,pad=0.02,rounding_size=0.06",
+                            facecolor="#F7E4E3", edgecolor=RED, lw=1.9))
+                ax.text(0.62, y, "ANSWER", ha="left", va="center", color=RED,
+                        fontsize=8.5, fontweight="bold")
+                ax.text(2.15, y, text, ha="left", va="center", color=INK,
+                        fontsize=10.2)
                 continue
             step += 1
             ax.add_patch(FancyBboxPatch((0.4, y - 0.32), 0.6, 0.64,
@@ -6059,6 +6072,11 @@ def react_transcript(mode="ido", name="fig_react_transcript_ido.png"):
                         facecolor=AMBER_SOFT, edgecolor=AMBER, lw=1.6))
             ax.text(12.2, y, "R / A", ha="center", va="center", color=ROI_INK,
                     fontsize=10, fontweight="bold")
+        ax.text(6.5, 0.28,
+                "(b) the ANSWER states a CAUSE no tool ever established — which, "
+                "and where should it have stopped for a human?",
+                ha="center", va="center", color=RED, fontsize=9.5,
+                style="italic")
     _save(fig, name)
 
 
@@ -6292,6 +6310,17 @@ _GUARDRAILS = [
      "record every reason→act step so the run is\nauditable and reproducible"),
 ]
 
+# you-do = Quiz 14 Q2: NEW, disguised failures (different wording from the I-do)
+# so the room must reason from what each guardrail does, not pattern-match.
+_GUARDRAILS_YOUDO = [
+    ("the agent's draft cites a reference range\nthat appears in no SOP",
+     "HUMAN REVIEW", ""),
+    ("told to “tidy old files,” it overwrites\nlast month's raw .raw files",
+     "RESTRICTED TOOLS", ""),
+    ("a released result was wrong and the lab can't\nreconstruct which files it used",
+     "LOGGING", ""),
+]
+
 
 def guardrails(mode="ido", name="fig_guardrails_ido.png"):
     """Three failure modes, each with the guardrail that prevents it. mode='ido'
@@ -6314,7 +6343,8 @@ def guardrails(mode="ido", name="fig_guardrails_ido.png"):
                 fontsize=11)
     ys = [3.9, 2.55, 1.2]
     cols = [RED, AMBER, TEAL]
-    for (fail, guard, does), y, col in zip(_GUARDRAILS, ys, cols):
+    _rows = _GUARDRAILS if mode == "ido" else _GUARDRAILS_YOUDO
+    for (fail, guard, does), y, col in zip(_rows, ys, cols):
         ax.add_patch(FancyBboxPatch((0.4, y - 0.55), 4.0, 1.1,
                     boxstyle="round,pad=0.02,rounding_size=0.05",
                     facecolor="#F7E4E3", edgecolor=RED, lw=1.8))
@@ -6358,11 +6388,11 @@ def human_review(name="fig_human_review.png"):
             "your turn — which steps must a qualified human review & sign?",
             ha="center", color=ROI_INK, fontsize=13.5, fontweight="bold")
     steps = [
-        ("(a)", "merge / reformat\nthe QC tables", "agent"),
-        ("(b)", "draft the QC\nsummary text", "agent"),
-        ("(c)", "release the patient\nreport / sign results", "human"),
-        ("(d)", "final resistance\n(R/S) call in chart", "human"),
-        ("(e)", "summarise 3\nmethod papers", "agent"),
+        ("(a)", "HOLD a suspect run\nfor human review", "agent"),
+        ("(b)", "AUTO-RELEASE runs\nit judges in-range", "human"),
+        ("(c)", "file the final R/S\ncall in the report", "human"),
+        ("(d)", "reformat QC table\nto house template", "agent"),
+        ("(e)", "draft a plain note\nexplaining a result", "agent"),
     ]
     w = 2.2
     gap = 0.35

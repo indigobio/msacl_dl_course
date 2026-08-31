@@ -60,7 +60,7 @@
 
 \begin{center}
 {\Large \textbf{Quiz 14 --- Agentic AI, Demo-Driven}}\\[2pt]
-{\normalsize Label reason vs act on a transcript, match a guardrail to a failure, and decide what stays human-reviewed}
+{\normalsize Label reason vs act (and spot a fabricated claim), match a guardrail to a new failure, and decide what stays human-reviewed}
 \end{center}
 
 \vspace{-2pt}
@@ -81,8 +81,8 @@ Observation $\rightarrow \dots \rightarrow$ Answer). A step is \textbf{R} (\emph
 \textbf{Thought} --- the agent planning or interpreting --- and \textbf{A} (\emph{act}) if it is an
 \textbf{Action} --- the agent calling a tool (read, compute, write). The grey observation lines are the
 tool's replies, not steps. Below is one transcript (an assistant asked to summarise this week's
-peptide-ID counts and note any underperforming run). Write \textbf{R} or \textbf{A} beside each
-numbered step.}
+peptide-ID counts and note any underperforming run). \textbf{(a)} Write \textbf{R} or \textbf{A} beside
+each numbered step.}
 
 \vspace{5pt}
 \begin{center}
@@ -99,31 +99,44 @@ numbered step.}
 \textbf{5.} & ``B-04 (420) is far below the mean of 1,850, so that run underperformed.''
             & \rb{R}{1.4cm} \\
 \textbf{6.} & \texttt{write\_summary(flag="B-04")} & \rb{A}{1.4cm} \\
+\multicolumn{2}{@{}l}{\hspace{1.1em}\textcolor{muted}{\itshape $\rightarrow$ summary drafted}} & \\
+\multicolumn{3}{@{}p{0.98\textwidth}}{\textcolor{redd}{\textbf{Answer:}}\ ``B-04 is low (420 vs mean
+1{,}850). The cause is a \textbf{clogged emitter} --- I recommend replacing it.''} \\
 \end{tabular}
 \end{center}
 
-\keybox{\textbf{1 = R, 2 = A, 3 = R, 4 = A, 5 = R, 6 = A.}\; Odd steps are \emph{Thoughts} --- the agent
-planning (1, 3) or interpreting a result (5) --- so they are \textbf{reason}. Even steps each call a tool
---- reading the file (2), computing the mean (4), writing the summary (6) --- so they are \textbf{act}.
-The two grey lines are \emph{observations} (what a tool returned), not agent steps. The tell: a step that
-only \emph{thinks/plans/interprets} is reason; a step that \emph{does something with a tool} is act.}
+\textbf{(b)} The final \textbf{Answer} states one thing that \emph{no observation ever showed}. Which
+claim, and where should the agent have stopped for a human?
+
+\work{0.9cm}
+\ifsolution\else\blk{\linewidth}\fi
+
+\keybox{\textbf{(a) 1 = R, 2 = A, 3 = R, 4 = A, 5 = R, 6 = A.}\; Odd steps are \emph{Thoughts} --- the
+agent planning (1, 3) or interpreting a result (5) --- so they are \textbf{reason}. Even steps each call a
+tool --- reading the file (2), computing the mean (4), writing the summary (6) --- so they are
+\textbf{act}. The grey lines are \emph{observations} (what a tool returned), not agent steps.
+\textbf{(b)} The claim ``\textbf{the cause is a clogged emitter}'' is \emph{unsupported} --- no tool ever
+diagnosed a \emph{cause}; the observations show only that B-04's count is low, not \emph{why}. The agent
+should have STOPPED after flagging the low run (step 6) and left any root-cause claim (and any repair) to a
+human --- asserting an unverified cause is a hallucination that must not drive an action.}
 
 \vspace{2pt}\hrule\vspace{5pt}
 
 % =========================== Q2 ===========================
-\textbf{2. Which guardrail for which failure?}\; {\small Match each failure mode to the ONE guardrail
-that prevents it (each used once), using the word bank.}
+\textbf{2. Which guardrail for which failure?}\; {\small Each scenario below is a \textbf{new} failure ---
+the wording won't match the slide line-for-line, so reason from what each guardrail \emph{does}. Match each
+to the ONE guardrail that prevents it (each used once).}
 
 \vspace{4pt}
-\textbf{(a)} The agent writes a confident summary containing a \textbf{fabricated number or citation}.
+\textbf{(a)} The agent's draft cites a \textbf{reference range that appears in no SOP}.
 \hfill $\rightarrow$\;\rb{Human review}{4.6cm}
 
 \vspace{3pt}
-\textbf{(b)} The agent \textbf{deletes or overwrites the raw data file} (or orders reagents) on its own.
+\textbf{(b)} Told to ``tidy old files,'' the agent \textbf{overwrites last month's raw \texttt{.raw} files}.
 \hfill $\rightarrow$\;\rb{Restricted tools}{4.6cm}
 
 \vspace{3pt}
-\textbf{(c)} A wrong result ships and \textbf{no one can tell what the agent did} or reproduce it.
+\textbf{(c)} A released result was wrong and the lab \textbf{can't reconstruct which files the agent used}.
 \hfill $\rightarrow$\;\rb{Logging}{4.6cm}
 
 \vspace{4pt}
@@ -131,12 +144,22 @@ that prevents it (each used once), using the word bank.}
 {\small \textbf{Word bank:}\;\; Human review \;$\cdot$\; Restricted tools \;$\cdot$\; Logging}
 \end{center}
 
-\keybox{(a) \textbf{Human review} --- a qualified person verifies every number and flag before anything
-is released, so a fabricated value never reaches a report. (b) \textbf{Restricted tools} --- give the
-agent read-only access and a limited toolset; no write, delete, or purchase without explicit approval, so
-it \emph{cannot} take a destructive or irreversible action. (c) \textbf{Logging} --- record every
-reason$\rightarrow$act step so the run is auditable and reproducible, so you can see exactly what happened
-and why. Each guardrail is used once.}
+\vspace{2pt}
+\textbf{(d)} \emph{Human review} \textbf{catches} the fabricated citation in (a) --- but only if the
+reviewer checks. Name \textbf{one} thing that would make such fabrications \textbf{rarer in the first
+place}.
+
+\work{0.9cm}
+\ifsolution\else\blk{\linewidth}\fi
+
+\keybox{(a) \textbf{Human review} --- a person verifies every number/citation against a source before
+release. (b) \textbf{Restricted tools} --- read-only access, no write/delete/purchase without approval, so
+it \emph{cannot} take a destructive action (the disguised version of ``deletes raw data''). (c)
+\textbf{Logging} --- every reason$\rightarrow$act step recorded, so the run is auditable and reproducible.
+Each used once. \textbf{(d)} Human review is a \emph{catch-after} control; to make fabrications rarer
+\emph{up front}, \textbf{ground the agent in real retrieved sources (RAG)} and/or \textbf{restrict it to a
+vetted reference database} so it can only cite documents that actually exist --- prevention layered on top
+of detection.}
 
 \vspace{2pt}\hrule\vspace{5pt}
 
@@ -149,16 +172,16 @@ patient.}}
 \begin{center}
 \renewcommand{\arraystretch}{1.3}
 \begin{tabular}{@{}ll@{}}
-\textbf{(a)} merge / reformat the QC tables &
-\textbf{(b)} draft the QC summary text \\
-\textbf{(c)} release the patient report / sign out results &
-\textbf{(d)} the final resistance (R/S) call in the chart \\
-\textbf{(e)} summarise 3 method papers & \\
+\textbf{(a)} \textbf{hold} a suspect run for a human to review &
+\textbf{(b)} \textbf{auto-release} runs it judges ``in range'' \\
+\textbf{(c)} file the final resistance (R/S) call in the report &
+\textbf{(d)} reformat the QC table to the house template \\
+\textbf{(e)} draft a plain-language note explaining a result & \\
 \end{tabular}
 \end{center}
 
 \vspace{3pt}
-Circle all that must stay human-reviewed:\; \rb{(c) and (d)}{5.5cm}
+Circle all that must stay human-reviewed:\; \rb{(b) and (c)}{5.5cm}
 
 \vspace{3pt}
 In one sentence, what is the rule of thumb?
@@ -166,14 +189,15 @@ In one sentence, what is the rule of thumb?
 \work{1.0cm}
 \ifsolution\else\blk{\linewidth}\fi
 
-\keybox{\textbf{(c) and (d)} must stay human-reviewed and signed. Both become a \emph{released clinical
-result} or a \emph{patient-affecting decision} --- releasing/signing a report (c) and the final
-resistance (R/S) call (d) --- so a qualified person must verify and sign no matter how good the agent's
-draft. Steps (a) merge/reformat tables, (b) draft the summary text, and (e) summarise papers are fine for
-an agent to \emph{do} as a helper (still spot-checked, logged, and citations verified), because they do
-not directly affect a patient without a human. \textbf{Rule of thumb:} anything that becomes a released
-result or a patient-affecting decision needs the human gate --- the agent may draft, but a person reviews
-and signs.}
+\keybox{\textbf{(b) and (c)} must stay human-reviewed and signed. (b) auto-\emph{releasing} a result and
+(c) the final resistance (R/S) call each become a \emph{released clinical result} or a
+\emph{patient-affecting decision}, so a qualified person must verify and sign. Note the near-miss with (a):
+\textbf{holding / flagging} a suspect run for review is \emph{conservative} --- it only routes work to a
+human and releases nothing --- so an agent may do it freely, unlike auto-releasing in (b). Steps (d)
+reformatting tables and (e) drafting an explanatory note are agent-friendly helpers (still spot-checked and
+logged), because they don't release a result or decide anything about a patient. \textbf{Rule of thumb:}
+anything that \emph{releases a result} or makes a \emph{patient-affecting decision} needs the human gate
+--- flagging, drafting, and reformatting do not.}
 
 \vspace{4pt}\hrule\vspace{3pt}
 {\small\itshape \ifsolution Answer key.\else Keep this sheet --- next is the Lab 5 capstone: pick a track,

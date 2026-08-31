@@ -100,27 +100,32 @@ slides:
 
   - type: image
     eyebrow: "Chatbot → agent · 3 of 3 · your turn (you-do = Q1)"
-    title: "Your turn — label each step: reason or act?"
+    title: "Your turn — label the steps, then spot the claim no tool showed"
     image: img/fig_react_transcript_youdo.png
     img_h: 5.0
-    callout: {kind: check, text: "Your turn → Quiz 14, Q1. A new transcript (same ReAct shape). Label each numbered step R (reason = a Thought) or A (act = calling a tool). The observations (grey) are given context, not steps. Worked answer in the notes."}
+    callout: {kind: check, text: "Your turn → Quiz 14, Q1. A new transcript (same ReAct shape). (a) Label each numbered step R (reason = a Thought) or A (act = a tool call); the grey observations are context, not steps. (b) The final ANSWER states one thing NO tool ever showed — spot it, and say where the agent should have stopped for a human. Worked answer in the notes."}
     notes: >
-      YOU-DO = Quiz 14 Q1 (label reason vs act on a transcript — the hour's spine,
-      assessing the ReAct outcome). Same ReAct shape, a different task (summarise
-      this week's peptide-ID counts and note any underperforming run) and
-      different numbers, so it's transfer not recall. The transcript is reproduced
-      verbatim on the Quiz 14 sheet, so the room answers straight off it. The
-      correct labels, fixed by the ReAct definition on the previous slide:
-      Step 1 (plan: load results.csv and see its columns) = REASON;
+      YOU-DO = Quiz 14 Q1 (label reason vs act on a transcript AND diagnose a
+      fabricated claim — the hour's spine, now with a hallucination-spotting twist
+      that ties the ReAct loop to the guardrails to come). Same ReAct shape, a
+      different task (summarise this week's peptide-ID counts and note any
+      underperforming run) and different numbers, reproduced verbatim on the Quiz
+      14 sheet. (a) Labels, fixed by the ReAct definition on the previous slide:
+      Step 1 (plan: load results.csv, see its columns) = REASON;
       Step 2 (read_csv("results.csv")) = ACT;
       Step 3 (plan: compute the average to see which runs fall below) = REASON;
       Step 4 (compute the mean of peptide_ids) = ACT;
-      Step 5 (interpret: B-04 at 420 is far below the mean of 1,850 → underperformed) = REASON;
-      Step 6 (write_summary(flag="B-04")) = ACT.
-      So: 1 R, 2 A, 3 R, 4 A, 5 R, 6 A — reasoning/interpreting is reason; every
-      step that calls a tool (read, compute, write) is act; the grey lines are
-      observations, not steps. Take a couple of labels from the floor, confirm
-      against the pattern, then have the room fill Q1.
+      Step 5 (interpret: B-04 at 420 ≪ mean 1,850 → underperformed) = REASON;
+      Step 6 (write_summary(flag="B-04")) = ACT. So: 1 R, 2 A, 3 R, 4 A, 5 R, 6 A —
+      interpreting/planning is reason; every step that calls a tool is act; the
+      grey lines are observations. (b) The ANSWER claims "the cause is a clogged
+      emitter" — that is UNSUPPORTED: no tool ever diagnosed a cause; the
+      observations show only that B-04's count is low, not WHY. The agent should
+      have stopped after flagging the low run (step 6) and left any root-cause
+      claim — and any repair action — to a human; asserting an unverified cause is
+      exactly the hallucination the next section's guardrails exist to stop. Take
+      a few labels and the spotted claim from the floor, then have the room fill
+      Q1.
 
   # ============ PART 2 · Follow-along on your own bot ============
   - type: image
@@ -264,46 +269,56 @@ slides:
       access and a limited toolset; no write, delete, or purchase without explicit
       approval. FAILURE 3: a wrong result ships and no one can tell what the agent
       did or reproduce it → GUARDRAIL: LOGGING — record every reason→act step so
-      the run is auditable and reproducible. Say the pairing pattern aloud, then
-      the room matches them itself next slide (Quiz 14 Q2).
+      the run is auditable and reproducible. Say the pairing PATTERN aloud (what
+      each guardrail is FOR), because next slide the room matches three NEW,
+      differently-worded failures — reasoning from purpose, not copying this chart
+      (Quiz 14 Q2).
 
   - type: image
     eyebrow: "Guardrails · your turn (you-do = Q2)"
     title: "Your turn — which guardrail for which failure?"
     image: img/fig_guardrails_youdo.png
     img_h: 4.6
-    callout: {kind: check, text: "Your turn → Quiz 14, Q2. Match each failure mode to the ONE guardrail that prevents it, using the word bank: HUMAN REVIEW · RESTRICTED TOOLS · LOGGING. Worked answer in the notes."}
+    callout: {kind: check, text: "Your turn → Quiz 14, Q2. Three NEW failures — different wording from the chart above. Match each to the ONE guardrail that prevents it (word bank: HUMAN REVIEW · RESTRICTED TOOLS · LOGGING). Then Q2(d): human review CATCHES a fabricated citation — what would make such fabrications RARER in the first place? Worked answer in the notes."}
     notes: >
-      YOU-DO = Quiz 14 Q2 (match guardrail to failure; assesses the guardrails
-      outcome). Answers, identical to the Quiz 14 Q2 key and straight off the
-      previous slide: (1) fabricated number/citation in a summary → HUMAN REVIEW
-      (a person verifies every number/flag before release); (2) the agent
-      deletes/overwrites raw data or orders reagents on its own → RESTRICTED TOOLS
-      (read-only; no write/delete/purchase without approval); (3) a wrong result
-      ships and no one can tell what the agent did or reproduce it → LOGGING
-      (record every reason→act step; auditable, reproducible). Each guardrail used
-      once. Take one match from the floor, confirm, then have the room fill Q2.
+      YOU-DO = Quiz 14 Q2 (now a TRANSFER: three disguised failures the room must
+      reason about, not the three lines from the I-do chart). Answers: (a) the
+      draft cites a reference range in no SOP → HUMAN REVIEW (a person verifies
+      every number/citation against a source before release); (b) told to "tidy
+      old files," it overwrites last month's .raw files → RESTRICTED TOOLS
+      (read-only; no write/delete without approval — the destructive-action
+      failure in disguise); (c) a wrong result shipped and the lab can't
+      reconstruct which files it used → LOGGING (every reason→act step recorded,
+      auditable). Each guardrail once. Q2(d), the catch-vs-prevent twist: human
+      review is a CATCH-AFTER control (works only if the reviewer checks); to make
+      fabrications rarer UP FRONT, ground the agent in real retrieved sources
+      (RAG, Lecture 13) and/or restrict it to a vetted reference database so it
+      can only cite documents that exist — prevention layered on detection. Take
+      one match and one prevention idea from the floor, then have the room fill
+      Q2.
 
   - type: image
     eyebrow: "Clinical review · your turn (you-do = Q3)"
     title: "Your turn — what must stay human-reviewed?"
     image: img/fig_human_review.png
     img_h: 4.6
-    callout: {kind: check, text: "Your turn → Quiz 14, Q3. In a clinical workflow, which of these steps must a qualified human review and sign before it reaches a patient? (a) merge/reformat QC tables (b) draft the QC summary (c) release the patient report (d) the final R/S call (e) summarise 3 papers. Worked answer in the notes."}
+    callout: {kind: check, text: "Your turn → Quiz 14, Q3. Five steps an agent could help with — some look alike but differ. Circle the ones a qualified human must review and sign before they affect a patient: (a) HOLD a suspect run for review (b) AUTO-RELEASE runs it judges in-range (c) file the final R/S call (d) reformat the QC table (e) draft a note explaining a result. Then state the rule you used. Worked answer in the notes."}
     notes: >
-      YOU-DO = Quiz 14 Q3 (what must stay human-reviewed in a clinical workflow;
-      assesses the guardrail/where-agents-fit outcome). Answer (identical to the
-      Quiz 14 Q3 key): steps (c) releasing the patient report / signing results
-      and (d) the final resistance (R/S) call MUST stay human-reviewed and signed
-      — they become a released clinical result or a patient-affecting decision, so
-      a qualified person must verify and sign, no matter how good the agent's
-      draft. Steps (a) merge/reformat QC tables, (b) draft the QC summary text,
-      and (e) summarise method papers are fine for an agent to DO as a helper —
-      still checked (spot-check + log; verify citations; verify the draft before
-      release), but they don't directly affect a patient without a human. The rule
-      of thumb: anything that becomes a released result or a patient-affecting
-      decision needs the human gate. Take one answer, then have the room fill Q3 —
-      that's all three Quiz 14 items worked live.
+      YOU-DO = Quiz 14 Q3 (decide + articulate the rule, on FRESH scenarios — with
+      a deliberate near-miss pair). Answer (identical to the Quiz 14 Q3 key):
+      (b) AUTO-RELEASING results and (c) the final resistance (R/S) call must stay
+      human-reviewed and signed — each becomes a released clinical result or a
+      patient-affecting decision. The key discrimination is (a) vs (b): (a)
+      HOLDING/flagging a suspect run for review is CONSERVATIVE — it only routes
+      work to a human, never releases anything — so an agent may do it freely,
+      whereas (b) auto-releasing decides a patient result and needs the gate. (d)
+      reformatting the QC table and (e) drafting an explanatory note are
+      agent-friendly helpers (still spot-checked and logged), because they don't
+      release a result or decide anything about a patient. Rule of thumb: anything
+      that RELEASES a result or makes a PATIENT-AFFECTING decision needs the human
+      gate — flagging, drafting, and reformatting do not. Take one answer plus the
+      rule, then have the room fill Q3 — that's all three Quiz 14 items worked
+      live.
 
   - type: bullets
     eyebrow: "Where agents fit · 💬 discuss"
