@@ -2568,6 +2568,44 @@ def peak_detection(reveal=True, name="fig_peak_detection.png"):
     _save(fig, name)
 
 
+def peak_detection_decide(name="fig_peak_detection_youdo.png"):
+    """You-do = Quiz 5 Q4 (DECIDE, not recall): the detector boxes two
+    candidates with DIFFERENT scores -- a tall sharp peak at 0.95 and a small
+    shoulder at 0.30. The room decides which to integrate and what a 0.5 vs 0.2
+    confidence threshold keeps. The scores are the GIVEN data for the decision,
+    so both are shown; the thinking is the threshold call, not restating a map."""
+    t = np.linspace(0, 10, 800)
+    peaks = [(3.0, 1.0, 0.055), (6.7, 0.26, 0.16)]
+    y = 0.04 + 0.015 * np.sin(t * 1.1)
+    for mu, a, w in peaks:
+        y = y + a * np.exp(-((t - mu) ** 2) / (2 * w))
+    fig, ax = plt.subplots(figsize=(10.5, 4.3))
+    ax.plot(t, y, color=INK, lw=2.2, zorder=3)
+    ax.fill_between(t, y, color=TEAL, alpha=0.08)
+    # (x0, x1, box_top, score, box_color)
+    boxes = [(2.35, 3.65, 1.12, "0.95", TEAL),
+             (5.95, 7.45, 0.42, "0.30", RED)]
+    for x0, x1, top, score, col in boxes:
+        ax.add_patch(FancyBboxPatch((x0, 0.0), x1 - x0, top + 0.08,
+                    boxstyle="round,pad=0.005,rounding_size=0.02", fill=False,
+                    edgecolor=col, lw=3.0, zorder=5))
+        ax.text((x0 + x1) / 2, top + 0.2, f"score = {score}", ha="center",
+                color=col, fontsize=13, fontweight="bold", family="monospace")
+    ax.set_xlim(0, 10)
+    ax.set_ylim(0, 1.45)
+    ax.set_xlabel("retention time  \u2192", fontsize=13)
+    ax.set_yticks([])
+    ax.set_xticks([])
+    for spn in ("top", "right"):
+        ax.spines[spn].set_visible(False)
+    ax.text(0.5, -0.22,
+            "each box = its RT window \u00b7 which do you integrate? which survives a 0.5 threshold? a 0.2 threshold?",
+            transform=ax.transAxes, ha="center", color=INK_SOFT, fontsize=12,
+            style="italic")
+    fig.subplots_adjust(bottom=0.2)
+    _save(fig, name)
+
+
 # ---- runner -----------------------------------------------------------------
 def build_all():
     print("figures:")
@@ -2736,7 +2774,7 @@ def _lecture5_figures():
     conv1d_code()
     detection_grid()
     peak_detection(reveal=True, name="fig_peak_detection.png")
-    peak_detection(reveal=False, name="fig_peak_detection_youdo.png")
+    peak_detection_decide(name="fig_peak_detection_youdo.png")
 
 
 # ============================================================================
@@ -5940,7 +5978,7 @@ FUNCS = {
     "detection": lambda: (
         detection_grid(),
         peak_detection(reveal=True, name="fig_peak_detection.png"),
-        peak_detection(reveal=False, name="fig_peak_detection_youdo.png"),
+        peak_detection_decide(name="fig_peak_detection_youdo.png"),
     ),
     # ---- Lecture 7 ----
     "attention": _lecture7_figures,

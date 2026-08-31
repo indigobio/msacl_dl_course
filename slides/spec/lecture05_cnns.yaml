@@ -476,20 +476,23 @@ slides:
 
   - type: image
     eyebrow: "Detection · your turn (you-do = Q4)"
-    title: "Name the box and the score"
+    title: "Read the detector's calls — which do you trust?"
     image: img/fig_peak_detection_youdo.png
     img_h: 3.9
-    callout: {kind: check, text: "Your turn → Quiz 5, Q4. For a CNN doing peak detection on a chromatogram: what does the bounding BOX correspond to, and what does the confidence SCORE mean? One line each. Worked answer in the notes."}
+    callout: {kind: check, text: "Your turn → Quiz 5, Q4. The detector boxed two candidates: a sharp peak at score 0.95 and a small shoulder at 0.30. (a) Which do you integrate, and what does the 0.30 tell you? (b) Which peaks survive a 0.5 threshold? A 0.2 threshold? (c) What does lowering the threshold trade off? Worked answer in the notes."}
     notes: >
-      YOU-DO = Quiz 5 Q4 (the same reframe, now stated by the room; it assesses
-      the detection outcome). Answer: the BOX is the peak's retention-time (or
-      m/z) window — the integration bounds marking where the peak starts and ends
-      along the axis; the SCORE is the model's confidence, from 0 to 1, that the
-      boxed region is a genuine peak rather than baseline noise or an artifact
-      (i.e. how sure it is the object is really there / really a good peak). Any
-      answer capturing "box = the RT/m/z integration window bounding the peak"
-      and "score = confidence it's a real peak" earns full credit. Matches the
-      Quiz 5 key. Take one answer from the floor, then have them fill Q4.
+      YOU-DO = Quiz 5 Q4 — a DECIDE beat, not "restate the mapping." The scores
+      are the given data; each box = that peak's RT integration window (stated on
+      the I-do slide before this). Answers: (a) integrate the 0.95 box — a
+      confident, genuine peak; the 0.30 box is a low-confidence shoulder/noise
+      the model is unsure is real, so flag-for-review or drop it. (b) threshold
+      0.5 keeps only the 0.95 peak (0.30 < 0.5 is dropped) → 1 clean peak;
+      threshold 0.2 keeps BOTH (0.30 ≥ 0.2) → the dubious bump gets integrated
+      too. (c) lowering the threshold catches more real peaks (higher
+      sensitivity/recall) but admits more false ones (lower specificity/
+      precision) — the exact threshold trade-off from Lectures 4 and 10, and the
+      SCORE is the dial that lets you choose. Have a pair make the 0.5-vs-0.2
+      call before revealing, then fill Q4.
 
   - type: pipeline
     eyebrow: "Detection · a real system"

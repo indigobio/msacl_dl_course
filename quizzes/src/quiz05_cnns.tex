@@ -189,27 +189,36 @@ and keep the edges in play.}
 \vspace{2pt}\hrule\vspace{5pt}
 
 % =========================== Q4 ===========================
-\textbf{4. Peak picking as object detection.}\; {\small A CNN detector run over a chromatogram draws a
-\emph{bounding box} with a \emph{confidence score} around each object it finds --- exactly as it would
-around a cell in a photo.}
+\textbf{4. Peak picking as object detection --- read the detector's output.}\; {\small A CNN detector
+runs over a chromatogram and boxes two candidates (each box = that peak's retention-time window): a
+\emph{tall sharp peak} with confidence \textbf{0.95}, and a \emph{small shoulder bump} with confidence
+\textbf{0.30}.}
 
 \vspace{3pt}
-\textbf{(a)} For a peak on a chromatogram, what does the bounding \emph{box} correspond to?
+\textbf{(a)} Which box would you integrate as a real peak, and what does the other's \emph{0.30} tell you?
 
 \work{0.9cm}
 \ifsolution\else\blk{\linewidth}\fi
 
-\textbf{(b)} What does the confidence \emph{score} mean?
+\textbf{(b)} You keep only boxes at or above a confidence \emph{threshold}. Which peaks survive a
+threshold of \textbf{0.5}? Which survive \textbf{0.2}?
 
 \work{0.9cm}
 \ifsolution\else\blk{\linewidth}\fi
 
-\keybox{(a) The \textbf{box} is the peak's \textbf{retention-time (or $m/z$) window} --- the start-to-end
-integration bounds that mark where the peak lies along the axis (its ``where''). (b) The \textbf{score}
-is the model's \textbf{confidence (0--1) that the boxed region is a real peak} rather than baseline
-noise or an artifact (its ``how sure''). So peak review --- deciding \emph{where} a peak is and
-\emph{whether} it is genuine --- is exactly the detection problem (boxes + scores) a CNN already
-solves; PeakOnly (2020) does this for real.}
+\textbf{(c)} In one line: what does lowering the threshold from 0.5 to 0.2 \emph{trade off}?
+
+\work{0.8cm}
+\ifsolution\else\blk{\linewidth}\fi
+
+\keybox{(a) Integrate the \textbf{0.95} box --- a confident, genuine peak; the \textbf{0.30} is a
+\textbf{low-confidence} shoulder/noise the model is unsure is a real peak, so you'd flag it for review
+or drop it. (b) At \textbf{0.5}: only the \textbf{0.95} peak survives (0.30 $<$ 0.5 is dropped) --- one
+clean peak. At \textbf{0.2}: \textbf{both} survive (0.30 $\ge$ 0.2), so the dubious bump gets integrated
+too. (c) Lowering the threshold \textbf{catches more real peaks (higher sensitivity/recall) but admits
+more false ones (lower specificity/precision)} --- the same threshold trade-off from Lectures 4 and 10;
+the confidence \emph{score} is the dial you turn. (Peak review = deciding \emph{where} a peak is and
+\emph{whether} it is genuine is exactly the detection problem PeakOnly (2020) solves.)}
 
 \vspace{4pt}\hrule\vspace{3pt}
 {\small\itshape \ifsolution Answer key.\else Keep this sheet --- the convolution, pooling, and
