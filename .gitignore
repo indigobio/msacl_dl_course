@@ -36,3 +36,6 @@ __pycache__/
 .pi/npm/
 ~$*
 *.tmp
+
+# Lecture 14 demo: generated agent plot
+demos/lecture14_agent/qc_plot.png

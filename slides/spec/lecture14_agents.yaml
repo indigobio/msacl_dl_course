@@ -208,6 +208,13 @@ slides:
       released result — which sets up the guardrails stop. Restate the tooling
       plan: primary Claude Code, alternative Bedrock, fallback recording. Next
       slide, the flag→draft beat made concrete on the QC numbers.
+      INSTRUCTOR NOTE — a ready-made, framework-free version of this exact demo
+      (a ~30-line ReAct loop + plain-function tools, on the same QC-04 numbers)
+      lives in demos/lecture14_agent/ (run `python3 qc_agent.py`). It runs
+      OFFLINE with no API key as the guaranteed fallback, or against a real/local
+      LLM with `--llm openai`. Its printed reason→act→observe transcript IS the
+      pre-recorded run; open qc_agent.py on screen to show the room that an agent
+      is just LLM + tools + a loop, no magic.
 
   - type: image
     eyebrow: "Live demo · flag → draft, concrete"
