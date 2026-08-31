@@ -109,8 +109,9 @@ slides:
       is what the vocabulary should be once you allow modifications — the clean
       answer is that each modified residue simply gets its OWN token ID
       (phospho-S is a different "word" than S), which is exactly how protein
-      language models like ESM handle it and how Casanovo (Lecture 8/Lab 3) treats
-      residues. Harvest two or three vocabularies; there is no single right answer.
+      language models like ESM handle it, and how the peptide-sequencing
+      transformers we build in Lecture 8 treat residues. Harvest two or three
+      vocabularies; there is no single right answer.
 
   - type: image
     eyebrow: "Tokens & embeddings · 2 of 2"
@@ -322,7 +323,7 @@ slides:
     bullets:
       - "Positional encoding — attention is order-blind, so positions must be injected (fixes the one thing today's lookup ignores)"
       - "Layer norm and the encoder/decoder — every remaining block, made familiar"
-      - "How a spectrum becomes tokens — patch it, CNN-encode it, or peak-as-token (Casanovo)"
+      - "How a spectrum becomes tokens — patch it, CNN-encode it, or peak-as-token"
       - "Transfer learning — borrow a pretrained body, retrain a small head — why 500 labeled spectra can be enough"
     callout: {kind: check, text: "2 minutes to finish Quiz 7 solo → we mark it together as Lecture 8 opens. Notice one gap we left on purpose: our lookup never used token ORDER — the weighted average is the same if you shuffle the tokens. Fixing that is the first slide next hour."}
     notes: >
