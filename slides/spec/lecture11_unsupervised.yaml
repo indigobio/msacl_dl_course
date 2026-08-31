@@ -22,8 +22,8 @@ slides:
       decision against a threshold — a straight callback to Lecture 10's
       sensitivity/specificity choice. Same interactive spine as every lecture:
       each I-do is followed by a you-do that IS a Quiz 11 item. Hand out Quiz 11
-      now, blank; we hit all four items live — the two latent pictures (Q1), the
-      four-way paradigm match (Q2), the reconstruction-error compute (Q3), and
+      now, blank; we hit all four items live — sample-the-latent (Q1), the
+      semi-supervised decision (Q2), the reconstruction-error trap (Q3), and
       the DINO/contrastive safe-vs-corrupt augmentation call (Q4). Lab 4 next hour
       builds a VAE on real spectra, so everything here is the on-ramp.
 
@@ -45,7 +45,7 @@ slides:
       the "how do the big foundation models actually learn without labels" story,
       a callback to Lecture 8's BERT and a preview of Lecture 13. Aim for a
       hands-on beat about every 8–10 minutes; the compute beat is Q3
-      (reconstruction error), the rest are read-the-picture you-dos.
+      (reconstruction error) framed as a trap; the rest are predict/decide you-dos.
 
   - type: image
     eyebrow: "Autoencoders · compress → reconstruct · I-do"
@@ -135,21 +135,21 @@ slides:
 
   - type: image
     eyebrow: "Autoencoders · your turn (you-do = Q3)"
-    title: "Your turn — compute the error, make the call"
-    image: img/fig_recon_error_youdo.png
+    title: "Your turn — does the mean catch a contaminant?"
+    image: img/fig_recon_trap_youdo.png
     img_h: 4.5
-    callout: {kind: check, text: "Your turn → Quiz 11, Q3. Same formula, new numbers: x = (0.1, 0.8, 0.2), x̂ = (0.1, 0.5, 0.2), threshold 0.01. Compute each squared error, then the MSE, then decide: normal or anomaly? Worked answer in the notes."}
+    callout: {kind: check, text: "Your turn → Quiz 11, Q3. A contaminant spikes ONE m/z bin out of 20; that bin's squared error is 0.40, the other 19 are 0. (a) Compute the MEAN MSE over all 20 bins. (b) With threshold 0.05, does mean-MSE FLAG the run? (c) It doesn't — why does averaging hide a sharp contaminant, and what single number WOULD catch it? Worked answer in the notes."}
     notes: >
-      YOU-DO = Quiz 11 Q3 (the same MSE-then-threshold skill, new numbers; this
-      is the hour's compute beat and it assesses the reconstruction-error
-      outcome). Work it exactly: bin 1, 0.1 − 0.1 = 0, squared 0; bin 2,
-      0.8 − 0.5 = 0.3, squared 0.09; bin 3, 0.2 − 0.2 = 0, squared 0. Sum of
-      squared errors = 0.09; MSE = 0.09 / 3 = 0.03. Decision against the stated
-      threshold 0.01: 0.03 > 0.01 → ANOMALY, flag the run. Every number is exact
-      and identical to the Quiz 11 Q3 figure and answer key. Contrast it with the
-      I-do: same formula, but this run's single big mismatch (0.8 measured vs 0.5
-      rebuilt) pushes the error over the line. Take the MSE from the floor,
-      confirm the call, then have them fill Q3.
+      YOU-DO = Quiz 11 Q3 (upgraded from a plug-in to a real trap that ends in a
+      surprising answer). (a) MSE = 0.40 / 20 = 0.02. (b) 0.02 < 0.05, so the
+      MEAN says PASS — it MISSES the contaminant. (c) The mean divides one big
+      error across 20 bins, so a LOCALIZED spike gets diluted below threshold;
+      the fix is to look at the MAX per-bin error (0.40 > 0.05 → flag) or the
+      error inside the peak window. This is the anomaly-overlay slide made
+      quantitative: a contaminant is a localized gap, and a mean over thousands
+      of bins can wash it out. Tie it to Lecture 10 — lowering the flag threshold
+      or switching to max-error is the sensitivity/specificity dial. Take the MSE
+      and the (surprising) decision from the floor, then have them fill Q3.
 
   - type: image
     eyebrow: "VAEs · points vs clouds · I-do"
@@ -197,45 +197,50 @@ slides:
       payoff of the smooth cloud: interpolation.
 
   - type: image
-    eyebrow: "VAEs · interpolation · I-do"
-    title: "Walk a line → one spectrum morphs into another"
-    image: img/fig_latent_interp.png
-    img_h: 4.6
-    callout: {kind: ms, text: "Pick two real spectra, A and B, find their latent codes, and walk a straight line between them. Decoding each stop gives a smooth MORPH — peaks slide and swap height from A into B. This only works because the VAE cloud is gap-free: every stop on the line is a valid, plausible spectrum. An AE's gaps would decode to garbage partway across."}
+    eyebrow: "VAEs · a smooth latent (MNIST) · I-do"
+    title: "A smooth latent plane: walk a line, watch it morph"
+    image: img/fig_mnist_latent.png
+    img_h: 4.3
+    caption: "2-D-latent VAE trained on MNIST (public-domain digits) — a vivid bridge; the same trick runs on spectra in Lab 4"
+    callout: {kind: ms, text: "Digits make the idea unmissable. A VAE packs all of MNIST into ONE smooth latent plane (left) — nearby points are similar digits, with NO gaps. Pick two real digits and walk the straight line between their codes (right): a 3 morphs smoothly into an 8, every stop a real digit. Same trick on SPECTRA (Lab 4): sample a latent point → a new plausible spectrum; walk A→B → a smooth spectral morph. An AE's gaps would decode to garbage partway across."}
     notes: >
-      The fun payoff and the clearest proof the cloud is smooth. Take two real
-      spectra, A and B; encode each to its latent code; then walk a straight line
-      between those two codes and decode a handful of stops along the way. The
-      decoded spectra MORPH continuously — peaks slide in m/z and trade height as
-      you move from A to B — a smooth interpolation, not an abrupt switch. The
-      teaching point: this is only possible because the VAE's latent cloud is
-      gap-free, so every intermediate point on the line is a valid, plausible
-      spectrum. Try the same walk in a plain autoencoder's latent space and
-      somewhere in the middle you cross an empty gap the decoder was never
-      trained on, and out comes garbage. This is exactly the Lab 4 "fun payoff"
-      cell — sample latent points and interpolate between two spectra — so it's a
-      direct preview. Next slide the room makes the AE-vs-VAE identification
-      itself (Quiz 11 Q1).
+      Use MNIST as a brief, vivid bridge (rule 2) before mapping straight back to
+      spectra. Why digits: everyone reads them instantly, so the smoothness of a
+      VAE latent is impossible to miss. LEFT — the latent MANIFOLD: decode a grid
+      of latent points (z1, z2) and you get a continuous sheet of digits that morph
+      into their neighbours with no holes; that is the "one smooth, organized,
+      gap-free cloud" from two slides ago, now literally visible. RIGHT — the
+      INTERPOLATION: take two real digits, encode each to its latent code, walk a
+      straight line between the codes, and decode the stops — a 3 slides smoothly
+      into an 8, a 7 into a 1, every intermediate a valid digit. That is only
+      possible because the cloud is gap-free; the same walk in a plain
+      autoencoder's latent would cross an empty gap and decode to garbage. Now map
+      it back to mass spec, which is the whole point: on a VAE trained on spectra
+      you can SAMPLE a latent point to get a brand-new plausible spectrum, and
+      INTERPOLATE between two real spectra to watch peaks slide and trade height —
+      exactly the Lab 4 "fun payoff" cell. Next slide the room makes the AE-vs-VAE
+      call itself (Quiz 11 Q1).
 
   - type: image
-    eyebrow: "VAEs · your turn (you-do = Q1) · 💬 pair"
-    title: "Which picture is the VAE?"
+    eyebrow: "VAEs · your turn (you-do = Q1)"
+    title: "Your turn — sample each latent: what comes out?"
     image: img/fig_latent_ab_quiz.png
     img_h: 4.6
-    callout: {kind: check, text: "Your turn → Quiz 11, Q1. Two latent maps of the same spectra. Which one is the VAE — and justify in ONE sentence. 💬 With your neighbor: which map would you trust to flag a NOVEL contaminant, and why? Worked answer in the notes."}
+    callout: {kind: check, text: "Your turn → Quiz 11, Q1. You want to GENERATE synthetic resistant spectra to augment training, so you sample random latent points and decode. (a) From Picture A (scattered islands with gaps), what comes out — and why? (b) From Picture B (one smooth cloud)? (c) Which is the VAE, and which latent do you use to generate? Worked answer in the notes."}
     notes: >
-      YOU-DO = Quiz 11 Q1 (tell an AE latent from a VAE latent in a picture — the
-      VAE outcome, assessed). Answer: PICTURE B is the VAE. One-sentence
-      justification (any equivalent): B is one smooth, organized, gap-free cloud
-      where every point decodes to a plausible spectrum, whereas Picture A is
-      scattered islands with big empty gaps that would decode to garbage — the
-      autoencoder. Run the 💬 pair prompt from the outcomes: which map would you
-      trust to flag a NOVEL contaminant? The VAE cloud (B) — a genuinely new
-      spectrum lands OUTSIDE the tidy cloud (high reconstruction error, easy to
-      flag), while the AE's gaps make "far from training data" ambiguous. Both
-      pictures are reproduced verbatim on the Quiz 11 sheet, so the room answers
-      straight off this slide. Take one answer with its reason, then have them
-      fill Q1.
+      YOU-DO = Quiz 11 Q1 (upgraded from 'identify the picture' to 'predict what
+      sampling does'). (a) Picture A is the autoencoder: scattered islands with
+      big empty GAPS, so a random sample usually lands in a gap the decoder never
+      trained on and decodes to GARBAGE — a non-physical spectrum. (b) Picture B
+      is the VAE: one smooth, gap-free cloud, so every sampled point decodes to a
+      PLAUSIBLE spectrum. (c) B is the VAE, and it is the one you use to generate
+      (or interpolate) — only a gap-free latent is safe to sample. Good extension
+      (the old pair prompt): B is also the map you trust to flag a NOVEL
+      contaminant, because a genuinely new spectrum lands OUTSIDE the tidy cloud
+      (high reconstruction error, easy to flag) while the AE's gaps make 'far
+      from training data' ambiguous. Both pictures are on the Quiz 11 sheet, so
+      the room answers straight off this slide. Take the sampling prediction with
+      its reason, then have them fill Q1.
 
   - type: title
     eyebrow: "Lecture 11 · part three"
@@ -373,7 +378,7 @@ slides:
     img_h: 4.9
     callout: {kind: ms, text: "Match the DATA YOU HAVE to a paradigm. SUPERVISED: many labeled → learn input→label. UNSUPERVISED: no labels → find structure / score anomalies (autoencoder QC). SELF-SUPERVISED: no labels, the data labels itself → pretext task pretrains a body (mask & predict). SEMI-SUPERVISED: few labeled + many unlabeled → pseudo-label the rest."}
     notes: >
-      The single chart the Q2 four-way match is answerable from (rule 3). Walk the
+      The single chart the Q2 decision is read off (rule 3). Walk the
       four rows by the ONE question that decides each: what data do you have?
       SUPERVISED — you have many LABELED examples, so learn a direct input→label
       map (every lecture so far; e.g. labeled spectra → resistant/susceptible).
@@ -383,43 +388,41 @@ slides:
       general body (mask peaks and predict, then fine-tune) — the foundation-model
       recipe. SEMI-SUPERVISED — you have FEW labels plus MANY unlabeled, so
       pseudo-label the rest and retrain. I-do one row aloud — the autoencoder QC
-      case is unsupervised — then the room matches four scenarios off this same
-      chart next slide (Quiz 11 Q2).
+      case is unsupervised — then the room reads ONE realistic scenario off this
+      same chart next slide (Quiz 11 Q2).
 
   - type: image
     eyebrow: "Paradigms · your turn (you-do = Q2)"
-    title: "Your turn — match four scenarios"
-    image: img/fig_paradigm_youdo.png
-    img_h: 4.9
-    callout: {kind: check, text: "Your turn → Quiz 11, Q2. Match each scenario to ONE paradigm (each used once): (a) 3,000 spectra each labeled S/R, train a classifier; (b) 50,000 unlabeled runs, flag the abnormal ones; (c) pretrain on millions of unlabeled spectra by masking peaks, then fine-tune; (d) 100 labeled + 10,000 unlabeled, label the rest and retrain. Worked answer in the notes."}
+    title: "Your turn — 300 labeled, 40,000 unlabeled"
+    image: img/fig_semisup_youdo.png
+    img_h: 4.5
+    callout: {kind: check, text: "Your turn → Quiz 11, Q2. You have 300 labeled spectra (S/R known) and 40,000 unlabeled QC runs, and you want a resistance classifier. (a) Which paradigm uses ALL your data? (b) Name the specific technique. (c) What's the one failure mode to watch? Worked answer in the notes."}
     notes: >
-      YOU-DO = Quiz 11 Q2 (match four lab scenarios to the four paradigms; each
-      used once). Straight off the chart: (a) 3,000 spectra each carrying an S/R
-      label, train a classifier → SUPERVISED (labels in hand, learn input→label).
-      (b) 50,000 unlabeled QC runs, flag the abnormal ones → UNSUPERVISED (no
-      labels; an autoencoder's reconstruction error scores anomalies — today's
-      first half). (c) pretrain on millions of UNLABELED spectra by masking peaks
-      and predicting them, then fine-tune on your few labels → SELF-SUPERVISED
-      (the data labels itself via a pretext task). (d) 100 labeled + 10,000
-      unlabeled, use the model to label the rest and retrain → SEMI-SUPERVISED
-      (pseudo-labeling, the middle path). Each paradigm used exactly once;
-      identical to the Quiz 11 Q2 key. Take one match from the floor, confirm
-      against the chart, then have them fill Q2 — that's all four Quiz 11 items
-      worked live.
+      YOU-DO = Quiz 11 Q2 (upgraded from a four-way lookup to one real decision
+      off the chart). (a) SEMI-SUPERVISED — a FEW labels plus MANY unlabeled, the
+      middle-path row. (b) PSEUDO-LABELING: train a first model on the 300
+      labeled, predict on the 40,000 unlabeled, KEEP only the confident
+      predictions as pseudo-labels, retrain on the combined set (optionally
+      repeat). (c) The failure mode: confident-but-WRONG pseudo-labels reinforce
+      the model's own mistakes, so the confidence filter matters and a weak early
+      model can poison the pool. Note why the alternatives waste data: pure
+      supervised throws away 40,000 runs; pure unsupervised ignores the 300
+      labels you paid for. Take the paradigm + technique + risk from the floor,
+      then have them fill Q2 — that's all four Quiz 11 items worked live.
 
   - type: bullets
     eyebrow: "Lecture 11 · what you can do now"
     title: "You can now…"
     bullets:
       - "Explain an autoencoder (compress → reconstruct) and its uses: denoising, dimensionality reduction, anomaly/QC detection"
-      - "Compute a reconstruction error (MSE) and turn it into a normal-vs-anomaly QC call against a threshold (Quiz 11 Q3)"
-      - "Tell an AE latent from a VAE latent in a picture, and say why a VAE can sample and interpolate (Quiz 11 Q1)"
+      - "Compute a reconstruction error (MSE), decide against a threshold, and see how a MEAN can miss a localized contaminant (Quiz 11 Q3)"
+      - "Predict what sampling each latent decodes to, and say why only a gap-free VAE latent is safe to sample and interpolate (Quiz 11 Q1)"
       - "Name the four paradigms, and spot which augmentation would corrupt self-supervised pretraining — augmentations must preserve the biology (Quiz 11 Q2 & Q4)"
-    callout: {kind: plain, text: "You have now worked every item on Quiz 11 live — the reconstruction-error compute (Q3), the two latent pictures (Q1), the four-way paradigm match (Q2), and the safe-vs-corrupt augmentation call (Q4). Keep the sheet — Lab 4 builds a VAE on real spectra."}
+    callout: {kind: plain, text: "You have now worked every item on Quiz 11 live — the reconstruction-error trap (Q3), the sample-the-latent call (Q1), the semi-supervised decision (Q2), and the safe-vs-corrupt augmentation call (Q4). Keep the sheet — Lab 4 builds a VAE on real spectra."}
     notes: >
       Recap = the Lecture 11 outcomes, each already exercised this hour and tied
-      to a Quiz 11 item: the autoencoder + reconstruction-error compute (Q3), the
-      AE-vs-VAE latent picture (Q1), the four-paradigm match (Q2), and the
+      to a Quiz 11 item: the reconstruction-error trap (Q3), the
+      sample-the-latent prediction (Q1), the semi-supervised decision (Q2), and the
       self-supervised safe-vs-corrupt augmentation decide (Q4). The sheet was done across
       the hour, not as an end block — a distributed worksheet. Frame the takeaway:
       most lab data is unlabeled, and you now have a menu for it — reconstruct to

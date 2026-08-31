@@ -5057,15 +5057,106 @@ def paradigm_chart(mode="ido", name="fig_paradigm_chart.png"):
     _save(fig, name)
 
 
+def recon_aggregation_trap(name="fig_recon_trap_youdo.png"):
+    """Quiz 11 Q3 (upgraded): the aggregation trap. A contaminant spikes ONE m/z
+    bin out of 20; that bin's squared error is 0.40, all others 0. Left = the
+    20-bin spectrum vs. its reconstruction with the single big gap flagged; right
+    = compute the MEAN MSE (blank) and decide against threshold 0.05, then reason
+    which single number catches a localized spike. Answer (key/notes):
+    MSE = 0.40/20 = 0.02 < 0.05 -> the MEAN PASSES it (misses the contaminant);
+    max per-bin error 0.40 > 0.05 -> FLAG."""
+    n = 20
+    meas = np.array([0.34, 0.52, 0.40, 0.58, 0.36, 0.50, 0.44, 0.31, 0.54, 0.42,
+                     0.48, 0.90, 0.35, 0.51, 0.45, 0.60, 0.39, 0.33, 0.55, 0.46])
+    recon = meas.copy()
+    spike = 11
+    recon[spike] = 0.27
+    fig, (axb, axt) = plt.subplots(1, 2, figsize=(12.2, 4.7),
+                                   gridspec_kw={"width_ratios": [1.25, 1.0]})
+    idx = np.arange(n)
+    axb.bar(idx, meas, width=0.82, color=TEAL, zorder=3, label="x  (measured)")
+    axb.step(idx, recon, where="mid", color=AMBER, lw=2.4, zorder=4,
+             label="x\u0302  (reconstruction)")
+    axb.annotate("", xy=(spike, meas[spike]), xytext=(spike, recon[spike]),
+                 arrowprops=dict(arrowstyle="<->", color=RED, lw=2.2))
+    axb.text(spike + 0.5, 1.18,
+             "contaminant:  (x\u1d62\u2212x\u0302\u1d62)\u00b2 = 0.40",
+             ha="left", va="center", color=RED, fontsize=10.5, fontweight="bold",
+             bbox=dict(boxstyle="round,pad=0.3", fc="#F7E4E3", ec=RED, lw=1.6))
+    axb.set_xlim(-0.7, n - 0.3)
+    axb.set_ylim(0, 1.42)
+    axb.set_xticks([])
+    axb.set_yticks([])
+    for s in ("top", "right", "left"):
+        axb.spines[s].set_visible(False)
+    axb.set_xlabel("20 m/z bins  \u2014  19 rebuilt perfectly, 1 contaminant",
+                   fontsize=11, color=MUTED)
+    axb.legend(loc="upper left", frameon=False, fontsize=10.5)
+    axt.set_xlim(0, 1)
+    axt.set_ylim(0, 1)
+    axt.axis("off")
+    axt.text(0.0, 0.95, "error in 19 bins = 0", fontsize=12.5, color=INK_SOFT)
+    axt.text(0.0, 0.85, "error in 1 bin    = 0.40", fontsize=12.5, color=RED,
+             fontweight="bold")
+    axt.text(0.0, 0.66, "MEAN over all 20 bins", fontsize=12.5, color=INK,
+             fontweight="bold")
+    axt.text(0.0, 0.55, "MSE = 0.40 / 20 = ?", fontsize=15, color=INK,
+             fontweight="bold")
+    axt.text(0.0, 0.40, "threshold: flag if error > 0.05", fontsize=12, color=RED)
+    axt.text(0.49, 0.28, "mean says:  ?   (pass or flag)", ha="center",
+             va="center", color=ROI_INK, fontsize=12, fontweight="bold",
+             bbox=dict(boxstyle="round,pad=0.5", fc=AMBER_SOFT, ec=ROI_INK, lw=2.0))
+    axt.text(0.49, 0.075,
+             "Does the MEAN catch a 1-bin spike?\nIf not \u2014 which single number would?",
+             ha="center", va="center", color=TEAL, fontsize=10.5, fontweight="bold",
+             bbox=dict(boxstyle="round,pad=0.5", fc=TEAL_SOFT, ec=TEAL, lw=1.6))
+    fig.subplots_adjust(wspace=0.18)
+    _save(fig, name)
+
+
+def semisup_scenario(name="fig_semisup_youdo.png"):
+    """Quiz 11 Q2 (upgraded): one messy, realistic lab scenario instead of a 4-way
+    lookup. 300 labeled spectra + 40,000 unlabeled QC runs -> decide the paradigm
+    that uses ALL the data, name the technique, and name the risk. Answer
+    (key/notes): SEMI-SUPERVISED / pseudo-labeling / confident-but-wrong
+    pseudo-labels reinforce the model's own mistakes."""
+    fig, (axl, axr) = plt.subplots(1, 2, figsize=(12.2, 4.6),
+                                   gridspec_kw={"width_ratios": [1.0, 1.15]})
+    axl.set_xlim(0, 1)
+    axl.set_ylim(0, 1)
+    axl.axis("off")
+    axl.text(0.5, 0.95, "Your data", ha="center", color=INK, fontsize=13,
+             fontweight="bold")
+    axl.text(0.5, 0.74, "300 labeled spectra  (S / R known)", ha="center",
+             va="center", color=WHITE, fontsize=11.5, fontweight="bold",
+             bbox=dict(boxstyle="round,pad=0.6", fc=TEAL, ec=TEAL))
+    axl.text(0.5, 0.40, "40,000 unlabeled QC runs", ha="center", va="center",
+             color=INK, fontsize=14, fontweight="bold",
+             bbox=dict(boxstyle="round,pad=1.5", fc="#EDEDE7", ec=MUTED, lw=1.8))
+    axl.text(0.5, 0.05, "labels are < 1% of your data", ha="center", color=MUTED,
+             fontsize=11, style="italic")
+    axr.set_xlim(0, 1)
+    axr.set_ylim(0, 1)
+    axr.axis("off")
+    axr.text(0.0, 0.95, "Use EVERY spectrum \u2014 decide", fontsize=13,
+             color=ROI_INK, fontweight="bold")
+    for y, txt in [(0.72, "(a) which paradigm uses ALL of it?"),
+                   (0.47, "(b) the specific technique?"),
+                   (0.22, "(c) the failure mode to watch?")]:
+        axr.text(0.0, y, txt, fontsize=12.5, color=INK, fontweight="bold")
+        axr.text(0.06, y - 0.10, "\u2192  " + "_" * 26, fontsize=12, color=MUTED)
+    _save(fig, name)
+
+
 def _lecture11_figures():
     autoencoder_bottleneck()
     anomaly_overlay()
     recon_error_worked("ido", "fig_recon_error_ido.png",
                        x=(0.2, 0.5, 0.1), xhat=(0.2, 0.4, 0.1), thr=0.01)
-    # you-do = Quiz 11 Q3: x=(0.1,0.8,0.2), x\u0302=(0.1,0.5,0.2), thr 0.01
-    #  errors (0,0.3,0) -> squared (0,0.09,0) -> MSE 0.09/3 = 0.03 > 0.01 = ANOMALY
-    recon_error_worked("youdo", "fig_recon_error_youdo.png",
-                       x=(0.1, 0.8, 0.2), xhat=(0.1, 0.5, 0.2), thr=0.01)
+    # (was a trivial 3-bin MSE plug-in; upgraded to the aggregation trap below)
+    #  the aggregation trap: one contaminant bin (sq err 0.40) among 20 -> mean
+    #  MSE 0.40/20 = 0.02 < 0.05 PASSES, but max per-bin error 0.40 > 0.05 FLAGS
+    recon_aggregation_trap()
     ae_vs_vae_latent(("autoencoder latent", "VAE latent"),
                      "fig_ae_vs_vae_latent.png")
     ae_vs_vae_latent(("Picture A", "Picture B"), "fig_latent_ab_quiz.png",
@@ -5077,7 +5168,8 @@ def _lecture11_figures():
     dino_student_teacher()
     pseudo_labeling()
     paradigm_chart("ido", "fig_paradigm_chart.png")
-    paradigm_chart("youdo", "fig_paradigm_youdo.png")
+    # you-do = Quiz 11 Q2 (upgraded): one messy scenario -> semi-supervised
+    semisup_scenario()
 
 
 # ============================================================================
@@ -6374,9 +6466,9 @@ FUNCS = {
     "recon_error": lambda: (
         recon_error_worked("ido", "fig_recon_error_ido.png",
                            x=(0.2, 0.5, 0.1), xhat=(0.2, 0.4, 0.1), thr=0.01),
-        recon_error_worked("youdo", "fig_recon_error_youdo.png",
-                           x=(0.1, 0.8, 0.2), xhat=(0.1, 0.5, 0.2), thr=0.01),
+        recon_aggregation_trap(),
     ),
+    "recon_trap": recon_aggregation_trap,
     "ae_vs_vae": lambda: (
         ae_vs_vae_latent(("autoencoder latent", "VAE latent"),
                          "fig_ae_vs_vae_latent.png"),
@@ -6391,8 +6483,9 @@ FUNCS = {
     "pseudolabel": pseudo_labeling,
     "paradigm": lambda: (
         paradigm_chart("ido", "fig_paradigm_chart.png"),
-        paradigm_chart("youdo", "fig_paradigm_youdo.png"),
+        semisup_scenario(),
     ),
+    "semisup": semisup_scenario,
     # ---- Lecture 14 ----
     "agents": _lecture14_figures,
     "agent_schematic": agent_schematic,

@@ -94,7 +94,7 @@
 
 \begin{center}
 {\Large \textbf{Quiz 11 --- Learning Without (Many) Labels}}\\[2pt]
-{\normalsize Read a latent map, match paradigms, compute a reconstruction error, and pick the augmentation that would corrupt contrastive pretraining}
+{\normalsize Predict what a latent samples to, use every spectrum, spot the reconstruction-error trap, and pick the augmentation that would corrupt contrastive pretraining}
 \end{center}
 
 \vspace{-2pt}
@@ -110,9 +110,9 @@ squared numbers. No calculators needed.%
 \vspace{-2pt}\hrule\vspace{5pt}
 
 % =========================== Q1 ===========================
-\textbf{1. Which picture is the VAE?}\; {\small Below are two latent-space maps of the
-\emph{same} spectra --- the same pair you saw on the slides. One is a plain autoencoder, one
-is a VAE.}
+\textbf{1. Sample each latent --- what decodes?}\; {\small Below are two latent-space maps of the
+\emph{same} spectra --- the pair you saw on the slides. You want to \textbf{generate synthetic
+resistant spectra} to augment training, so you sample a \emph{random} latent point and decode it.}
 
 \vspace{4pt}
 \begin{center}
@@ -123,89 +123,89 @@ is a VAE.}
 \end{center}
 
 \vspace{2pt}
-\textbf{(a)} Which picture is the \textbf{VAE}? \hfill $\rightarrow$\; \rb{Picture B}{3.2cm}
+\textbf{(a)} Sample \& decode a random point from \textbf{Picture A} (islands with gaps) --- what
+comes out, and why?\hfill $\rightarrow$\; \rb{garbage (lands in an empty gap)}{5.6cm}
 
 \vspace{3pt}
-\textbf{(b)} Justify in \emph{one sentence}.
+\textbf{(b)} Sample \& decode from \textbf{Picture B} (one smooth cloud) --- what comes out?
+\hfill $\rightarrow$\; \rb{a plausible spectrum}{5.0cm}
 
-\work{1.0cm}
-\ifsolution\else\blk{\linewidth}\fi
+\vspace{3pt}
+\textbf{(c)} Which picture is the \textbf{VAE}, and which latent do you use to generate?
+\hfill $\rightarrow$\; \rb{Picture B (the VAE)}{4.4cm}
 
-\keybox{(a) \textbf{Picture B} is the VAE. (b) \textbf{Picture B is one smooth, organised,
-gap-free cloud} in which every point decodes to a plausible spectrum (so you can sample new
-spectra and interpolate), whereas \textbf{Picture A is scattered islands with big empty gaps}
-that would decode to garbage --- the memorised points of a plain autoencoder. (Any equivalent
-one-sentence reason --- ``B has no gaps / is sampleable / is continuous'' --- earns full credit.)}
+\work{0.4cm}
+
+\keybox{(a) \textbf{Garbage / a non-physical spectrum.} Picture A is a plain autoencoder: its
+latent is scattered islands with big empty \textbf{gaps}, so a random sample lands where the
+decoder was never trained. (b) \textbf{A plausible spectrum} --- Picture B is one smooth,
+gap-free cloud, so \emph{every} point decodes to something realistic. (c) \textbf{Picture B is
+the VAE}, and it is the latent you sample to generate (or interpolate): only a gap-free latent
+is safe to sample. (B is also the map you would trust to flag a \emph{novel} contaminant --- a
+genuinely new spectrum lands outside the tidy cloud, easy to flag.)}
 
 \vspace{2pt}\hrule\vspace{5pt}
 
 % =========================== Q2 ===========================
-\textbf{2. Match each scenario to a learning paradigm.}\; {\small Use the four-paradigm chart
-from the slides. Each paradigm is used \textbf{exactly once}:
-\textit{supervised $\cdot$ unsupervised $\cdot$ self-supervised $\cdot$ semi-supervised}.}
+\textbf{2. Use every spectrum --- decide.}\; {\small You have \textbf{300 labelled} spectra
+(susceptible/resistant known) and \textbf{40{,}000 unlabelled} QC runs, and you want a resistance
+classifier. Use the four-paradigm chart from the slides.}
 
 \vspace{4pt}
-\textbf{(a)} You have \textbf{3{,}000 spectra, each labelled} susceptible/resistant; train a
-classifier.\hfill $\rightarrow$\;\rb{supervised}{4.4cm}
+\textbf{(a)} Which paradigm uses \emph{all} of your data?\hfill $\rightarrow$\;\rb{semi-supervised}{4.6cm}
 
 \vspace{3pt}
-\textbf{(b)} You have \textbf{50{,}000 unlabelled QC runs}; flag the ones that look
-abnormal.\hfill $\rightarrow$\;\rb{unsupervised}{4.4cm}
+\textbf{(b)} Name the specific technique.\hfill $\rightarrow$\;\rb{pseudo-labelling}{4.6cm}
 
 \vspace{3pt}
-\textbf{(c)} You \textbf{pretrain on millions of unlabelled spectra by masking peaks and
-predicting them}, then fine-tune on your 500 labels.\hfill $\rightarrow$\;\rb{self-supervised}{4.4cm}
+\textbf{(c)} In one sentence, the \emph{failure mode} to watch?
 
-\vspace{3pt}
-\textbf{(d)} You have \textbf{100 labelled + 10{,}000 unlabelled} spectra; use the model to
-label the 10{,}000 and retrain.\hfill $\rightarrow$\;\rb{semi-supervised}{4.4cm}
+\work{1.0cm}
+\ifsolution\else\blk{\linewidth}\fi
 
-\keybox{(a) \textbf{Supervised} --- you already hold the labels, so learn the input$\rightarrow$label
-map directly. (b) \textbf{Unsupervised} --- no labels at all; an autoencoder's reconstruction
-error scores each run for anomaly (bad-QC detection). (c) \textbf{Self-supervised} --- there are
-no human labels, but the \emph{data labels itself}: the hidden (masked) peak is its own target,
-which pretrains a general body you then fine-tune. (d) \textbf{Semi-supervised} --- a few labels
-plus many unlabelled examples, bridged by pseudo-labelling (the middle path).}
+\keybox{(a) \textbf{Semi-supervised} --- a few labels plus many unlabelled examples, so use both
+(the middle path). (b) \textbf{Pseudo-labelling}: train a first model on the 300 labelled,
+predict on the 40{,}000 unlabelled, keep only the \emph{confident} predictions as pseudo-labels,
+and retrain on the combined set (optionally repeat). (c) \textbf{Confident-but-wrong pseudo-labels
+reinforce the model's own mistakes} --- a weak early model can poison the pool, so the confidence
+filter matters. (Pure supervised would throw away 40{,}000 runs; pure unsupervised would ignore
+the 300 labels you paid for.)}
 
 \vspace{2pt}\hrule\vspace{5pt}
 
 % =========================== Q3 ===========================
-\textbf{3. Compute a reconstruction error and make the QC call.}\; {\small An autoencoder was
-trained only on \emph{good} runs. For a new 3-bin spectrum it produces the reconstruction
-$\hat{x}$ below. Reconstruction error is the mean squared error}
+\textbf{3. Reconstruction error --- the aggregation trap.}\; {\small An autoencoder trained on
+\emph{good} runs reconstructs a new spectrum of \textbf{20 $m/z$ bins}. A contaminant spikes
+exactly \textbf{one} bin: that bin's squared error is \textbf{0.40}; the other \textbf{19} bins
+reconstruct perfectly (error 0). Reconstruction error is the \emph{mean} squared error}
 \[
   \text{MSE} \;=\; \tfrac{1}{n}\sum_{i}\,(x_i-\hat{x}_i)^2 ,
-  \qquad\text{{\small flag an \textbf{anomaly} if } } \text{MSE} > 0.01 .
+  \qquad\text{{\small flag an \textbf{anomaly} if the error } } > 0.05 .
 \]
 
 \vspace{2pt}
-\begin{center}
-\gr\begin{tabular}{r|G|G|G|}
-\multicolumn{1}{r}{} & \multicolumn{1}{c}{\small bin 1} & \multicolumn{1}{c}{\small bin 2} & \multicolumn{1}{c}{\small bin 3}\\\cline{2-4}
-\small measured $x$        & 0.1 & 0.8 & 0.2 \\\cline{2-4}
-\small reconstruction $\hat{x}$ & 0.1 & 0.5 & 0.2 \\\cline{2-4}
-\end{tabular}
-\end{center}
-
-\vspace{3pt}
-\textbf{(a)} Squared error in each bin: \;
-bin 1 $=$ \rb{$0$}{1.2cm}, \; bin 2 $=$ \rb{$0.09$}{1.4cm}, \; bin 3 $=$ \rb{$0$}{1.2cm}.
+\textbf{(a)} MEAN over all 20 bins: $\text{MSE} = 0.40 / 20 = $ \rb{$0.02$}{2.0cm}
 
 \work{0.4cm}
 
-\textbf{(b)} $\text{MSE} = (0 + 0.09 + 0)/3 = $ \rb{$0.03$}{2.0cm}
+\textbf{(b)} Using the \emph{mean} and threshold $0.05$, does it flag the run?
+\hfill $\rightarrow$\; \rb{no --- $0.02 < 0.05$, it PASSES}{5.4cm}
 
 \work{0.4cm}
 
-\textbf{(c)} Since $0.03$ \rb{$>$}{0.8cm} $0.01$, this run is \rb{an anomaly (flag it)}{4.8cm}.
+\textbf{(c)} The mean just \emph{missed} a real contaminant. Which \emph{single} number would have
+caught it, and why does averaging hide a one-bin spike?
 
-\work{0.5cm}
+\work{1.1cm}
+\ifsolution\else\blk{\linewidth}\\[6pt]\blk{\linewidth}\fi
 
-\keybox{(a) Per-bin squared errors: $(0.1-0.1)^2=\mathbf{0}$, $(0.8-0.5)^2=0.3^2=\mathbf{0.09}$,
-$(0.2-0.2)^2=\mathbf{0}$. (b) $\text{MSE}=(0+0.09+0)/3=0.09/3=\mathbf{0.03}$. (c) $0.03>0.01$, so
-the run is \textbf{an ANOMALY --- flag it} for a human. (The single big mismatch in bin~2 is what
-pushes the error over the threshold; choosing that threshold is the same sensitivity/specificity
-trade-off as Lecture~10.)}
+\keybox{(a) $\text{MSE}=0.40/20=\mathbf{0.02}$. (b) \textbf{No} --- $0.02 < 0.05$, so the mean-MSE
+\textbf{passes} the run and the contaminant slips through. (c) The \textbf{MAX per-bin error}
+($0.40 > 0.05$), or the error inside the peak window, would flag it. The mean divides one big
+error across 20 bins, so a \emph{localized} spike is diluted below threshold --- over thousands of
+real $m/z$ bins a single contaminant peak can vanish into the average. Lesson: match the anomaly
+\emph{score} to the anomaly's shape, and set the threshold as the same sensitivity/specificity
+dial as Lecture~10.}
 
 \vspace{2pt}\hrule\vspace{5pt}
 
