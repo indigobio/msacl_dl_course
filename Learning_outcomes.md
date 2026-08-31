@@ -98,7 +98,7 @@ calculus beyond "derivative = slope."
 - 0:35–0:52 Stacking neurons: layers as matrix–vector multiplication, with one worked 2×3 example computed live (a whole layer's forward pass in four multiplications); shape compatibility; depth = hierarchy. MS anchor: raw spectrum → peak-like features → patterns → call.
 - 0:52–1:00 **Quiz 1** hand-out + immediate walkthrough.
 
-**Assessment: Quiz 1** — match activation-function shapes to names; compute one two-input weighted sum; compute one small matrix–vector multiplication (2×3 weight matrix, concrete numbers); one "which is a learned vs. engineered feature?" item.
+**Assessment: Quiz 1** — match activation-function shapes to names; compute one two-input weighted sum; compute one small matrix–vector multiplication (2×3 weight matrix, concrete numbers); one "which is a learned vs. engineered feature?" item; and one two-layer forward pass by hand (hidden layer with ReLU, then output layer — concrete small integers).
 
 ### Lecture 2 · How Networks Learn (+ the PyTorch training loop)
 
@@ -196,7 +196,7 @@ more/varied data + early stopping; **dropout (visualized)**; **L2 = weight decay
 
 - 0:55–1:00 **Quiz 4** (walkthrough opens Lecture 5 if time is short).
 
-**Assessment: Quiz 4** — match four training/validation curve pairs to diagnoses and pick a fix for each; one "what does a bigger batch buy you, and what's the problem of too-big a batch?" item; and two short **discussion** prompts on class imbalance (a topic without dedicated lecture time — why plain accuracy misleads on a rare class, and what to try), revisited in Lecture 10. (Focal loss was dropped from the quiz as too advanced.)
+**Assessment: Quiz 4** — match four training/validation curve pairs to diagnoses and pick a fix for each; one "what does a bigger batch buy you, and what's the problem of too-big a batch?" item; one vanishing-gradient chain-multiplication item (multiply the per-layer slopes down a 5-layer chain, read off the first-layer gradient, and say whether it vanishes or explodes — sets up ResNet in Lecture 5); and two short **discussion** prompts on class imbalance (a topic without dedicated lecture time — why plain accuracy misleads on a rare class, and what to try), revisited in Lecture 10. (Focal loss was dropped from the quiz as too advanced.)
 
 ### Lecture 5 · Convolutional Networks — Spectra, Images, and Finding Patterns
 

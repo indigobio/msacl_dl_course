@@ -1,0 +1,670 @@
+deck:
+  title: "Lecture 4 · Making Training Actually Work"
+  eyebrow: "MSACL · DS301 Deep Learning · Segment 2 · Lecture 4"
+
+slides:
+  - type: title
+    title: "Making training actually work"
+    subtitle: "Three parts: the right loss · tuning the knobs · beating overfitting"
+    notes: >
+      Sunday afternoon, opening Segment 2 — straight after Lab 1. In Segment 1
+      they built a neuron (Lecture 1) and learned how a network learns — loss,
+      gradient descent, backprop, the five-line loop (Lecture 2) — then ran it
+      once in Lab 1. Today is the reality check: the plain loop works on a toy,
+      but real training breaks in predictable ways, and there is a standard fix
+      for each. The hour is three signposted parts: (1) LOSS — we only did
+      regression loss, so what loss do we use to CLASSIFY? (2) TUNING — the
+      knobs: mini-batches, the optimizer (Adam), the learning-rate schedule,
+      activation choice, why deep nets fight back, and the hyperparameters like
+      batch size; (3) OVERFITTING vs. UNDERFITTING — reading train-vs-validation
+      curves and the fixes. Still intuition-first, only light arithmetic, no
+      calculus beyond "slope." This hour is interactive the same way Lectures 1
+      and 2 were: the worked examples (I-do) are each followed by one you do
+      yourself (you-do), and each you-do IS a Quiz 4 item. Hand out Quiz 4 now,
+      blank; they fill it as we go, so by the recap they have worked the whole
+      quiz.
+
+  - type: pipeline
+    eyebrow: "Recap · picking up a thread from Lecture 2"
+    title: "The loop runs — now make it work, in three parts"
+    stages:
+      - {label: "Part 1 · Loss", sub: "how to score a CLASS"}
+      - {label: "Part 2 · Tuning", sub: "the knobs you turn", kind: conv}
+      - {label: "Part 3 · Overfitting", sub: "stop it memorizing", kind: pool}
+    callout: {kind: plain, text: "Lecture 2 measured loss with MSE — great for predicting a NUMBER, but it deferred one question: how do you score a CLASSIFICATION (resistant vs. susceptible)? We open that thread first, then walk the knobs you turn, then how to stop a model from memorizing."}
+    notes: >
+      Two minutes to rebuild the bridge and set the map. The continuity point:
+      Lecture 2 explicitly said "classification loss is deferred to Lecture 4" —
+      we cash that cheque now. MSE answers "how far is my number from the truth,"
+      right for a concentration or retention time, wrong for a category, where
+      the output is a probability and being confidently wrong should hurt much
+      more than being unsure. Read the three boxes slowly — these are the three
+      signposted sections of the hour, and each maps to items on Quiz 4: the
+      cross-entropy loss choice (Q1), the overfitting curves (Q2), the batch-
+      size trade-off (Q3), the vanishing-gradient chain (Q4), and the class-
+      imbalance discussion (Q5–Q6). One
+      categorization to nail up front: the OPTIMIZER (Adam) is a Part-2 "tuning"
+      choice, not a data-feeding detail. Keep energy high — this is the most
+      immediately useful hour of the course for their day job.
+
+  - type: title
+    eyebrow: "Lecture 4 · Part 1 of 3"
+    title: "Loss function choice"
+    subtitle: "cross-entropy for classification — it punishes confident wrong answers"
+    notes: >
+      Part one of three: which loss. One idea to hold: for a yes/no or a
+      category, the network outputs a probability, and the right loss should
+      barely shrug at an unsure guess but come down hard on a confident mistake.
+      That loss is cross-entropy. We build it in four quick steps — turn scores
+      into probabilities, look at the penalty shape, write the formula
+      CE = −log(p_true), then compute one worked number on a real MS call — then
+      give the one-line rule of thumb and move to tuning.
+      Part 1 now has its own quiz-backed you-do (Quiz 4 Q1): right after the
+      worked penalty numbers, the room compares two confidences and picks the
+      loss for a NUMBER vs. a CLASS — assessing Outcome 1 (cross-entropy vs.
+      MSE, and "punishes confident wrong answers"). This is the first hands-on
+      beat, ~10 minutes in. Focal loss stays un-assessed — too advanced for
+      Quiz 4 — but the core cross-entropy choice no longer goes untested.
+
+  - type: image
+    eyebrow: "Part 1 · loss · step 1 · probabilities"
+    title: "A classifier outputs probabilities that sum to 1"
+    image: img/fig_softmax_bars.png
+    img_h: 3.7
+    callout: {kind: ms, text: "Softmax squashes the raw class scores into probabilities — all positive, adding to 1. Now 'the answer' is a CONFIDENCE in each class, not a single number. Any number of classes works the same way: 2 here, or 30 for species ID from a spectrum — just more terms in the sum."}
+    notes: >
+      Keep this light — softmax is a mechanism, not the star. The final layer
+      gives a raw score per class (here R = 2.0, S = 0.5). Softmax exponentiates
+      each score (which forces it positive) and divides by the sum of all the
+      exponentials (the normalizer that forces the total to 1), landing near
+      0.82 / 0.18 — "82% sure it's resistant." Nothing about it is binary-only:
+      the same sum-and-divide works for 2 classes or 200; a species-ID model
+      just has a longer sum. That confidence is exactly what the next slide's
+      loss grades: a good loss rewards high probability on the TRUE class and
+      punishes high probability on a WRONG class. Anchor it in their world —
+      this is precisely the output of a DRIAMS-style MALDI-TOF resistance
+      classifier they meet in Lab 2.
+
+  - type: image
+    eyebrow: "Part 1 · loss · step 2 · the penalty shape"
+    title: "Penalty = how surprised were you by the truth?"
+    image: img/fig_ce_curve.png
+    img_h: 4.0
+    callout: {kind: plain, text: "This curve IS the cross-entropy penalty −log(p_true). Said 0.9 and right → barely any penalty. Said 0.5 (a shrug) → moderate. Said 0.02 (confidently wrong) → the penalty rockets. That steep left wall is the whole idea; the next slide writes the formula out."}
+    notes: >
+      This is the intuition to land, and it is the "penalize confident wrong
+      answers" outcome verbatim. Read the curve right to left: give the true
+      class a probability near 1 and you were right and sure, so the penalty is
+      essentially zero; at 0.5 you were on the fence, a moderate penalty; as your
+      probability for the truth heads toward zero — meaning you were confidently
+      backing the WRONG class — the penalty shoots toward infinity. That
+      asymmetry is deliberate and clinically sensible: a test that hedges is
+      tolerable, a test that is loudly, confidently wrong is dangerous, and the
+      loss reflects that. Name it plainly now: this curve is −log(p_true) — the
+      next slide writes the full formula and does one substitution, so every
+      number they compute later is exact, not eyeballed. One line of contrast
+      with MSE: MSE treats 0.9-vs-1 and 0.1-vs-0 as similar-sized misses; cross-
+      entropy blows the confident miss up enormously.
+
+  - type: image
+    eyebrow: "Part 1 · loss · step 3 · the formula"
+    title: "Cross-entropy, written out: CE = −log(p_true)"
+    image: img/fig_ce_formula.png
+    img_h: 3.9
+    callout: {kind: plain, text: "The full loss is CE = −Σ yᵢ·log(ŷᵢ). Because the truth is one-hot (the right class is 1, all others 0), every term drops except the true class — so it reduces to CE = −log(p_true), a natural log. That is the only formula you need for every number today."}
+    notes: >
+      The explicit formula, so the worked numbers on the next slides are
+      COMPUTED, not read off a curve (rule 3: exercises must be solvable and
+      exact). Walk it in two beats. General form: cross-entropy sums −yᵢ·log(ŷᵢ)
+      over every class, where yᵢ is the true label (1 for the correct class, 0
+      otherwise) and ŷᵢ is the model's probability for class i. Because the label
+      is one-hot, every term with yᵢ=0 vanishes and only the true class's term
+      survives, leaving CE = −log(p_true): "how surprised were you by the truth,"
+      now as an equation. Do the one substitution on the slide out loud — truth
+      R, model says p_true = 0.90, so CE = −ln(0.90) = 0.105 — and note we use
+      the natural log (ln), the PyTorch default; the base only rescales the
+      loss, it never changes which model wins. Tell them to keep this line: the
+      next slide, the you-do, and Quiz 4 Q1 all just plug numbers into
+      −ln(p_true).
+
+  - type: image
+    eyebrow: "Part 1 · loss · step 4 · a number on a real call"
+    title: "Two models, same call — confidence changes the loss"
+    image: img/fig_ce_worked.png
+    img_h: 3.6
+    callout: {kind: ms, text: "Same call (both pick R, so accuracy counts both 'correct') — but plug into CE = −ln(p): A = −ln(0.90) = 0.105, B = −ln(0.55) = 0.598, so B's hedge costs 5.7× the loss. Rule of thumb: predict a NUMBER → MSE; choose a CLASS → cross-entropy. In PyTorch, one line: nn.MSELoss → nn.CrossEntropyLoss (it even applies softmax internally)."}
+    notes: >
+      The worked example — concrete numbers, straight from the formula. The
+      truth is R (resistant). Model A puts 0.90 on R, so CE = −ln(0.90) = 0.105
+      — tiny. Model B ALSO calls R — it puts 0.55 on R and 0.45 on S, so its
+      argmax is still R and accuracy counts it "correct" too — but it barely
+      committed; CE = −ln(0.55) = 0.598, about 5.7 times larger. Both numbers
+      come straight from the previous slide's formula CE = −ln(p_true) — exact,
+      not eyeballed. Say the takeaway aloud: accuracy sees only the call (both
+      R), so it cannot tell the sure bet from the hedge — cross-entropy grades
+      the confidence and does, which is why we train on it. Close with the
+      one-line rule of thumb and note a relative, focal loss, tilts this toward
+      rare/hard cases — we meet it again under class imbalance. Leave the two
+      penalties blank on the next slide — that is the you-do (Quiz 4 Q1): the
+      room plugs 0.8 and 0.2 into −ln(p_true), then Part 2's knobs make training
+      converge.
+
+  - type: image
+    eyebrow: "Part 1 · loss · your turn (you-do = Q1)"
+    title: "Your call: which loss, and which model loses more?"
+    image: img/fig_ce_youdo.png
+    img_h: 3.4
+    callout: {kind: check, text: "Your turn → Quiz 4, Q1. (a) Predicting an oxacillin MIC (a NUMBER) vs. calling R/S (a CLASS) — which loss for each? (b) Truth is R: Model A put 0.8 on R, Model B put 0.2 — use CE = −ln(p_true) to compute each loss; which is bigger? Worked answer in the notes."}
+    notes: >
+      YOU-DO = Quiz 4 Q1 (same two-card shape as the I-do, different
+      confidences, so it is real practice — and it assesses Outcome 1). Answer:
+      (a) a NUMBER like a MIC concentration → MSE; a CLASS like R vs. S →
+      cross-entropy (a probability, where being confidently wrong should hurt
+      most). (b) MODEL B has the bigger loss — plug each into CE = −ln(p_true):
+      Model A = −ln(0.8) = 0.223, Model B = −ln(0.2) = 1.609, about seven times
+      larger. B gave the TRUE class (R) only 0.2, so it was confident in the
+      WRONG answer, and −ln(p) rockets as the probability on the truth heads
+      toward zero. Say the point aloud: both models might argmax
+      differently — A calls R, B calls S — but the loss ALSO grades how confident
+      each was, which plain accuracy can't. Ask a pair which model loses more
+      before revealing, then have them fill Q1. Bridge to Part 2: right loss in
+      hand, now the knobs that make training converge.
+
+  - type: title
+    eyebrow: "Lecture 4 · Part 2 of 3"
+    title: "Tuning the knobs"
+    subtitle: "mini-batches · Adam · the learning-rate schedule · activations · batch size"
+    notes: >
+      Part two of three: the settings you choose to make training converge well.
+      We go in order — how we feed the data (mini-batches), which optimizer
+      updates the weights (Adam), how we shrink the step over time (the
+      schedule), which activation to use and why (it seeds the next beat), why
+      very deep nets are still hard (vanishing/exploding — a quiz-backed
+      you-do, Quiz 4 Q4, and the set-up for Lecture 5's ResNet), then the
+      hyperparameters you actually dial: batch size — with its fingerprint on
+      the loss curve (Quiz 4 Q3) — plus how to search them.
+
+  - type: image
+    eyebrow: "Part 2 · tuning · how the data is fed"
+    title: "Mini-batches: step often, on a handful at a time"
+    image: img/fig_minibatch.png
+    img_h: 3.9
+    callout: {kind: plain, text: "Split the data into mini-batches (say 32) and take one step after EACH batch — don't wait to see all the data. This is mini-batch SGD, a data-feeding choice, not an optimizer. 20 batches = 20 updates per epoch (vs. 1 for full-batch): faster, and the noise finds flatter, better-generalizing solutions."}
+    notes: >
+      This follows the reference deck (Hung-yi Lee, "Deep Learning in one day,"
+      mini-batch section). Keep the categorization clean: a "batch" is how many
+      samples you look at before ONE weight step — how the data is fed, not which
+      optimizer you use. Full-batch = the entire dataset per step: gradient
+      exact, path smooth, but one step per pass and everything must fit in
+      memory. Mini-batch = chop into small groups (32, 64, …) and, crucially,
+      UPDATE AFTER EACH GROUP; when every batch has been used that is one epoch,
+      then repeat (shuffling between epochs). Two payoffs the source shows:
+      FASTER — 20 updates per epoch instead of one; and BETTER — the gradient
+      noise nudges the model toward flatter, better-generalizing minima (callback
+      to Lecture 2's local-dip slide). "Stochastic" just means "a bit random."
+      Say it plainly: this is separate from the OPTIMIZER, which decides how each
+      step actually updates the weights — that is next.
+
+  - type: image
+    eyebrow: "Part 2 · tuning · the optimizer"
+    title: "Adam: a per-weight, adaptive step size"
+    image: img/fig_adam.png
+    img_h: 4.0
+    callout: {kind: plain, text: "Plain SGD uses one learning rate for every weight. Adam = adaptive rate (each weight's step tuned from its own gradient history) + momentum (inertia that glides through small bumps and flat spots). It is the sensible default optimizer and usually 'just works.'"}
+    notes: >
+      Follows the reference deck's optimizer section: the "Recipe of Deep
+      Learning" lists Adaptive Learning Rate and Momentum as two tricks, and Adam
+      is literally their combination. Give each in plain words. Adaptive rate:
+      each weight gets its OWN learning rate scaled by its recent gradient sizes
+      — flat directions get bigger steps, steep ones smaller, automatically.
+      Momentum, drawn literally: a ball sliding down a hillside toward the valley
+      floor (low loss). A PLAIN step only looks at the slope under its feet — hit
+      a small bump or flat plateau (gradient ≈ 0) and it stalls there, stuck,
+      even though the real valley is further down. A ball with MOMENTUM keeps
+      some of its downhill velocity from earlier steps, so it coasts straight
+      over that same bump and keeps going. That is what momentum adds: this
+      step's move = mostly the accumulated velocity, nudged by the current
+      gradient — it glides through bumps and shrugs off mini-batch noise. Use
+      Adam as your default; it removes most of the pain of hand-tuning the rate —
+      though the rate still matters, which is why we schedule it next.
+
+  - type: image
+    eyebrow: "Part 2 · tuning · the learning-rate schedule"
+    title: "Schedule the rate: warmup → hold → decay"
+    image: img/fig_lr_schedule.png
+    img_h: 3.9
+    callout: {kind: pair, text: "💬 30-sec poll: even with Adam adapting each weight's step, why still DECAY the overall rate as your spectra classifier settles into the valley? (Adam tunes the step PER WEIGHT; the schedule scales the WHOLE rate over TIME — they stack.) Callback to Lecture 2: the rate is the step size."}
+    notes: >
+      The learning-rate SCHEDULE, the explicit Lecture 2 callback. Recall the
+      three bowls from Lecture 2: too small crawls, too big overshoots, just
+      right settles fast — the rate is the single most important dial. A schedule
+      just changes that dial over training. The modern shape here is
+      warmup–stable–decay (after arXiv:2410.05192): WARMUP ramps the rate up so
+      early noisy steps don't blow up; STABLE holds a high rate to make fast
+      progress (the loss can look choppy here without anything being wrong);
+      DECAY drops the rate sharply so the model stops bouncing and settles into
+      the valley — this is where the loss visibly falls off a cliff. Cosine is
+      the smooth-decay cousin: it shrinks gradually the whole time. Clarify vs.
+      Adam: Adam adapts the step per WEIGHT from recent gradients; the schedule
+      scales the OVERALL rate over TIME — they stack. This is also the hands-on
+      beat for this run (rule 8, ~a beat every 8–10 min) and a structured
+      discussion prompt that assesses the schedule outcome (rule 3): put the
+      poll to the room, take two answers, land "decay so the model stops
+      bouncing and settles." Bridge: optimizer and schedule set, but two more
+      things shape training — which activation you pick, and what happens to the
+      gradient in a very deep net.
+
+  - type: image
+    eyebrow: "Part 2 · tuning · which activation"
+    title: "Activation choice: ReLU by default, and why"
+    image: img/fig_activation_choices.png
+    img_h: 3.5
+    callout: {kind: plain, text: "Lecture 1's shapes, now as a CHOICE. ReLU is the hidden-layer default — its slope is 1 for positives, so it passes the gradient. Sigmoid belongs only at a 0–1 OUTPUT: its slope is at most 0.25 and near-zero in the tails, so stacked in hidden layers it SQUASHES the gradient — the seed of the next slide."}
+    notes: >
+      A short but important beat, and the natural set-up for vanishing gradients.
+      In Lecture 1 they met ReLU, sigmoid, and linear as shapes; now it is a
+      choice of which to use where. ReLU (negatives → 0, positives unchanged) is
+      the default inside the network for two reasons: trivial to compute, and its
+      slope is exactly 1 wherever the input is positive, so it passes the
+      backprop gradient through undamped. Sigmoid squashes any number into 0–1,
+      which is perfect at the OUTPUT of a yes/no classifier (read as a
+      probability) — but its slope is at most 0.25 and essentially zero once the
+      input is large positive or negative (the shaded flat tails). Stack several
+      sigmoids in the hidden layers and every layer multiplies the gradient by
+      one of those small slopes — which is exactly the failure the next slide
+      makes numeric. Linear (no bend) we still avoid in hidden layers (Lecture
+      1): remove the bend and the whole stack collapses to a line. Bridge: watch
+      what those small per-layer slopes do when you multiply a lot of them.
+
+  - type: image
+    eyebrow: "Part 2 · tuning · why deep nets are harder (I-do)"
+    title: "Whisper down the lane: the gradient fades or blows up"
+    image: img/fig_vanishing_ido.png
+    img_h: 3.5
+    callout: {kind: plain, text: "From Lecture 2: a weight's gradient is the PRODUCT of the local slopes along its path back from the loss. In a deep net that path crosses every layer — so a factor a bit below 1 shrinks the gradient to nothing (vanishing), and a bit above 1 blows it up (exploding). No optimizer fully fixes this."}
+    notes: >
+      I-DO, and a required beat: it names a limit the optimizer can't cure and
+      sets up Lecture 5's ResNet. Ground it in Lecture 2's backprop: a weight's
+      gradient is the product of the local slopes along the path from the loss
+      back to that weight — "multiply the local effects along the path." In a
+      deep net that path runs through every layer, so the gradient is a long
+      product of per-layer factors. Show it on screen: if each factor is about
+      0.5 (a sigmoid's slope is at most 0.25, so this is optimistic), then six
+      layers give 0.5×0.5×…×0.5 = 0.5⁶ ≈ 0.016 — the signal has withered to
+      almost nothing by the time it reaches the EARLIEST layers, so those layers
+      barely learn while layers near the output learn fast. That is vanishing
+      gradients. Flip the factor to about 2 and the product 2⁶ = 64 explodes —
+      updates blow up, weights fly off, the loss prints NaN. The whisper-down-
+      the-lane image nails it. Partial fixes in a breath — ReLU (slope 1),
+      careful initialization, normalization — then the hook: the real cure, the
+      ResNet skip connection, is Lecture 5. Next slide you run the chain
+      yourself — Quiz 4 Q4.
+
+  - type: image
+    eyebrow: "Part 2 · tuning · your turn (you-do = Q4)"
+    title: "Your chain — multiply the slopes down five layers"
+    image: img/fig_vanishing_youdo.png
+    img_h: 3.1
+    callout: {kind: check, text: "Your turn → Quiz 4, Q4. A gradient of 1.0 passes back through 5 layers, each ×0.5. What reaches the first layer? Does it vanish or explode — and what does that mean for the earliest layers? Worked answer in the notes."}
+    notes: >
+      YOU-DO = Quiz 4 Q4 (same chain-multiply as the I-do, different length so it
+      is real practice). Answer: (a) 1.0 × 0.5⁵ = 0.5⁵ = 0.03125 ≈ 0.03. (b)
+      VANISHING — every factor is below 1, so the product shrinks fast. (c) the
+      gradient reaching the earliest layers is almost zero, so those layers
+      barely update / learn, while the layers near the output learn fine — which
+      is why very deep PLAIN networks are hard to train. If instead each slope
+      were about 2, the product 2⁵ = 32 would EXPLODE and the loss would go to
+      NaN. Ask a pair for their first-layer number before revealing, then have
+      them fill Q4. Plant the pointer once more: Lecture 5's ResNet skip
+      connection is the fix that lets the gradient bypass layers.
+
+  - type: bullets
+    eyebrow: "Part 2 · tuning · the hyperparameters"
+    title: "The knobs you set — tune the learning rate first"
+    bullets:
+      - "Hyperparameters = settings you choose BEFORE training (the weights are what training learns)"
+      - "There are a huge number: depth · width · activation · optimizer · dropout · weight decay · schedule · batch size · epochs · …"
+      - "1 · Learning rate — by far the most impactful (Lecture 2's three bowls)"
+      - "2 · Batch size — memory and the trade-off, next two slides"
+      - "3 · Model size / epochs — capacity and how long"
+    callout: {kind: plain, text: "Get the learning rate right and half your problems disappear; everything else can start at its library default. Order of attack: learning rate → batch size → model size / epochs."}
+    notes: >
+      Set expectations honestly: the list of things you COULD tune is enormous —
+      depth and width, activation, the optimizer and its momentum, dropout rate,
+      weight-decay strength, the schedule, batch size, epochs, and more. Nobody
+      sweeps all of them. The skill is knowing the handful that move the needle,
+      and we cover only those basics. Define hyperparameter cleanly: a setting
+      YOU pick before training, versus the weights the loop LEARNS. Then the
+      ranking: the learning rate dominates (callback to Lecture 2's three bowls,
+      the loss-curve diagnosis, and the schedule two slides back) — get it in the
+      right ballpark before touching anything else; then batch size (its trade-
+      off and loss-curve fingerprint are the next two slides); then model size
+      and epochs. Give the order-of-attack line as the practical recipe.
+      Regularization strength (dropout, weight decay) is also a hyperparameter,
+      but we meet those as OVERFITTING fixes in Part 3, so they are off this
+      list. Bullets are genuine list content here (an agenda of knobs), not a
+      mechanic — the mechanics get pictures. Bridge: batch size next.
+
+  - type: image
+    eyebrow: "Part 2 · tuning · batch size · the trade-off (I-do)"
+    title: "Batch size shapes which valley you land in"
+    image: img/fig_batch_tradeoff.png
+    img_h: 3.7
+    callout: {kind: plain, text: "Same loss plane, two batch sizes. SMALL batch: noisy gradient → many small, jittery steps into a wide FLAT basin that generalizes. LARGE batch: clean gradient → few big, confident steps into a narrow SHARP basin that generalizes worse. A bigger batch buys a cleaner gradient and better GPU use — but there is a too-big cost."}
+    notes: >
+      I-DO for the batch-size trade-off — cover BOTH what a bigger batch buys AND
+      the too-big problem (Quiz 4 Q3). Read the figure as one shared landscape
+      seen from above (contour rings = equal loss). LEFT, small batch: each mini-
+      batch gives a noisy, slightly-wrong gradient estimate, so every step is
+      small and points a bit differently — many short jittery hops that wander
+      into a wide, FLAT basin (loss stays low over a broad area). RIGHT, large
+      batch: averaging over many examples gives a clean, accurate gradient, so
+      each step is long and nearly straight — a few big strides into a narrow,
+      SHARP basin. The generalization point (Keskar et al.): a flat basin is
+      forgiving — a small shift between training data and new data barely changes
+      the loss there — while a sharp basin is unforgiving, so the same shift
+      sends the loss up the wall (a "generalization gap"). So a bigger batch buys
+      a less noisy gradient and better hardware use, but too big costs you.
+      Next slide you name those costs — Quiz 4 Q3 — reading the loss-curve
+      fingerprint.
+
+  - type: image
+    eyebrow: "Part 2 · tuning · your turn (you-do = Q3)"
+    title: "See the batch size in the loss curve"
+    image: img/fig_batch_youdo.png
+    img_h: 4.0
+    callout: {kind: check, text: "Your turn → Quiz 4, Q3. Name ONE thing a bigger batch buys you, and TWO problems if the batch is made too big. Clue in the picture: the clean curve that stalls HIGH is the too-big fingerprint. Worked answer in the notes."}
+    notes: >
+      YOU-DO = Quiz 4 Q3. The figure is the cue: same model, two batch sizes.
+      Large batch (teal) descends smoothly because each gradient is clean — but
+      with a big batch you take far fewer updates per epoch and the too-clean
+      gradient tends to a sharp minimum, so it FLATTENS HIGHER (the red gap).
+      Small batch (amber) is jagged — noisy mini-batches yank the loss around —
+      yet many more updates plus flatter minima take it LOWER. Answers to Q3:
+      (a) a bigger batch buys a LESS NOISY, more reliable gradient (each step
+      points more accurately downhill) and/or better GPU use (bulk matrix math is
+      efficient). (b) any two of: FEWER weight updates per epoch (learning per
+      epoch stalls); it may NOT FIT IN MEMORY (a T4 runs out and crashes); the
+      very clean gradient settles into SHARP MINIMA that generalize worse.
+      Practical rule: start around 32 and only grow it if training stays stable
+      and validation doesn't suffer. Say the trap aloud: a smooth loss curve is
+      not automatically a good one — judge a run by where it ENDS UP and by
+      validation, not by how pretty it looks. Have them fill Q3.
+
+  - type: image
+    eyebrow: "Part 2 · tuning · searching combinations"
+    title: "Grid vs. random search: random usually wins"
+    image: img/fig_search.png
+    img_h: 3.7
+    callout: {kind: plain, text: "Searching learning rate × batch size for a DRIAMS spectra classifier: when one knob (the learning rate) matters far more than others, random search samples many more values of it for the same budget — so it beats a rigid grid. Smarter still: Bayesian optimization (Optuna, Ray Tune) learns from your past trials and spends its budget where a good score looks most likely."}
+    notes: >
+      Explain the ladder: grid → random → Bayesian. Grid: pick a few values per
+      hyperparameter and try every combination — tidy, but 4 learning rates × 4
+      batch sizes = 16 runs yet only 4 distinct learning rates ever tested.
+      Random: same 16-run budget, sample each hyperparameter randomly, so you
+      test 16 different learning rates AND 16 batch sizes; since usually one knob
+      (the learning rate) dominates, sampling it densely — which random does for
+      free, because its points don't line up in columns — finds a better model
+      sooner. Then the state-of-the-art correction: it is NOT purely random.
+      Bayesian optimization keeps a running model of how settings map to
+      validation score, fit to the trials you've already run, and uses it to pick
+      the next trial intelligently — exploiting regions that scored well while
+      still exploring uncertain ones. Name the tools (Optuna, Ray Tune, scikit-
+      optimize); the math (Gaussian processes, acquisition functions) is beyond
+      today. In Lab 2 they run a small structured search themselves. Bridge to
+      Part 3: even perfectly tuned, a model can still fail the real test —
+      generalizing to new samples.
+
+  - type: title
+    eyebrow: "Lecture 4 · Part 3 of 3"
+    title: "Overfitting vs. underfitting"
+    subtitle: "reading train-vs-validation curves — and four ways to fix a leak"
+    notes: >
+      Part three of three, and the most practically important skill. The single
+      question: does your model actually generalize to new samples, or has it
+      just memorized the training set? The answer lives in the gap between the
+      training curve and the validation curve. We build the intuition with the
+      classic fit picture, learn to read the two loss curves (the Quiz 4 Q2
+      you-do), anchor it in a real MS failure, then fix with more data, early
+      stopping, dropout, and weight decay.
+
+  - type: image
+    eyebrow: "Part 3 · overfitting · the picture everyone means"
+    title: "Fit the trend, not the noise"
+    image: img/fig_fit_trio.png
+    img_h: 3.3
+    callout: {kind: plain, text: "Same seven noisy points, three models. Underfitting: a line too simple to catch the trend. Just right: a smooth curve that follows the trend and ignores the wiggle. Overfitting: a curve contorted through every point — 'perfect' on these dots, useless on the NEXT one. The goal is the trend, not a perfect score on the training dots."}
+    notes: >
+      Lead Part 3 with the picture everyone pictures for over/underfitting — more
+      intuitive than loss curves, so it comes first. Same seven noisy points in
+      all three panels; only the model differs. Left, underfitting: a straight
+      line, too simple to bend with the data, so it misses the obvious trend
+      ("high bias"). Middle, just right: a smooth curve that follows the
+      underlying trend while ignoring the little up-and-down jitter — that jitter
+      is noise, not signal. Right, overfitting: a wiggly curve contorted to pass
+      exactly through every point, including the noise; it scores perfectly on
+      these seven yet lurches wildly between them, so on the very next
+      measurement it will be badly wrong. Say the lesson plainly: a perfect score
+      on the training points is not the goal — capturing the trend that transfers
+      to new data is. This is exactly the spectra story coming two slides on, and
+      it is what the loss curves next detect.
+
+  - type: image
+    eyebrow: "Part 3 · overfitting · read the two curves (I-do)"
+    title: "Watch training and validation loss together"
+    image: img/fig_trainval_ido.png
+    img_h: 3.3
+    callout: {kind: plain, text: "Always plot BOTH: training loss (solid) on data the model learns from, validation loss (dashed) on held-out data it never trains on. Underfitting: both stay HIGH. Just right: both LOW, small gap. Overfitting: training keeps dropping while validation turns back UP. The GAP between them is the tell."}
+    notes: >
+      I-DO — the diagnostic outcome, and the set-up for Quiz 4 Q2. Teach the
+      reading protocol: always plot BOTH curves — training loss (teal, on data
+      the model learns from) and validation loss (red dashed, on held-out data it
+      never trains on). Three signatures. Underfitting: both curves stuck high
+      and close — the model literally cannot fit the data yet (too small/simple
+      or trained too briefly); the fix is MORE capacity or MORE training, not
+      less. Just right: both fall low and stay close — validation follows
+      training down; the target. Overfitting: training loss keeps dropping toward
+      zero while validation bottoms out then climbs — the model is memorizing the
+      training set's noise; the amber dot marks where validation was best. The
+      one number to watch is the GAP: small and stable is healthy, wide and
+      growing is overfitting. Next slide you diagnose four curves yourself, and
+      one of them is a different problem entirely — Quiz 4 Q2.
+
+  - type: image
+    eyebrow: "Part 3 · overfitting · your turn (you-do = Q2)"
+    title: "Diagnose four curve pairs — and name the fix"
+    image: img/fig_trainval_youdo.png
+    img_h: 3.0
+    callout: {kind: check, text: "Your turn → Quiz 4, Q2. For each pair write the diagnosis and one fix (word banks on the sheet). Watch out: (d) is NOT an overfitting problem. 2–3 minutes — worked answer in the notes."}
+    notes: >
+      YOU-DO = Quiz 4 Q2 (the same four pairs as the sheet, tagged a–d). Answers:
+      (a) UNDERFITTING → make the model bigger / train longer — both curves sit
+      high and close and barely move, so it hasn't fit even the training data
+      yet. (b) JUST RIGHT → keep it (ship it) — both drop low and stay close with
+      only a small gap. (c) OVERFITTING → regularize — training loss keeps
+      falling toward zero while validation turns back up (the dot marks the best
+      epoch); add dropout / weight decay, stop early, or get more/varied data.
+      (d) LEARNING RATE FAR TOO HIGH → lower it — the (training) loss swings
+      wildly and CLIMBS; the steps are overshooting, a bad-LR problem, not a
+      capacity or memorizing problem. The tell that separates (c) from the rest:
+      only in (c) do the two curves SPLIT APART — training good, validation bad.
+      Harvest a couple of pairs, then have them fill Q2.
+
+  - type: two-col
+    eyebrow: "Part 3 · overfitting · what it means in your lab"
+    title: "Memorizing one instrument's quirks vs. learning the chemistry"
+    left:
+      image: img/maldi_tof_real.png
+      caption: "real MALDI-TOF spectra · Martisius et al. 2020, Wikimedia Commons, CC BY 4.0"
+    right:
+      lead:
+        - "An overfit spectra classifier can learn the baseline wobble and detector noise of your ONE instrument — hitting 99% in-house."
+        - "Move it to a second instrument, site, or reagent lot and it collapses: it memorized the machine, not the biology."
+      callout: {kind: pair, text: "💬 Quick show of hands (30 sec): your model scores 99% on training data but only 70% on new samples — under- or over-fitting? Shout out the FIRST fix you'd reach for."}
+    notes: >
+      Ground the abstract idea in their reality, then run a fast show-of-hands
+      (kept to ~30 seconds, not a full turn-to-neighbour, so Part 3's three
+      interactive beats don't crowd out the 0:55 quiz-walkthrough slot — the
+      graded pair discussions are Q5 and Q6 just ahead). The
+      mass-spec anchor: a network trained on spectra from a single instrument can
+      reach near-perfect training accuracy by latching onto that instrument's
+      fingerprint — its particular baseline drift, detector noise, calibration
+      offset — none of which is the biological signal. It looks brilliant until
+      you deploy on another machine or another site's reagent lot, where those
+      quirks differ, and accuracy craters. Foreshadow Lecture 10's cautionary
+      tale (DRIAMS models losing AUROC across sites). The real MALDI-TOF spectra
+      on the left (Wikimedia, CC BY 4.0) are the "one instrument's output" the
+      model must not memorize. Prompt: 99% train, 70% new — classic overfitting;
+      two minutes. Harvest answers and validate the whole toolkit coming up: more
+      / more-varied data (multiple instruments!), regularization (dropout, weight
+      decay), early stopping, a simpler model — and always evaluate on a truly
+      held-out, ideally external, set. No single right answer; the point is they
+      now reach for these tools.
+
+  - type: image
+    eyebrow: "Part 3 · overfitting · fixes 1 & 2"
+    title: "More data · and early stopping"
+    image: img/fig_early_stopping.png
+    img_h: 4.0
+    callout: {kind: plain, text: "More (and more VARIED) data is the strongest fix — harder to memorize, easier to find the real pattern; spectra from several instruments beats many from one. Early stopping: watch validation loss and keep the model from its lowest point, before it turns back up. Free, and always worth doing."}
+    notes: >
+      Two fixes, one slide. More data first because it is the most reliable and
+      the least clever: a bigger, more diverse training set is simply harder to
+      memorize, so the network is pushed toward the genuine pattern; emphasize
+      DIVERSE — for spectra, data from several instruments/sites directly attacks
+      the "memorized one machine" failure. When you cannot get more real data,
+      augmentation (Lab 2) and transfer learning (Lecture 8) are cousins of "more
+      data." Then early stopping, read straight off the curve: validation loss
+      falls, bottoms out, and starts rising as overfitting sets in; the vertical
+      amber line marks that bottom, and early stopping simply keeps the model
+      from that best epoch and quits. It costs nothing, needs only a validation
+      split you already have, and is standard practice. Bridge: the next two
+      fixes actively handicap the network so it can't memorize — dropout and
+      weight decay.
+
+  - type: image
+    eyebrow: "Part 3 · overfitting · fix 3 · regularization"
+    title: "Dropout: randomly switch off neurons each step"
+    image: img/fig_dropout.png
+    img_h: 3.5
+    callout: {kind: plain, text: "On every training step, dropout zeroes a random ~half of the hidden neurons — and a DIFFERENT set each step. The net can't lean on any one neuron, so it builds redundant, robust features (like a committee that votes). At test time all neurons are back on. One line in PyTorch: nn.Dropout(0.5)."}
+    notes: >
+      Visualize it with the two panels — same network, two training steps, a
+      different random ~half of the hidden neurons switched off (dashed, X'd out)
+      each time. The mechanism: on every training step dropout randomly picks
+      some fraction of neurons (say 50%) and temporarily zeroes them, so the
+      network must predict without them; because which neurons vanish changes
+      every step, no single neuron can become a linchpin that memorizes a
+      training quirk, and the work spreads across many redundant features. The
+      intuition to say aloud: it is like training a huge committee of smaller
+      sub-networks that share weights, then letting them vote — averaging many
+      views generalizes better than trusting one. Two practical notes: dropout is
+      only ON during training; at test time every neuron is active (outputs
+      scaled so the math balances), so inference is deterministic. And it is one
+      line — nn.Dropout(0.5); typical rates 0.2–0.5. Fix four, weight decay, is
+      next.
+
+  - type: image
+    eyebrow: "Part 3 · overfitting · fix 4 · regularization"
+    title: "L2 regularization = weight decay"
+    image: img/fig_weight_decay.png
+    img_h: 3.5
+    callout: {kind: ms, text: "Big weights let the curve bend sharply enough to thread every noisy point — the output becomes the noise. Add λ·Σw² to the loss so every step also nudges weights toward 0 ('weight decay'): the curve can only track the trend. A spectra net then spreads reliance across many m/z channels instead of pinning one huge weight on a fluke."}
+    notes: >
+      Frame L2 as weight decay. The idea: add a second term to the loss that
+      grows with the size of the weights (the sum of the squared weights, scaled
+      by a small knob λ). Now minimizing the loss means two things at once — fit
+      the training data AND keep the weights small — and they trade off. Why
+      smaller weights help, made explicit: the SAME four noisy dots sit in both
+      panels. A network with huge weights has enough "bend" to route its curve
+      through every dot exactly — at that point the output no longer represents
+      the signal, it IS the noise, memorized point for point (the red curve: zero
+      training error, useless on a new sample with different noise). Forcing
+      weights to stay modest removes that bending power, so the curve can only
+      track the broad trend (the teal curve) — it ignores the noise and
+      generalizes. The nickname "weight decay" comes from the mechanics: on top
+      of the normal gradient step, every weight is nudged a little toward zero
+      each update, so unused weights quietly decay away. λ is just "how hard we
+      pull toward zero"; in PyTorch it is the weight_decay argument on the
+      optimizer. Round out: dropout and weight decay are the two everyday
+      regularizers — use them with early stopping and enough data.
+
+  - type: image
+    eyebrow: "Part 3 · discussion · a rare but critical class (pair = Q5)"
+    title: "When plain accuracy lies: the rare resistant isolate"
+    image: img/fig_imbalance.png
+    img_h: 4.0
+    callout: {kind: pair, text: "Pair → Quiz 4, Q5. Real DRIAMS S. aureus + oxacillin: 41 resistant among 738. A classifier reports 94% accuracy — why might that be MISLEADING, and what would you look at INSTEAD of overall accuracy? Worked answer in the notes."}
+    notes: >
+      PAIR = Quiz 4 Q5 — a short discussion on a real clinical problem we don't
+      have lecture time to teach fully (it returns in Lecture 10). This is a REAL
+      DRIAMS slice: S. aureus + oxacillin, 697 susceptible vs. 41 resistant (about
+      6% resistant) — exactly the Lab 2 data. Q5 answer: (a) a model that simply
+      ALWAYS predicts "susceptible" scores about 94% accuracy while catching ZERO
+      of the 41 resistant isolates — with a rare class, overall accuracy is
+      dominated by the majority and can hide total failure on the cases that
+      matter most. (b) look at CLASS-SPECIFIC measures instead: sensitivity /
+      recall on the resistant class (what fraction of true R it catches),
+      precision, the confusion matrix, and a precision–recall curve / PR-AUC —
+      not overall accuracy. (Sensitivity and specificity return in Lecture 10.)
+      Give them two minutes, harvest a couple of answers; don't expect one right
+      answer.
+
+  - type: bullets
+    eyebrow: "Part 3 · discussion · what would you try? (pair = Q6)"
+    title: "Make the model pay attention to the rare class"
+    bullets:
+      - "Get or oversample more resistant examples (or augment them)"
+      - "Undersample the susceptible majority for balance"
+      - "Weight the loss toward the rare class (class weights) — or focal loss for the hard cases"
+      - "Move the decision threshold to favour catching R; use stratified train/validation splits"
+    callout: {kind: pair, text: "Pair → Quiz 4, Q6. Name TWO things you could do so the model pays real attention to the rare resistant class (one line each). Worked answer in the notes."}
+    notes: >
+      PAIR = Quiz 4 Q6, the companion discussion. Any two reasonable ideas earn
+      full credit, e.g.: get or oversample more resistant examples (or augment
+      them); undersample the susceptible majority; weight the loss toward the
+      rare class (class weights) or use focal loss to turn up the rare/hard cases
+      — the focal-loss pointer from Part 1 pays off here; move the decision
+      threshold to favour catching R; choose metrics (sensitivity, precision–
+      recall) that reflect the real goal; use stratified train/validation splits.
+      All of this returns properly in Lecture 10 — this prompt just gets them
+      thinking. The bullets are the answer bank; keep it a 2–3 minute
+      conversation and harvest a few. If time is short, this can spill into the
+      start of Lecture 5.
+
+  - type: bullets
+    eyebrow: "Lecture 4 · what you can do now"
+    title: "You can now…"
+    bullets:
+      - "Pick the loss: a NUMBER → MSE; a CLASS → cross-entropy (punishes confident wrong answers)"
+      - "Tune the knobs: mini-batches, Adam, a learning-rate schedule, and the right activation"
+      - "Explain vanishing/exploding gradients as multiplying per-layer slopes down the chain"
+      - "Read train-vs-validation curves to diagnose under/overfitting — and fix it with more data, early stopping, dropout, weight decay"
+    callout: {kind: plain, text: "You have now worked every compute item on Quiz 4 live — the loss choice (Q1), the curve diagnosis (Q2), the batch-size trade-off (Q3), the vanishing-gradient chain (Q4) — and talked through class imbalance (Q5–Q6). Keep the sheet: it is your Lab 2 cheat-sheet."}
+    notes: >
+      Recap = the Lecture 4 outcomes; each was already a you-do or a pair this
+      hour and each maps to a Quiz 4 item: Q1 the cross-entropy loss choice, Q2
+      the four-curve diagnosis, Q3 the batch-size trade-off, Q4 the vanishing-
+      gradient chain-multiply, Q5–Q6 the
+      class-imbalance discussion. There is no separate "quiz block" — they have
+      done it all. Point them to keep the sheet as their Lab 2 cheat-sheet, then
+      the closing bridge on the next slide.
+
+  - type: bullets
+    eyebrow: "Lecture 4 · full circle — and over to your lab"
+    title: "The through-line: fit the data, don't memorize it"
+    bullets:
+      - "The right loss scores the right thing; the knobs make training converge"
+      - "The gap between training and validation loss tells you if it generalizes"
+      - "Regularization (dropout, weight decay, early stopping, more data) shrinks that gap"
+      - "Next: Lecture 5 gives deep nets a gradient highway (ResNet) and reads spectra with CNNs; Lab 2 puts all of today on real DRIAMS data"
+    callout: {kind: plain, text: "Everything today serves one idea: fit the data + don't memorize it. If you can read a validation curve and name a fix, you can do every item on Quiz 4."}
+    notes: >
+      Close the hour. Tie the three parts into one through-line: the right loss
+      scores the right thing (Part 1), the knobs make training actually converge
+      (Part 2), and reading the training-vs-validation gap tells you whether the
+      model generalizes, with regularization to shrink that gap (Part 3).
+      Vanishing gradients set up Lecture 5's ResNet skip connection — the
+      "gradient highway" — and the CNNs that read spectra directly; Lab 2 puts
+      all of today to work on real DRIAMS resistance data, including the class-
+      imbalance problem from Q5–Q6. Then a ten-minute break before Lecture 5.

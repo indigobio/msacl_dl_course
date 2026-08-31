@@ -1,0 +1,372 @@
+deck:
+  title: "Lecture 1 · What Is Deep Learning?"
+  eyebrow: "MSACL · DS301 Deep Learning · Segment 1 · Lecture 1"
+
+slides:
+  - type: title
+    title: "What is deep learning?"
+    subtitle: "A neuron is multiply–add–bend · stack them deep · something remarkable happens"
+    notes: >
+      Sunday morning, hour one — the very first hour of the course. Welcome them
+      and set the contract for all 15 hours: intuition first, mass spec always,
+      a little arithmetic by hand because most of you are PhDs and numbers make
+      it click. Promise of THIS hour: you will compute a neuron by hand, multiply
+      a weight matrix by an input vector by hand, and say in one sentence how
+      deep learning differs from the machine learning you may already use.
+      Nothing today needs math beyond multiply-and-add. This hour is interactive:
+      every worked example (I-do) is followed by one you do yourself (you-do) —
+      and each you-do IS a Quiz 1 question, so by the recap you have already
+      worked the whole quiz. Hand out Quiz 1 now, blank; they fill it as we go.
+
+  - type: bullets
+    eyebrow: "Lecture 1 · the contract"
+    title: "What these 15 hours give you"
+    bullets:
+      - "The fundamental math — intuition and arithmetic, no calculus"
+      - "The popular architectures — MLP, CNN, RNN, Transformer"
+      - "The learning paradigms — supervised and self-supervised"
+      - "Hands-on training on real data by filling in Colab blanks"
+      - "Judgment: the good, the bad, and the ugly of deep learning"
+    callout: {kind: plain, text: "Goal — leave able to APPLY deep learning to your own assay, and to JUDGE when a simpler tool wins. You never write a network from scratch; you fill in blanks and read code."}
+    notes: >
+      The contract for the whole course; stating it lowers anxiety for the least
+      code-comfortable people in the room. "Fundamental math" = intuition and
+      arithmetic, no proofs. "Architectures" is the tour ahead (Lectures 5-8).
+      "Good, bad, ugly" is the honesty promise — where DL fails, when a simpler
+      tool wins (Lecture 10). Read the goal line slowly: apply, and judge — the
+      two verbs the whole course serves.
+
+  - type: bullets
+    eyebrow: "Lecture 1 · the roadmap"
+    title: "The course, one question per segment"
+    bullets:
+      - "Foundations — what a neuron computes and how it learns (now)"
+      - "Training & CNNs — what makes training work; patterns in spectra"
+      - "Sequences & Transformers — why order matters; what is attention"
+      - "Learning without labels — which representation; when NOT to use DL"
+      - "Frontier & Capstone — LLMs, agents, build-and-defend a project"
+    callout: {kind: plain, text: "Every segment ends in a fill-in-the-blank Colab lab. Today we answer the first question: what does a neuron compute — and why go deep?"}
+    notes: >
+      The roadmap framed as the single driving question each segment answers —
+      problem-driven, so every hour has a clear "why." You do not need to
+      memorise this; just notice every lecture is one question, and today we
+      answer the first. Labs turn each block hands-on in Colab, fill-in-the-blank
+      with instant checks — never build a network from scratch.
+
+  - type: image
+    eyebrow: "Why this matters · four you already know"
+    title: "Deep learning is already in your world"
+    image: img/hook_4panel.png
+    img_h: 4.3
+    caption: "AlphaFold DB (CC0) · Go board: Xchen27 (CC BY-SA 3.0) · ChatGPT: Mattoutankamon (CC BY-SA 4.0) · Waymo car: Grendelkhan (CC BY-SA 4.0)"
+    notes: >
+      One line each — the point is breadth, not depth. AlphaFold: a decades-old
+      folding problem cracked by a deep network; Nobel in Chemistry 2024. AlphaGo:
+      more board positions than atoms in the universe. ChatGPT & LLMs: the same
+      neurons-stacked-deep idea, scaled to the internet. Self-driving cars:
+      perception from raw camera pixels in real time. Kept famous and general so
+      nobody feels this is niche. Punchline to say aloud: every one of these is
+      the same handful of ideas we begin assembling this hour. This is a single
+      composite of four separately-licensed images (credits in the caption).
+
+  - type: bullets
+    eyebrow: "What ML is · the working definition"
+    title: "First — what is machine learning?"
+    bullets:
+      - "1 · Learn — the rule is found from examples, not hand-coded"
+      - "2 · Complex patterns — too tangled to write down by hand"
+      - "3 · Existing data — spectra, panels, chromatograms you have"
+      - "4 · Predictions — resistant? which pathogen? what concentration?"
+      - "5 · Unseen data — tomorrow's sample the model was never shown"
+    callout: {kind: ms, text: "ML learns complex patterns from existing data to make predictions on unseen data. Deep learning is one particular, very powerful way to do exactly this."}
+    notes: >
+      The spine of the whole field — read the five parts aloud. Contrast with
+      ordinary software: normally YOU write the rules (if peak-area > threshold,
+      flag it); in ML you show examples and the machine writes the rule itself
+      (part 1). Part 5 is the one clinicians must never forget: performance is
+      only real on data the model has NOT seen — hammered in Lecture 10 with
+      external validation.
+
+  - type: two-col
+    eyebrow: "What ML is · statistics → ML → AI"
+    title: "A running joke — with a real idea inside"
+    left:
+      image: img/ai_statistics_meme.png
+      caption: "same maths, fancier label · popular internet meme"
+    right:
+      lead:
+        - "The joke is fair: much of ML is statistics wearing a newer name."
+        - "But the labels track something real — moving right means bigger models, less hand-holding, harder problems."
+        - "Deep learning is one specific kind of machine learning — a subset, not a rival."
+      callout: {kind: plain, text: "Statistics ⊂ machine learning ⊂ AI · deep learning lives inside ML."}
+    notes: >
+      Icebreaker — let them laugh, the room relaxes. A linear regression IS a
+      fitted statistical model; calling it "AI" changes nothing about the maths.
+      But there is a real gradient: statistics → ML → deep learning → the loose
+      umbrella "AI" tends toward larger models that engineer fewer of their own
+      features on messier data. Fix one relationship in their heads: deep
+      learning is a subset of ML, not a competitor to it.
+
+  - type: two-col
+    eyebrow: "Engineered vs. learned · classic ML"
+    title: "Classic ML: you hand-build the features"
+    left:
+      image: img/cat.jpg
+      caption: "cat · Alvesgaspar, Wikimedia Commons, CC BY-SA 3.0"
+    right:
+      lead:
+        - "A FEATURE is a number you distil from raw data."
+        - "Classic ML: a human picks what to measure — ear shape, whisker length, edge count — then a light model decides."
+        - "Strength: interpretable, data-thrifty. Ceiling: only as good as the features you thought to compute."
+      callout: {kind: ms, text: "Your lab already does this — peak areas, ratios, retention times, S/N are hand-engineered features too."}
+    notes: >
+      Define "feature" carefully — the vocabulary word of the section, it recurs
+      all week. Use the everyday cat task so nobody needs domain knowledge. A
+      human expert decides what to measure and feeds a handful of numbers to a
+      lightweight model. Strength: interpretable, data-thrifty. Ceiling: miss a
+      discriminating cue and it is invisible to the model. That ceiling is what
+      deep learning lifts — next slide.
+
+  - type: bullets
+    eyebrow: "Engineered vs. learned · deep learning (pair)"
+    title: "Deep learning: the network learns the features"
+    bullets:
+      - "Same task, one box fewer — hand it RAW pixels, not features you chose"
+      - "It discovers the useful edges, ears, and textures by itself"
+      - "It learns the features AND the decision, together"
+      - "Trade-off: less feature-guessing, but more data, more compute, less interpretability"
+    callout: {kind: pair, text: "Pair → Quiz 1, Q4 (MALDI Pipeline A vs. B). Name one hand-engineered feature your lab already computes. Turn to a neighbour, 2 minutes."}
+    notes: >
+      The pivot of the lecture, and the live version of Quiz 1 Q4. The
+      feature-engineering step disappears INTO the network — it learns what to
+      measure and how to decide, jointly, from raw pixels. That is the
+      one-sentence outcome for Lecture 1: learned features vs. hand-engineered
+      features. Honest trade-off: DL removes feature-guessing but demands far more
+      data and compute and gives up interpretability (theme of Lecture 10).
+      PAIR (assessed) — this is Quiz 1 Q4: in Pipeline A a technician computes the
+      peak area at m/z 2415 and the 2415/4100 ratio, then feeds those two numbers
+      to logistic regression (hand-engineered); in Pipeline B the raw 6,000-bin
+      spectrum goes straight into a network that grows its own "peak-ish here"
+      detector (learned). Harvest 2-3 answers aloud — peak area, isotope ratio,
+      retention time, S/N, adduct pattern — every one is a hand-engineered feature
+      a network could learn from the raw spectrum.
+
+  - type: pipeline
+    eyebrow: "The neuron · anatomy"
+    title: "A neuron: weighted sum → bias → activation → output"
+    stages:
+      - {label: "inputs", sub: "x1, x2 (two numbers)"}
+      - {label: "weighted sum", sub: "w1·x1 + w2·x2 + b", kind: conv}
+      - {label: "activation", sub: "bend f(z)", kind: pool}
+      - {label: "output", sub: "y"}
+    callout: {kind: plain, text: "Say it and keep saying it: multiply, add, bend. Weights = how much the neuron cares about each input; training will learn them (Lecture 2)."}
+    notes: >
+      Walk left to right. Inputs are numbers (say two peak intensities). Each is
+      multiplied by its own weight — how much this neuron cares about that input;
+      weights are what training learns. Add the results plus a bias (a constant
+      nudge) to get z. Then the activation f bends z into the output. Without the
+      bend, stacking neurons collapses back to one big weighted sum (a single
+      line); the bend is what lets networks model curves.
+
+  - type: image
+    eyebrow: "The neuron · the bend (I-do)"
+    title: "Three activations, three shapes"
+    image: img/fig_activations.png
+    callout: {kind: plain, text: "ReLU — negatives → 0, positives pass (the default hidden layer). Sigmoid — squashes any number into 0–1, read as a probability. Linear — no bend at all."}
+    notes: >
+      I-DO. Two workhorses plus the do-nothing baseline. ReLU — "rectified linear
+      unit," but just say: negatives to zero, positives unchanged; trivial to
+      compute, trains well. Sigmoid — the S-curve into 0-1, so we read the output
+      as a probability; typically at the end of a yes/no classifier. Linear = no
+      activation, a straight line, the thing we DON'T want in hidden layers.
+      Conceptual payload: activations are the only non-straight step — remove them
+      and the whole network, however deep, flattens to a single straight line.
+      Next slide you name these shapes yourself — that is Quiz 1 Q1.
+
+  - type: image
+    eyebrow: "The neuron · your turn (you-do)"
+    title: "Name that activation"
+    image: img/fig_activations_quiz.png
+    callout: {kind: check, text: "Your turn → Quiz 1, Q1. Write the name under each curve — ReLU · Sigmoid · Linear. 45 seconds — answer in the notes."}
+    notes: >
+      YOU-DO = Quiz 1 Q1 (same three shapes as the I-do, re-ordered so it is real
+      practice, not copying). Answers: (a) Sigmoid — the S-curve squashing every
+      input into 0–1; (b) ReLU — flat at zero for negatives, then rising with
+      slope 1, i.e. max(0, z); (c) Linear — a straight diagonal, no nonlinearity
+      at all. Have them fill Q1 on the quiz sheet now.
+
+  - type: image
+    eyebrow: "The neuron · worked by hand (I-do)"
+    title: "One neuron, real numbers"
+    image: img/fig_neuron_ido.png
+    callout: {kind: ms, text: "z = (2·3) + (−1·2) + 1 = 5, so ReLU(5) = 5 — the neuron fires. Read x as two peak intensities: this neuron likes input 1 and distrusts input 2."}
+    notes: >
+      I-DO, done aloud and slowly — the first hand-computation of the course.
+      z is the dot product of weights and inputs, plus bias: 2·3=6, −1·2=−2, +1
+      → z=5. Then bend: ReLU leaves 5 alone (positive passes); sigmoid would map
+      5 to about 0.99, a confident yes. Note the schematic: inputs → weighted
+      edges → Σ (the sum, z) → activation (the bend) → output y. Next slide you
+      run the SAME machine on different numbers — and this time the sum comes out
+      negative. That is Quiz 1 Q2.
+
+  - type: image
+    eyebrow: "The neuron · your turn (you-do)"
+    title: "Your neuron — compute it"
+    image: img/fig_neuron_youdo.png
+    callout: {kind: check, text: "Your turn → Quiz 1, Q2. Compute z = w·x + b, then apply ReLU. 90 seconds with a neighbour — worked answer in the notes."}
+    notes: >
+      YOU-DO = Quiz 1 Q2 (same schematic, different numbers — and the sum lands
+      negative on purpose). Worked answer: z = (0.5·2) + (−1·3) + 1 = 1 − 3 + 1 =
+      −1. ReLU(−1) = max(0, −1) = 0 — the neuron stays SILENT. This is the
+      on/off behaviour that, times millions of neurons, is how a network routes
+      information: a negative weighted sum is clamped to zero and that neuron
+      contributes nothing. Ask a couple of pairs for their z before revealing,
+      then have them fill Q2 on the sheet.
+
+  - type: image
+    eyebrow: "Stacking · a layer is a matrix, row 1 (I-do)"
+    title: "Two neurons, three inputs — row 1"
+    image: img/fig_matvec_row1.png
+    callout: {kind: plain, text: "Each ROW of W is one neuron; running the layer is W·x. Shapes must click: 3 inputs → 3 columns · 2 neurons → 2 rows → 2 outputs. Row 1 = (1·2)+(0·1)+(2·0) = 2."}
+    notes: >
+      I-DO. Frame first: each ROW of W is one neuron's weight list; the input x is
+      the same three numbers for both neurons (three peak intensities: 2, 1, 0).
+      Running the layer is the matrix–vector product W·x. The one gotcha is the
+      shape rule: the column count (3) must equal the number of inputs (3); the
+      row count (2) sets how many outputs. Compute row 1 live — take row 1 of W,
+      pair term-by-term with x, multiply, add: 1·2=2, 0·1=0, 2·0=0; sum = 2. Say
+      "dot product" once. One row left — they do it next, and it is Quiz 1 Q3.
+
+  - type: image
+    eyebrow: "Stacking · your turn, row 2 (you-do)"
+    title: "Row 2 — your turn, then read Wx"
+    image: img/fig_matvec_row2.png
+    callout: {kind: check, text: "Your turn → Quiz 1, Q3. Compute row 2's dot product and read the full output Wx. Worked answer in the notes."}
+    notes: >
+      YOU-DO = Quiz 1 Q3 (the second row of the same matrix — different numbers
+      from row 1, so genuine practice). Row 2 (−1, 3, 1) dotted with (2, 1, 0):
+      (−1)(2) + (3)(1) + (1)(0) = −2 + 3 + 0 = 1. So Wx = (2, 1). Land it: a
+      2×3 matrix times a length-3 vector gives a length-2 output — one number per
+      neuron, a full forward pass, and a fresh two-number representation that
+      simply becomes the input to the next layer. Have them fill Q3 on the sheet.
+
+  - type: image
+    eyebrow: "Why the bend matters · the big picture"
+    title: "Enough bends can trace ANY curve"
+    image: img/fig_universal_approx.png
+    callout: {kind: plain, text: "Universal approximation, in one picture: add up enough ReLU pieces and the network approximates any shape. Depth and width buy you bends — that is the whole magic."}
+    notes: >
+      The reassuring theorem, shown not stated: a network with enough neurons can
+      approximate essentially any function. Each ReLU contributes one bend (the
+      faint amber lines); summed, the bends chase the wiggly black target (teal
+      dashed). The takeaway is intuition, not a proof: more neurons → more bends →
+      more shape. This is WHY the non-linear bend from the last few slides
+      matters — without it every stack collapses to a single straight line and no
+      amount of depth would help. No math required; just "bends add up."
+
+  - type: image
+    eyebrow: "Stacking · one layer feeds the next (I-do)"
+    title: "Deep = repeat the move, feeding each layer the last"
+    image: img/fig_twolayer_ido.png
+    callout: {kind: plain, text: "A layer's output is the next layer's input — stack it and you have depth."}
+    notes: >
+      I-DO, read straight off the diagram (same 2→2→1 node layout as the you-do
+      next slide, every weight and bias now printed on the figure). Feed
+      x = (2, 1) into layer 1: hidden neuron 1 = (1)(2) + (−1)(1) + 0 = 1 →
+      ReLU 1; hidden neuron 2 = (0)(2) + (1)(1) + 0 = 1 → ReLU 1. Both neurons
+      fire, so hidden h = (1, 1) — a fresh representation, and a layer's output
+      is just the next layer's input. Layer 2 reads h like any input, with
+      weights W2 = (2, 1) and bias b2 = −1: y = (2)(1) + (1)(1) − 1 = 2.
+      That is all "deep" means — multiply, add, bend, pass it on; stack the same
+      move and depth builds the hierarchy on the next two slides.
+      Soft callback: layer 1 is the same multiply-add-bend the room just ran on
+      the matrix–vector slides, now feeding a second layer that reads the hidden
+      vector — we do NOT claim the hidden layer just copies the input; here it
+      recomputes to (1, 1). Next slide you take a fresh (2, 1) through your own
+      two layers, with different weights — that is Quiz 1 Q6.
+
+  - type: image
+    eyebrow: "Stacking · your turn, two layers (you-do)"
+    title: "Your two-layer pass — compute it"
+    image: img/fig_twolayer_youdo.png
+    callout: {kind: check, text: "Your turn → Quiz 1, Q6. Run layer 1 (W₁x + b₁, then ReLU) for the hidden vector, then layer 2 for y. Worked answer in the notes."}
+    notes: >
+      YOU-DO = Quiz 1 Q6 (same input → hidden(ReLU) → output shape as the I-do,
+      taking the (2, 1) you just computed forward as the input). Given
+      x = (2, 1); W1 = [[1, −1], [−1, 1]], b1 = (0, −4); W2 = (3, 2), b2 = −1.
+      Layer 1: row 1 = (1)(2) + (−1)(1) + 0 = 1 → ReLU 1; row 2 =
+      (−1)(2) + (1)(1) + (−4) = −5 → ReLU 0. Hidden h = (1, 0) — the second
+      neuron is silent again. Layer 2: y = (3)(1) + (2)(0) − 1 = 2. Ask a pair
+      for their hidden vector before revealing y, then have them fill Q6 on the
+      sheet.
+
+  - type: image
+    eyebrow: "Stacking · why go deep"
+    title: "Depth = a hierarchy of features"
+    image: img/cat_hierarchy.png
+    caption: "one photo, abstracted further at each layer · cat: Alvesgaspar, Wikimedia Commons, CC BY-SA 3.0"
+    callout: {kind: plain, text: "No one told it to look at edges first — it LEARNED that edges build into parts, and parts into whole objects. That is why 'deep.'"}
+    notes: >
+      Close the loop opened at the start. This is DEPTH, not parallel filters:
+      each layer takes the previous layer's output and builds something more
+      abstract — pixels → edges → parts → whole → label. Early layers see
+      fragments, deep layers see meaning. Crucial honesty: this hierarchy is
+      LEARNED, not designed — it echoes the engineered-vs-learned pivot and
+      previews Lecture 5, where a network's first layer literally becomes edge
+      and peak detectors. The composite here is one cat photo (CC BY-SA 3.0)
+      abstracted left-to-right at successive layers.
+
+  - type: image
+    eyebrow: "Mass spec anchor · your data works the same way"
+    title: "The same hierarchy on a real spectrum"
+    image: img/fig_driams_mrsa.png
+    caption: "real clinical MALDI-TOF spectrum · S. aureus + oxacillin (MRSA) · DRIAMS, Dryad doi:10.5061/dryad.bzkh1899q, CC0"
+    callout: {kind: ms, text: "Raw intensities → peak-shaped bumps → clusters → a signature → the call (susceptible / resistant). Exactly the neuron math you just did, stacked on your data."}
+    notes: >
+      Rule-2 MS anchor for the whole hour: the cat hierarchy, retold on a REAL
+      clinical spectrum — one Staphylococcus aureus isolate from DRIAMS, plotted
+      straight from the binned_6000 vector (intensity vs m/z, CC0). This isolate
+      is oxacillin-resistant (MRSA). Same machinery — multiply, add, bend — reads
+      spectra: early layers find peak shapes, deeper layers find patterns of
+      peaks, the top layer calls susceptible vs. resistant. This is exactly what
+      Lab 2's 1D CNN does on these DRIAMS spectra. (Tighter clinical anchor than
+      the earlier generic peptide MALDI figure.)
+
+  - type: bullets
+    eyebrow: "Lecture 1 · what you can do now"
+    title: "You can now…"
+    bullets:
+      - "Say how deep learning differs from classic ML — learned vs. engineered features"
+      - "Describe what a neuron computes: weighted sum + bias → activation"
+      - "Multiply a weight matrix by an input vector by hand, and reason about shapes"
+      - "Explain why stacked layers build a hierarchy of features"
+    callout: {kind: plain, text: "You have now worked every compute item on Quiz 1 live — the activation match (Q1), the weighted sum (Q2), the 2×3 layer (Q3), the two-layer pass (Q6), and the learned-vs-engineered call (Q4). Keep the sheet."}
+    notes: >
+      Recap = the four Lecture 1 outcomes; each was already a you-do this hour and
+      each maps to a Quiz 1 item: Q1 name-that-activation, Q2 one weighted sum
+      (the silent-neuron case), Q3 the 2×3 matrix–vector product, Q6 the full
+      two-layer forward pass, Q4 learned vs. engineered. There is no separate
+      "quiz block" — they have done it all. Point them at Q5 (one sentence) as the
+      closing pair, next slide, then keep the sheet as their Lab 1 cheat-sheet.
+
+  - type: bullets
+    eyebrow: "Lecture 1 · discussion (pair)"
+    title: "Full circle — and over to your lab"
+    bullets:
+      - "A neuron multiplies, adds, and bends"
+      - "Stacking layers builds a hierarchy of learned features"
+      - "💬 Your bench: name one signal or feature a network could learn straight from YOUR raw data"
+      - "Next hour (Lecture 2): where do the weights come from? The network learns them."
+    callout: {kind: pair, text: "Pair → Quiz 1, Q5, in one sentence: how does deep learning differ from the classic ML you use today? Then say which of YOUR lab signals a network could learn. 2 minutes."}
+    notes: >
+      Close the hour with the Quiz 1 Q5 reflection as a think-pair-share, then
+      widen it to the room. Full-credit Q5 answers capture "learned features from
+      raw data" vs. "human-engineered features first." After harvesting a
+      sentence or two, push the problem-driven follow-up that seeds Lab 1 and the
+      Segment 1 discussion: what data in YOUR lab could train a network, and would
+      it likely beat the methods you rely on today? Harvest a few aloud — peak
+      area, isotope ratio, retention time, S/N, a QC rule — each a hand-engineered
+      feature a network could learn. Gain (patterns you never thought to measure)
+      vs. risk (more data, less interpretability, validation burden — Lecture 10).
+      Bridge to Lecture 2: today we assumed the weights; next hour we learn where
+      they come from.

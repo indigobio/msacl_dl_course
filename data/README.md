@@ -127,6 +127,27 @@ in Phase 2 before a lab is built on it.
 - Runner-up (if ever more scale is needed): Müller et al. 2020 Zenodo benchmark,
   255k labeled EICs, CC-BY 4.0 — but a 4 GB RData zip, instructor-prep only.
 
+## Slide image assets — provenance
+
+Real, licensed figures fetched for the decks (stored under `slides/assets/img/`,
+rehosted offline per CLAUDE.md rule 7). Raw download caches keep the underscore
+prefix (`_maldi_src.webp`) so `tools/make_slide_figures.py` can rebuild the
+cropped/downscaled versions reproducibly.
+
+| Asset | Source | License | Used in |
+|---|---|---|---|
+| `fig_driams_mrsa.png` (plotted from `data/slices/driams_c_saureus_oxacillin.npz`) | DRIAMS — one real clinical MALDI-TOF spectrum, S. aureus + oxacillin (MRSA); Dryad doi:10.5061/dryad.bzkh1899q | CC0 1.0 | Lecture 1 MS-hierarchy slide (tighter clinical anchor; replaces `maldi_tof_real.png` there) |
+| `maldi_tof_real.png` (crop of `_maldi_src.webp`) | "Examples of non-destructive MALDI-TOF MS spectra", Martisius et al. 2020 (ZooMS bone-tool paper), via Wikimedia Commons | CC BY 4.0 | retired from Lecture 1 (superseded by `fig_driams_mrsa.png`); kept for reuse |
+| `chatgpt_conversation.png` (synthetic, course palette) | authored in-house by `tools/make_slide_figures.py:chatgpt_panel()` — an English prompt/reply chat mock-up; NOT a third-party screenshot (the earlier French Wikimedia screenshot, Mattoutankamon CC BY-SA 4.0, was wrong for an English course and has been replaced) | course-original (no third-party rights) | Lecture 1 hook 4-panel composite |
+| `hook_4panel.png` (composite) | AlphaFold DB (CC0) · Go board: Xchen27 (CC BY-SA 3.0) · ChatGPT panel: course-original synthetic · Waymo car: Grendelkhan (CC BY-SA 4.0) | per-panel, see caption | Lecture 1 hook |
+| `cat_hierarchy.png` (composite) | cat photo: Alvesgaspar (CC BY-SA 3.0) + derived edge/parts/whole layers | CC BY-SA 3.0 | Lecture 1 depth-hierarchy slide |
+
+Generated (no external source, course palette) via `tools/make_slide_figures.py`:
+`fig_activations.png`, `fig_activations_quiz.png`, `fig_neuron_ido.png`,
+`fig_neuron_youdo.png`, `fig_matvec_row1.png`, `fig_matvec_row2.png`,
+`fig_universal_approx.png`, `fig_twolayer_youdo.png`, `fig_driams_mrsa.png`,
+`chatgpt_conversation.png`.
+
 ## Entry template (fill in when a dataset is confirmed)
 
 ```

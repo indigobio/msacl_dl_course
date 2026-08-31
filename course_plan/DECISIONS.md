@@ -225,3 +225,56 @@ Newest entries at the top. Every entry: date, decision, rationale.
   search. Kept as the "train a model whose probabilities aren't so squashed"
   follow-up (focal @ 0.5 recovers recall ~0.89). The earlier bug fix (unused
   `alpha` term) is retained.
+
+## 2026-08-30 — Slides pipeline v2: YAML spec → native editable PPTX; interactive redesign
+
+- **Retired the HTML→screenshot pipeline.** `tools/html2pptx.py` (rendered each
+  HTML slide to a PNG and pasted it full-bleed → flat, un-editable, web-styled
+  decks, 700–900 lines of HTML per lecture) is **removed**. Reasons: costly to
+  author, hard to maintain, too web-like, and illustrations were mostly
+  self-plotted SVG.
+- **New source of truth: `slides/spec/lectureNN_topic.yaml`** — a compact deck
+  spec (~10-15 lines/slide) built to **native, editable PowerPoint** by
+  `tools/spec2pptx.py` (python-pptx). Slide types: `title`, `bullets`,
+  `two-col`, `image`, `pipeline`, `grid`. Native theme mirrors the course
+  palette (no CSS). Real licensed images placed with `image:` + annotation
+  `boxes:`; SVG→PNG only where numeric mechanics need richer visuals.
+- **Interactivity is now a non-negotiable rule (rule 8).** Every lecture weaves
+  do-it-together / I-do-then-you-do beats throughout (~every 8-10 min), not a
+  single do-able block at the end. Do-you slides carry a `check` callout with the
+  worked answer in speaker notes.
+- **Rebuild process:** one fresh subagent per lecture builds the spec from the
+  legacy HTML + Learning_outcomes, iterates with the instructor over multiple
+  review rounds, then returns general takeaways to the main agent
+  (`course_plan/rebuild_takeaways.md`) before a fresh agent starts the next
+  lecture/lab. Each legacy HTML deck is **moved to `slides/html_archive/`**
+  (not deleted) once its spec is approved, so it stays available for reference
+  while later rebuilds still find their source in `slides/html/`.
+
+## 2026-08-30 — Automated build campaign for remaining lectures & labs
+Instructor authorized a **fully autonomous** build of every remaining artifact,
+one subagent-orchestrated pipeline per artifact, no review pauses (instructor
+reviews all at the end). Added **principle 9** to CLAUDE.md: illustrative
+examples over walls of plain text.
+- **Baselines (excluded):** Lecture 1, Lecture 2, Lab 1, Lab 2. (Lecture 5 was
+  briefly mis-listed as a baseline — corrected 2026-08-30: its partial 11-slide
+  POC is only a starting point; the campaign COMPLETES it into a full deck.)
+- **Queue:** Lecture 4 → Lecture 5 (complete the partial POC) → Lecture 7 →
+  Lecture 8 → Lab 3 → Lecture 10 (Architecture Matchmaker worksheet, no quiz) →
+  Lecture 11 → Lab 4 → Lecture 13 → Lecture 14 → Lab 5 (capstone). Missing
+  quizzes (quiz05/08/11/13/14) are authored inside their lecture pipeline;
+  quiz04/07 exist (verify/upgrade). Labs get an end-to-end run.
+- **Per-artifact pipeline (one async workflow each, sequential to protect the
+  shared figure toolkit / assets / quizzes):** worker BUILD → reviewer CRITIQUE
+  → worker REVISE (1 fixed round). Then a gate critique; if it still reports
+  STRONG issues, run ONE more revise (1 optional round) and push. (Rounds were
+  cut over 2026-08-30 to reduce wall-clock/cost: first 2+2 → 2+1 → finally 1+1.
+  The 1+1 cap applies from Lecture 5 onward; Lecture 4 ran under an earlier cap.)
+- **Critique focus:** compliance with all 9 CLAUDE.md principles, accuracy of
+  quiz-question references, soundness of examples, effectiveness of assessments,
+  engagement, and logic-flow streamlining.
+- **Commit policy (added 2026-08-30):** each finished lecture/lab lands as ONE
+  git commit, made by the parent in the handoff turn after verifying the
+  pipeline output and before launching the next artifact. The pre-campaign work
+  (Lectures 1-2 polish, figure toolkit, decisions) is committed as a baseline
+  commit just before the first artifact (Lecture 4) commit.

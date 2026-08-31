@@ -1,0 +1,375 @@
+deck:
+  title: "Lecture 2 · How Networks Learn"
+  eyebrow: "MSACL · DS301 Deep Learning · Segment 1 · Lecture 2"
+
+slides:
+  - type: title
+    title: "How does a network learn?"
+    subtitle: "Loss · gradient descent · backpropagation — then the five-line PyTorch training loop"
+    notes: >
+      Sunday morning, hour two — straight after Lecture 1. In Lecture 1 we
+      ASSUMED the weights and pushed numbers forward. Today we answer the open
+      question: where do those weights come from? Promise of the hour: by the
+      end you will have taken one full learning step by hand on a two-weight
+      network — forward, measure the error, send the blame backward, nudge both
+      weights — and you will recognise those exact moves in real PyTorch code.
+      Still nothing beyond multiply, add, and "slope = how steep." No calculus.
+      This hour is interactive the same way Lecture 1 was: every worked example
+      (I-do) is followed by one you do yourself (you-do), and each you-do IS a
+      Quiz 2 question. Hand out Quiz 2 now, blank; they fill it as we go, so by
+      the recap they have already worked the whole quiz.
+
+  - type: image
+    eyebrow: "Recap · where Lecture 1 left off"
+    title: "A network runs forward — but who set the weights?"
+    image: img/fig_random_weights.png
+    img_h: 4.0
+    callout: {kind: plain, text: "Lecture 1 ASSUMED the weights. A real network starts with RANDOM weights and is terrible. Learning = adjusting those numbers until the guesses stop being garbage."}
+    notes: >
+      Two minutes. Rebuild the bridge before adding anything new. This is the
+      Lecture 1 network — same two inputs, one hidden layer, one output — except
+      every weight now reads "w = ?". That is the honest starting state of any
+      real network: weights are initialised at random, so the very first
+      prediction is garbage. Learning is nothing more than repeatedly adjusting
+      those numbers until the predictions stop being garbage. Keep the mantra
+      alive: multiply, add, bend — now we add a fourth verb, "correct."
+
+  - type: pipeline
+    eyebrow: "Today · the whole idea in one loop"
+    title: "Learning = guess → measure → correct, over and over"
+    stages:
+      - {label: "1 · Forward", sub: "make a guess ŷ"}
+      - {label: "2 · Loss", sub: "how wrong?", kind: pool}
+      - {label: "3 · Backprop", sub: "assign the blame", kind: dashed}
+      - {label: "4 · Step", sub: "nudge weights", kind: conv}
+    callout: {kind: plain, text: "These four boxes ARE the PyTorch training loop you will read at the end of the hour. Everything in between just opens each box in turn. Repeat for many batches (an 'epoch'), many epochs."}
+    notes: >
+      Give them the map before the details. Walk the loop once, slowly: (1) push
+      an input forward and get a guess; (2) measure how wrong the guess is — that
+      number is the loss; (3) send the blame backward to every weight — that is
+      backpropagation; (4) nudge each weight a little in the improving direction
+      — that is the step. Then repeat, thousands of times. A homely twin to keep
+      in your pocket: sighting in a catapult with no physics — you fire, see
+      where the stone lands (the miss = loss), turn the power dial the right way
+      (the gradient), and fire again, closing on the target. A network does
+      exactly this with millions of dials. These four boxes reappear as five
+      lines of real PyTorch; you will recognise every one.
+
+  - type: image
+    eyebrow: "Part one · loss = the 'how wrong' number"
+    title: "Loss = distance between guess and truth"
+    image: img/fig_loss_mse.png
+    img_h: 4.0
+    callout: {kind: ms, text: "MSE = average of (guess − truth)². Squaring makes every gap positive and punishes big misses hardest. One number for the whole dataset: small = good, big = bad."}
+    notes: >
+      Keep this to ~four minutes. Loss scores how far the guesses are from the
+      truth, collapsed to one number. Use MSE because it is the most intuitive —
+      literally the average squared gap (each red bar is one error). Two reasons
+      for the square, both on the slide: it kills the sign (a miss of −3 and +3
+      are equally bad), and it disproportionately penalises large misses, so the
+      network cares most about its worst mistakes. Do NOT introduce cross-entropy
+      — that is Lecture 4, for classification; one sentence so nobody thinks MSE
+      is the only loss. Land it: loss is the single dial we turn down for the
+      rest of the hour.
+
+  - type: image
+    eyebrow: "Part two · gradient descent (I-do)"
+    title: "Downhill = the direction that lowers the loss"
+    image: img/fig_loss_bowl.png
+    img_h: 4.0
+    callout: {kind: plain, text: "new weight = weight − lr × slope. The GRADIENT is just the slope of the loss for a weight; the minus sign means 'go downhill.' How far we move each step is the step size — set by the learning rate (lr)."}
+    notes: >
+      I-DO — the engine of all deep learning, with zero calculus. Height = loss,
+      horizontal = a weight's value. The slope at the ball's feet points uphill;
+      subtract a bit of it and you move downhill, toward lower loss. Read the
+      update rule aloud twice — new weight = old weight − lr × slope — because it
+      is literally the last line of the training loop and Quiz 2 Q2. "Gradient"
+      is just our fancy word for "the slope of the loss with respect to a
+      weight"; keep translating it back to "slope." Honesty note: real loss
+      surfaces live in millions of dimensions — the picture is faithful, we just
+      cannot draw a million axes. Next: how big a step? That is the learning
+      rate.
+
+  - type: image
+    eyebrow: "Part two · the learning rate (I-do)"
+    title: "Learning rate = step size: too small, just right, too big"
+    image: img/fig_lr_three_modes.png
+    img_h: 3.9
+    callout: {kind: plain, text: "Same downhill rule, three step sizes. Too small crawls (and can stall short); too big overshoots and can blow up; just right settles fast. The learning rate is the single most important dial you tune all week."}
+    notes: >
+      I-DO. The learning rate is the multiplier on the slope — how big a step we
+      take. Walk the three bowls left to right. Too small: steps so tiny the ball
+      crawls; training wastes hours and can settle into a shallow dip and never
+      reach the true bottom. Too big: each step overshoots and lands higher up
+      the far wall; the loss bounces and can diverge to infinity. Just right:
+      brisk, stable steps into the valley. Tell them plainly this is the first
+      knob they reach for in every lab and real project — and the next slides
+      show how to read the loss curve to tell which case you are in.
+
+  - type: image
+    eyebrow: "Part two · read the dashboard (I-do)"
+    title: "Read the loss curve, read the learning rate"
+    image: img/fig_loss_curves_ido.png
+    img_h: 3.6
+    callout: {kind: plain, text: "Loss (vertical) vs. training rounds (epochs). Too low: barely drops, still high. Too high: spikes and climbs — overshooting. Just right: steep drop, then flattens low. First move when training misbehaves — change the learning rate and look again."}
+    notes: >
+      I-DO. The loss curve is the dashboard you watch in every lab. Three shapes,
+      three diagnoses. Too low (amber): slopes down so gently it is still high
+      and still descending when time runs out — nudge the rate up. Too high
+      (red): jagged and trending upward as steps overshoot the valley — cut the
+      rate. Just right (teal): a sharp initial drop that flattens out low and
+      stays there. Rule of thumb: when training looks wrong, the learning rate is
+      the first dial to move, then re-read this same picture. Next slide you do it
+      yourself — that is Quiz 2 Q3.
+
+  - type: image
+    eyebrow: "Part two · your turn (you-do = Q3)"
+    title: "Diagnose four loss curves — and name the fix"
+    image: img/fig_loss_curves_youdo.png
+    img_h: 3.4
+    callout: {kind: check, text: "Your turn → Quiz 2, Q3. For each curve write the diagnosis and the one change you would make (use the word banks). Watch out: (a) and (d) are NOT the same problem. 2 minutes — worked answer in the notes."}
+    notes: >
+      YOU-DO = Quiz 2 Q3 (same four curves as the sheet, tagged a–d). Answers:
+      (a) FAR TOO HIGH → lower the rate a lot — the swings GROW and the loss
+      climbs, training is diverging. (b) TOO LOW → raise it — the loss barely
+      drops, still high and still falling at the end; wastes time. (c) JUST RIGHT
+      → keep it — steep early drop that flattens low and stays. (d) A BIT TOO
+      HIGH → lower it a little — the loss IS trending down but bounces noisily on
+      the way. The tell separating (a) from (d): in (a) the swings grow and the
+      loss rises; in (d) they shrink and the loss falls. Harvest a couple of
+      pairs, then have them fill Q3.
+
+  - type: image
+    eyebrow: "Part three · the smallest network · forward (I-do)"
+    title: "One input → one hidden → one output: two weights"
+    image: img/fig_backprop_forward.png
+    img_h: 4.0
+    callout: {kind: ms, text: "Forward pass done: we guessed ŷ = 1.5, the truth was 1, so we are off by 0.5 and the loss is 0.25. Now — how much is each weight to blame?"}
+    notes: >
+      I-DO, forward. Every number here is reused for three slides and on the
+      quiz, so go slowly. Input x = 2. First weight w₁ = 0.5, so the hidden
+      pre-activation z = 0.5×2 = 1, positive, so ReLU passes it: h = 1. Second
+      weight w₂ = 1.5, so the guess ŷ = 1.5×1 = 1.5. The truth is 1, so we
+      overshot by 0.5, and squaring gives loss 0.25. This is just Lecture 1's
+      forward pass with a loss bolted on the end — no biases, one neuron per
+      layer, purely so the math stays checkable by hand. Have them predict: both
+      weights are positive and the guess is too high, so both should come DOWN.
+
+  - type: image
+    eyebrow: "Part three · the one idea (I-do)"
+    title: "Blame flows backward: multiply the local effects along the path"
+    image: img/fig_backprop_chain.png
+    img_h: 3.0
+    callout: {kind: plain, text: "'Local effect' = the slope at one arrow: how much its output moves when its input moves. Chain them together and you get the loss's slope for a weight — its gradient. Multiplying slopes along a path IS the chain rule — no symbols, just multiply."}
+    notes: >
+      The conceptual key — do not rush it. Backprop sounds fearsome but it is one
+      move repeated: to find how much the loss cares about a given weight, walk
+      the path from the loss back to that weight and multiply one small "local
+      slope" at each arrow. The shared starting signal is the same for every
+      weight: the loss's slope with respect to the error is 2×error (the slope of
+      a squared-error bowl is twice the error — our only "derivative = slope"
+      fact today). What differs per weight is the rest of the path. Name it once
+      so they recognise the term later: multiplying local slopes along a path is
+      precisely the chain rule; we just never write the symbols.
+
+  - type: image
+    eyebrow: "Part three · gradients by hand (I-do)"
+    title: "Two paths back: short to w₂, longer to w₁"
+    image: img/fig_backprop_backward.png
+    img_h: 4.0
+    callout: {kind: ms, text: "Shared signal 2×error = 1.0. grad w₂ = 1.0 × h = 1.0 (short path). grad w₁ = 1.0 × w₂ × ReLU′ × x = 1.0×1.5×1×2 = 3.0 (longer path). Both positive → both weights should decrease."}
+    notes: >
+      I-DO, backward — the payoff. Same recipe for both weights, just more arrows
+      for the deeper one. Start with the shared signal 2×error = 2×0.5 = 1.0.
+      w₂ is the last weight: the guess is w₂×h, so nudging w₂ moves the guess by
+      h = 1 → grad w₂ = 1.0×1 = 1.0. w₁ is deeper: the guess reacts to h by the
+      factor w₂ = 1.5; the hidden unit went through ReLU and h was positive so the
+      ReLU slope is 1 (if h had been clamped to 0 this factor would be 0 and w₁
+      would get NO blame); the hidden pre-activation is w₁×x, so it reacts to w₁
+      by x = 2. Multiply the chain: 1.0×1.5×1×2 = 3.0. This is exactly what
+      loss.backward() automates, reusing the shared front part (the 1.0) for
+      every weight. Next slide you run the same recipe on fresh numbers — Quiz 2
+      Q1.
+
+  - type: image
+    eyebrow: "Part three · your turn (you-do = Q1)"
+    title: "Your backprop — same net, different numbers"
+    image: img/fig_backprop_youdo.png
+    img_h: 4.0
+    callout: {kind: check, text: "Your turn → Quiz 2, Q1. Do the forward pass (fill h, ŷ, error, loss), then multiply the local effects back for grad w₂ and grad w₁. Worked answer in the notes."}
+    notes: >
+      YOU-DO = Quiz 2 Q1 (same tiny net, different numbers: x = 1, w₁ = 2,
+      w₂ = 0.5, target y = 0). Forward: z = w₁x = 2×1 = 2, positive → h =
+      ReLU(2) = 2; ŷ = w₂h = 0.5×2 = 1; error = ŷ − y = 1 − 0 = 1; loss = 1² = 1.
+      Backward: shared signal 2×error = 2×1 = 2. grad w₂ = 2×h = 2×2 = 4 (short
+      path). grad w₁ = 2×w₂×ReLU′×x = 2×0.5×1×1 = 1 (longer path). Both gradients
+      positive → both weights should decrease. Ask a pair for their grad w₂
+      before revealing, then have them fill Q1.
+
+  - type: image
+    eyebrow: "Part three · one step by hand (I-do)"
+    title: "Take the step: weight − lr × gradient"
+    image: img/fig_onestep.png
+    img_h: 3.8
+    callout: {kind: ms, text: "With lr = 0.1: w₂ → 1.5 − 0.1×1.0 = 1.4; w₁ → 0.5 − 0.1×3.0 = 0.2. Re-run the forward pass and the loss falls 0.25 → 0.19 in ONE step. Do this thousands of times and the guess closes in on the truth."}
+    notes: >
+      I-DO — one complete learning step, start to finish. Update rule: new weight
+      = old weight − lr × gradient. With lr = 0.1: w₂ goes 1.5 − 0.1×1.0 = 1.4;
+      w₁ goes 0.5 − 0.1×3.0 = 0.2. Both dropped, exactly right — the guess was too
+      high and both weights positive, so lowering them lowers the guess. The
+      satisfying check: plug the new weights back through (h = ReLU(0.2×2) = 0.4,
+      ŷ = 1.4×0.4 = 0.56, loss = (0.56−1)² ≈ 0.19) and the loss falls from 0.25
+      to 0.19 after a single step. That is the entire mechanism: forward, loss,
+      backward, step — and the loss ticks down. Next slide you take the step on
+      YOUR gradients from Q1 — Quiz 2 Q2.
+
+  - type: image
+    eyebrow: "Part three · your turn (you-do = Q2)"
+    title: "Your gradient-descent update"
+    image: img/fig_onestep_youdo.png
+    img_h: 3.4
+    callout: {kind: check, text: "Your turn → Quiz 2, Q2. Use your gradients from Q1 (grad w₂ and grad w₁) and lr = 0.1 in new weight = weight − lr × gradient. Worked answer in the notes."}
+    notes: >
+      YOU-DO = Quiz 2 Q2 (uses the gradients from Q1: grad w₂ = 4, grad w₁ = 1).
+      w₂ ← 0.5 − 0.1×4 = 0.5 − 0.4 = 0.1; w₁ ← 2 − 0.1×1 = 2 − 0.1 = 1.9. Both
+      came down, as expected — the guess was too high. (Re-running the forward
+      pass with the new weights gives loss ≈ 0.04, down from 1: one step already
+      helped.) Have them fill Q2, then reassure — that is the whole update, done.
+
+  - type: image
+    eyebrow: "Part three · autograd checks our work"
+    title: "The exact same example, in PyTorch"
+    image: img/fig_autograd.png
+    img_h: 3.5
+    callout: {kind: plain, text: "loss.backward() runs the whole backward chain for you — and prints the very gradients you found by hand: w1.grad = 3.0, w2.grad = 1.0. You now know exactly what that one line computes."}
+    notes: >
+      The reveal that the by-hand walk was not a toy — it is literally what the
+      computer does. The script builds the same tiny net (x = 2, w₁ = 0.5,
+      w₂ = 1.5, target 1); the two weights are flagged requires_grad=True so
+      PyTorch tracks them. The three forward lines mirror our slides. Then the
+      single line loss.backward() runs the entire backward chain and deposits
+      each weight's gradient into its .grad. The printout is the punchline: pred
+      = 1.5 and loss = 0.25 (our forward numbers), and w1.grad = 3.0, w2.grad =
+      1.0 — the very gradients we multiplied out, to the decimal. In Lab 1 you
+      will not write this from scratch; you will fill blanks in exactly this
+      shape.
+
+  - type: image
+    eyebrow: "Part three · at scale"
+    title: "The same arrows on a whole network = loss.backward()"
+    image: img/fig_backprop_scale.png
+    img_h: 4.0
+    callout: {kind: plain, text: "A real network has thousands of weights. Backprop finds EVERY gradient in one backward sweep, reusing the shared parts of each path — just as our 1.0 was reused for both weights. You will never do this by hand again; but now you know what it does."}
+    notes: >
+      Zoom out and relieve the anxiety. Our two-weight chain was the hard part
+      conceptually; a real network is just many such chains sharing their front
+      sections. The red path is exactly the calculation we just did, now one
+      thread among thousands. Backprop is efficient because it reuses shared
+      pieces — it computes each shared slope once and fans it out. The liberating
+      punchline: you will never do this by hand again — loss.backward() runs the
+      whole sweep automatically. But unlike most people who type that line, you
+      now know precisely what it computes: the loss's slope for every weight, so
+      the optimiser knows which way is downhill.
+
+  - type: image
+    eyebrow: "Part four · the training loop (I-do)"
+    title: "The whole thing is a five-step cycle"
+    image: img/fig_training_loop.png
+    img_h: 4.0
+    callout: {kind: plain, text: "Forward → Loss → zero_grad → Backward → Step, then repeat every batch. The same four boxes from the map at the start, plus one new habit: zero_grad."}
+    notes: >
+      I-DO overview. All the intuition now collapses into a tiny, repeatable
+      cycle — the loop they fill in blanks on in Lab 1. Walk the five boxes:
+      forward makes a guess, loss measures how wrong, zero_grad clears last
+      round's gradients, backward runs the sweep, step nudges every weight — then
+      back to forward for the next batch. The one genuinely new step is zero_grad,
+      which we explain on the next slide. Set the expectation: you will not
+      memorise syntax, you will recognise these boxes.
+
+  - type: image
+    eyebrow: "Part four · line by line (I-do)"
+    title: "The whole loop, annotated"
+    image: img/fig_training_code.png
+    img_h: 3.9
+    callout: {kind: plain, text: "The one new habit: zero_grad — PyTorch ADDS UP gradients, so you must wipe last step's before backprop, or they pile on and corrupt the step. Forgetting it is the single most common beginner bug."}
+    notes: >
+      I-DO, line by line, mapping each to what we built. The for-loop just
+      repeats everything. 1 forward: model(x) pushes the input through and
+      returns the guess. 2 loss: compare guess to truth, one "how wrong" number.
+      3 zero_grad: the only line without a counterpart in our hand-calc —
+      PyTorch accumulates gradients by default, so reset last iteration's to zero
+      first, or they add up and corrupt the step. 4 backward: the whole backward
+      sweep, every gradient. 5 step: apply weight − lr × gradient to every weight,
+      using the learning rate on the optimizer. In Lab 1 these five lines are
+      exactly the blanks you fill. Next slide you put them in order — Quiz 2 Q4.
+
+  - type: image
+    eyebrow: "Part four · your turn (you-do = Q4)"
+    title: "Put the training loop in order"
+    image: img/fig_loop_order.png
+    img_h: 3.5
+    callout: {kind: check, text: "Your turn → Quiz 2, Q4. Number these five lines 1–5 in the order they run each iteration (forward → loss → zero_grad → backward → step). Worked answer in the notes."}
+    notes: >
+      YOU-DO = Quiz 2 Q4. Correct order: 1 pred = model(x); 2 loss =
+      loss_fn(pred, y); 3 optimizer.zero_grad(); 4 loss.backward(); 5
+      optimizer.step(). The zero_grad() step matters because PyTorch ADDS UP
+      gradients — without clearing them first, last iteration's gradients pile
+      onto this one's and corrupt the step. Have them fill Q4.
+
+  - type: image
+    eyebrow: "Part four · watch it learn"
+    title: "Run the five lines for 20 epochs — watch the loss fall"
+    image: img/fig_loss_fall.png
+    img_h: 3.9
+    callout: {kind: ms, text: "Random weights → 20 passes over the data, each running the five lines on every batch. The healthy signature: a steep early drop, then a gentle flatten. In Lab 1 you run this exact loop on real clinical spectra."}
+    notes: >
+      If the live demo runs, narrate it against this curve; if not, the figure
+      carries the point. Start: random weights, high loss, useless predictions.
+      Each epoch is one sweep of the five lines over all the data; the printed
+      loss ticks down and traces this shape — a steep early drop as the big, easy
+      errors get fixed, then a flattening as the model fine-tunes toward the
+      valley floor from the bowl slide. This is the healthy shape you diagnosed
+      in Q3. The loss curve is the single most useful diagnostic you will watch
+      all week. Bridge: in Lab 1 (next block) you run this loop for real on
+      DRIAMS-style spectra and watch this same curve.
+
+  - type: bullets
+    eyebrow: "Lecture 2 · what you can do now"
+    title: "You can now…"
+    bullets:
+      - "Say what loss is (how wrong), what gradient descent does (step downhill), and what the learning rate sets (step size)"
+      - "Walk backprop on a two-weight net: multiply the local effects along the path to get each gradient"
+      - "Take one gradient-descent step by hand: weight − lr × gradient"
+      - "Order the five training-loop lines, and diagnose a learning rate from a loss curve"
+    callout: {kind: plain, text: "You have now worked every compute item on Quiz 2 live — the backprop (Q1), the update step (Q2), the loss-curve diagnosis (Q3), and the loop order (Q4). Keep the sheet — it is your Lab 1 cheat-sheet."}
+    notes: >
+      Recap = the Lecture 2 outcomes; each was already a you-do this hour and each
+      maps to a Quiz 2 item: Q1 one-step backprop, Q2 the gradient-descent
+      update, Q3 loss-curve diagnosis, Q4 the five-line loop order. There is no
+      separate "quiz block" — they have done it all. Point them at Q5 (the
+      discussion) as the closing think-pair-share on the next slide, then keep
+      the sheet as their Lab 1 cheat-sheet.
+
+  - type: bullets
+    eyebrow: "Lecture 2 · discussion (pair = Q5)"
+    title: "Full circle — and a peek ahead"
+    bullets:
+      - "Learning = guess (forward) → measure (loss) → assign blame (backprop) → nudge (step), repeated"
+      - "Every bit of this needs labelled truth to compute the loss"
+      - "💬 Your bench: for a prediction you'd want, what is the 'truth' the loss measures against — and how many labelled samples could you get?"
+      - "Next: Lab 1 runs this exact loop on real clinical data; Lecture 4 tackles what goes wrong when the model just memorises."
+    callout: {kind: pair, text: "Pair → Quiz 2, Q5. Your training loss falls almost to zero, but the loss on fresh held-out samples starts to RISE. What is going wrong, and does a lower training loss always mean a better model? 2 minutes — answer in the notes."}
+    notes: >
+      Close with the Quiz 2 Q5 reflection as a think-pair-share, then harvest.
+      Q5 answer: (a) this is OVERFITTING — the network is starting to memorise the
+      quirks and noise of the training set instead of the general pattern, so it
+      keeps improving on seen data while getting worse on new data. (b) NO — a
+      lower training loss does not mean a better model; what matters is
+      performance on UNSEEN data (generalisation); once the two curves split
+      apart, more training makes the model worse in practice. Lecture 4 names the
+      fixes (more/cleaner data, regularisation, dropout, early stopping). Also
+      widen the room question: what plays the role of "truth" in their lab (a
+      confirmed AST result, a reference-method concentration, an adjudicated
+      call?) and how many labelled samples realistically exist — that bottleneck
+      seeds Lab 1's discussion and Lecture 4. Bridge: next you run this loop for
+      real in Colab. Then a ten-minute break before Lab 1.

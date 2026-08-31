@@ -1,0 +1,142 @@
+deck:
+  title: "Lecture 5 · Convolutional Neural Networks"
+  eyebrow: "MSACL · DS301 Deep Learning · Segment 2 · Lecture 5"
+
+slides:
+  - type: title
+    title: "Convolutional networks: seeing patterns in images and spectra"
+    subtitle: "Filters, feature maps, pooling — computed by hand · then peaks as objects"
+    notes: >
+      Sunday afternoon, hour two. Promise: by the end you compute a convolution
+      by hand and see why the same machinery reads spectra and finds
+      chromatographic peaks. Nothing here needs more than multiply-and-add.
+
+  - type: bullets
+    eyebrow: "Lecture 5 · Where this hour goes"
+    title: "Four stops, one idea"
+    bullets:
+      - {text: "Why CNNs fit images and spectra — three properties of the data", time: "8 min"}
+      - {text: "Convolution by hand — filters, stride, padding, channels, pooling", time: "26 min"}
+      - {text: "The same trick in 1D — spectra and chromatograms", time: "6 min"}
+      - {text: "Deeper, then further — ResNet, and detection as peak-picking", time: "16 min"}
+    notes: >
+      Mechanics in 2D first (easier to see), then transfer to the 1D data this
+      room works with. Quiz 5 reuses exactly these grids.
+
+  - type: two-col
+    eyebrow: "Why CNN · 2 of 4"
+    title: "Property 1 — patterns are local"
+    left:
+      image: img/sparrow.jpg
+      caption: "a beak detector only needs this window · photo: M. Pennington, CC BY-SA 2.0"
+      boxes:
+        - {x: 0.60, y: 0.38, w: 0.16, h: 0.16, label: "the beak lives here", lx: 0.30, ly: 0.24}
+    right:
+      lead:
+        - "To recognize a beak, a neuron doesn't need the whole bird — a small window is enough."
+        - "So connect neurons to windows, not to every pixel."
+      callout: {kind: ms, text: "A peak lives in a narrow m/z window — the rest of the spectrum is baseline."}
+    notes: "Hung-yi Lee's beak detector, told on the image itself."
+
+  - type: two-col
+    eyebrow: "Why CNN · 3 of 4"
+    title: "Property 2 — the same pattern appears anywhere"
+    left:
+      image: img/sparrows_two.jpg
+      caption: "one detector could handle both · photo: hedera.baltica, CC BY-SA 2.0"
+      boxes:
+        - {x: 0.40, y: 0.22, w: 0.13, h: 0.11, label: "a beak here…", lx: 0.52, ly: 0.14}
+        - {x: 0.34, y: 0.53, w: 0.14, h: 0.12, label: "…and here", lx: 0.02, ly: 0.68}
+    right:
+      lead:
+        - "An upper-left beak detector and a lower-right one do almost the same job."
+        - "So make them share one set of weights — one detector, slid everywhere."
+      callout: {kind: ms, text: "A Gaussian peak at m/z 300 looks like one at m/z 4,800 — one detector, slid along the axis."}
+    notes: "Weight sharing — the single most important idea of the hour."
+
+  - type: grid
+    eyebrow: "Convolution by hand · step 1"
+    title: "Overlay, multiply, add — that's the whole operation"
+    table:
+      data:
+        - [1, 0, 0, 0, 0, 1]
+        - [0, 1, 0, 0, 1, 0]
+        - [0, 0, 1, 1, 0, 0]
+        - [1, 0, 0, 0, 1, 0]
+        - [0, 1, 0, 0, 1, 0]
+        - [0, 0, 1, 0, 1, 0]
+      highlight: [[0,0],[0,1],[0,2],[1,0],[1,1],[1,2],[2,0],[2,1],[2,2]]
+    calc: "filter 3x3 over top-left window · (1·1)+(1·1)+(1·1) + zeros = 3  →  strong diagonal match"
+    notes: >
+      The 6x6 image is 0/1 for arithmetic comfort. Amber = the 3x3 filter window.
+      Walk the nine products slowly; six are zero, three 1x1 hits = diagonal match.
+
+  - type: grid
+    eyebrow: "Convolution by hand · checkpoint"
+    title: "Your turn — compute the two amber cells"
+    table:
+      data:
+        - [3, -1, "?", -1]
+        - [-1, "?", 1, -1]
+        - [-1, 1, -1, 3]
+        - [1, -1, 1, -1]
+      highlight: [[0,2],[1,1]]
+    calc: "the feature map so far · fill the two ? cells with your neighbor — 90 seconds"
+    callout: {kind: check, text: "Overlay the window, multiply, add. Answers: (0,3)=-1 · (1,1)=+1."}
+    notes: "Live checkpoint — everyone must do one dot product by hand before we automate."
+
+  - type: image
+    eyebrow: "Convolution by hand · the same drill, drawn out"
+    title: "One window, multiplied and summed into one output cell"
+    image: img/conv_worked_example.png
+    caption: "convolution worked example · Daniel Voigt Godoy (dl-visuals), Wikimedia Commons, CC BY 4.0"
+    calc: "exactly what you just did on the 6x6 grid — real published figure, fetched licensed, not hand-drawn SVG"
+    notes: >
+      Rule-7 demo: a canonical published diagram pulled from Wikimedia (CC BY 4.0)
+      instead of a self-plotted SVG. Reinforces the by-hand grid on the previous slides.
+
+  - type: image
+    eyebrow: "Deeper · what 'just stack more' looks like"
+    title: "Inside VGG: your grid tricks, stacked sixteen deep"
+    image: img/vgg16.png
+    caption: "VGG-16 · diagram: Gorlapraveen, Wikimedia Commons, CC BY-SA 4.0"
+    calc: "every filter is 3x3 — the size you computed by hand · channels grow 64→128→256→512 · ≈138M weights"
+    notes: >
+      Fast beat, 60 seconds. Nothing new: conv (their 6x6 grid), pooling, a fully
+      connected head — repeated 16 deep. 138M weights sets up the ResNet cliffhanger.
+
+  - type: pipeline
+    eyebrow: "Convolution by hand · assembly"
+    title: "The whole CNN"
+    stages:
+      - {label: "input", sub: "spectrum / image"}
+      - {label: "conv", sub: "pattern maps", kind: conv}
+      - {label: "pool", sub: "shrink", kind: pool}
+      - {label: "repeat ×N", sub: "patterns of patterns"}
+      - {label: "flatten", sub: "to a vector"}
+      - {label: "dense", sub: "your Lec 1–3 net"}
+      - {label: "susceptible / resistant", sub: "softmax", kind: dashed}
+    callout: {kind: plain, text: "Early layers find edges and peak shapes; deeper layers find patterns of patterns — the Lecture 1 hierarchy, now with a mechanism."}
+    notes: "Everything after flatten is literally the MLP from Lab 1."
+
+  - type: pipeline
+    eyebrow: "Detection · a real system"
+    title: "PeakOnly (2020): CNNs doing peak review for real"
+    stages:
+      - {label: "ROI", sub: "candidate window"}
+      - {label: "CNN #1", sub: "peak or noise?", kind: conv}
+      - {label: "CNN #2", sub: "boundaries?", kind: conv}
+      - {label: "integrate", sub: "area, reported", kind: pool}
+    callout: {kind: plain, text: "Trained on 5,365 hand-annotated windows — approached expert-level curation. You train on this exact dataset in the capstone."}
+    notes: "Melnikov et al., Anal. Chem. 2020. Our prepared slice is 3.8 MB."
+
+  - type: bullets
+    eyebrow: "Lecture 5 · what you can do now"
+    title: "You can now…"
+    bullets:
+      - "Compute a convolution by hand and read a feature map as a 'pattern found here' map"
+      - "Size any conv layer with (n − k + 2p)/s + 1"
+      - "Say why deep needed ResNet — vanishing gradients and the skip-connection highway"
+      - "Reframe peak picking as object detection — boxes = integration windows, scores = confidence"
+    callout: {kind: check, text: "Next hour — Lab 2: build a 1D CNN on 3,000 real MALDI-TOF spectra and beat your Lab-1 MLP at calling MRSA."}
+    notes: "Map each bullet to a quiz item, then sell Lab 2."

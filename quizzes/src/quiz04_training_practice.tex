@@ -47,13 +47,13 @@
 
 \begin{center}
 {\Large \textbf{Quiz 4 --- Making Training Actually Work}}\\[2pt]
-{\normalsize Overfitting curves, the batch-size trade-off, and a discussion on class imbalance}
+{\normalsize Cross-entropy, overfitting curves, the batch-size trade-off, vanishing gradients, and a discussion on class imbalance}
 \end{center}
 
 \vspace{-2pt}
 \begin{center}
 \fbox{\parbox{0.92\textwidth}{\small
-\textbf{Instructions:}\; Answer all four questions --- the last two (Q3--Q4) are short
+\textbf{Instructions:}\; Answer all six questions --- the last two (Q5--Q6) are short
 \emph{discussion} prompts on a topic we don't have lecture time to cover, so reason them out
 in a sentence or two. Intuition first; no calculators needed.%
 \ifsolution\else\\[4pt]\textbf{Name:}\ \blk{6cm}\hfill\textbf{Date:}\ \blk{3.5cm}\fi
@@ -63,7 +63,42 @@ in a sentence or two. Intuition first; no calculators needed.%
 \vspace{-2pt}\hrule\vspace{5pt}
 
 % =========================== Q1 ===========================
-\textbf{1. Diagnose the training run --- and prescribe a fix.}\; {\small Each plot shows
+\textbf{1. Cross-entropy: the right loss, and which model it punishes.}\; {\small Cross-entropy
+scores a \emph{classification} by how much probability you put on the \emph{true} class --- being
+confidently wrong hurts most; predicting a plain \emph{number} instead uses MSE. For a one-hot truth
+the loss is $\mathrm{CE}=-\ln(p_{\text{true}})$ (natural log).}
+
+\vspace{3pt}
+\textbf{(a)} You are predicting two things about an isolate. Which loss fits each --- \emph{MSE} or
+\emph{cross-entropy}?
+
+\vspace{2pt}
+\quad oxacillin MIC, a concentration (a \emph{number}):\; \rb{MSE}{3cm}
+
+\vspace{2pt}
+\quad resistant vs.\ susceptible (a \emph{class}):\; \rb{cross-entropy}{3cm}
+
+\vspace{3pt}
+\textbf{(b)} The truth is \emph{resistant} (R). Model~A puts probability \textbf{0.8} on R; Model~B
+puts only \textbf{0.2} on R. Using $\mathrm{CE}=-\ln(p_{\text{true}})$, compute each loss --- which
+model has the \emph{larger} cross-entropy loss, and why?
+
+\work{1.0cm}
+\ifsolution\else\blk{\linewidth}\fi
+
+\keybox{(a) A \textbf{number} (the MIC concentration) $\rightarrow$ \textbf{MSE}; a \textbf{class}
+(R vs.\ S) $\rightarrow$ \textbf{cross-entropy} (the output is a probability, and being confidently
+wrong should hurt most). (b) \textbf{Model~B.} Plug into $\mathrm{CE}=-\ln(p_{\text{true}})$:
+Model~A $=-\ln(0.8)=\mathbf{0.223}$; Model~B $=-\ln(0.2)=\mathbf{1.609}$ --- about $7\times$ larger. B
+gave the \emph{true} class only $0.2$, so it was confident in the \emph{wrong} answer, and $-\ln(p)$
+rockets as the probability on the truth heads toward zero. \emph{Cross-entropy doesn't just grade the
+call --- it grades \emph{how confident} you were, so it separates a sure bet from a hedge in a way
+plain accuracy can't.}}
+
+\vspace{2pt}\hrule\vspace{5pt}
+
+% =========================== Q2 ===========================
+\textbf{2. Diagnose the training run --- and prescribe a fix.}\; {\small Each plot shows
 \emph{training} loss (solid) and \emph{validation} loss (dashed) vs.\ epoch. For each, write the
 \emph{diagnosis} and \emph{one fix}, using the word banks below.}
 
@@ -142,8 +177,8 @@ the two curves \emph{split apart} --- training good, validation bad.}}
 
 \vspace{2pt}\hrule\vspace{5pt}
 
-% =========================== Q2 ===========================
-\textbf{2. The batch-size trade-off.}\; {\small You are training a spectra classifier on Colab and
+% =========================== Q3 ===========================
+\textbf{3. The batch-size trade-off.}\; {\small You are training a spectra classifier on Colab and
 consider raising the mini-batch size from 32 to a much larger value.}
 
 \vspace{3pt}
@@ -169,13 +204,40 @@ doesn't suffer.}}
 
 \vspace{2pt}\hrule\vspace{5pt}
 
-% =========================== Q3 (discussion) ===========================
-\textbf{3. Discussion --- a rare but critical class.}\; {\small In a MALDI-TOF resistance panel,
-only $5\%$ of isolates are \emph{resistant} (R); the other $95\%$ are \emph{susceptible} (S). You
-train a classifier and it reports \textbf{95\% accuracy}.}
+% =========================== Q4 ===========================
+\textbf{4. Vanishing gradients --- multiply the slopes down the chain.}\; {\small From Lecture~2, a
+weight's gradient is the \emph{product} of the local slopes along the path from the loss back to that
+weight; in a deep net that path runs through \emph{every} layer. A gradient of \textbf{1.0} leaves the
+loss and passes back through \textbf{5 layers}, each multiplying it by a local slope of \textbf{0.5}.}
 
 \vspace{3pt}
-\textbf{(a)} Why might that 95\% accuracy be \emph{misleading} here --- what could the model be doing?
+\textbf{(a)} What gradient reaches the \emph{first} layer?\quad $1.0\times0.5^{5}=$ \rb{$0.03$}{2.2cm}
+
+\work{0.5cm}
+
+\textbf{(b)} Is this \emph{vanishing} or \emph{exploding}?\quad \rb{vanishing}{3cm}
+
+\textbf{(c)} In one line, what does that mean for how the \emph{earliest} layers learn?
+
+\work{1.0cm}
+\ifsolution\else\blk{\linewidth}\fi
+
+\keybox{(a) $1.0\times0.5^{5}=0.5^{5}=0.03125\approx\mathbf{0.03}$. (b) \textbf{Vanishing} --- every factor is
+below~1, so the product shrinks fast. (c) The gradient reaching the earliest layers is almost zero, so
+\textbf{those layers barely update / learn} while layers near the output learn fine --- which is why very
+deep \emph{plain} networks are hard to train (the fix, ResNet skip connections, is Lecture~5). If each
+slope were instead about~2, the product $2^{5}=32$ would \textbf{explode} and the loss would go to NaN.}
+
+\vspace{2pt}\hrule\vspace{5pt}
+
+% =========================== Q5 (discussion) ===========================
+\textbf{5. Discussion --- a rare but critical class.}\; {\small In a real MALDI-TOF resistance
+slice (DRIAMS \emph{S. aureus} + oxacillin), only \textbf{41 of 738} isolates are \emph{resistant} (R)
+--- about $6\%$; the other $94\%$ are \emph{susceptible} (S). You train a classifier and it reports
+\textbf{94\% accuracy}.}
+
+\vspace{3pt}
+\textbf{(a)} Why might that 94\% accuracy be \emph{misleading} here --- what could the model be doing?
 
 \work{1.0cm}
 \ifsolution\else\blk{\linewidth}\fi
@@ -186,17 +248,17 @@ resistant cases?
 \work{1.2cm}
 \ifsolution\else\blk{\linewidth}\fi
 
-\keybox{(a) A model that simply \textbf{always predicts ``susceptible''} scores $95\%$ accuracy while
-catching \emph{zero} resistant isolates --- with a rare class, overall accuracy is dominated by the
-majority and can hide total failure on the cases that matter most. (b) Look at \textbf{class-specific}
+\keybox{(a) A model that simply \textbf{always predicts ``susceptible''} scores $94\%$ accuracy while
+catching \emph{zero} of the 41 resistant isolates --- with a rare class, overall accuracy is dominated
+by the majority and can hide total failure on the cases that matter most. (b) Look at \textbf{class-specific}
 measures: \textbf{sensitivity/recall on the resistant class} (what fraction of true R it catches),
 \textbf{precision}, the \textbf{confusion matrix}, and a \textbf{precision--recall curve / PR-AUC}
 --- not overall accuracy. (Sensitivity \& specificity return in Lecture 10.)}
 
 \vspace{2pt}\hrule\vspace{5pt}
 
-% =========================== Q4 (discussion) ===========================
-\textbf{4. Discussion --- what would you try?}\; {\small Same imbalanced problem. Name \emph{two}
+% =========================== Q6 (discussion) ===========================
+\textbf{6. Discussion --- what would you try?}\; {\small Same imbalanced problem. Name \emph{two}
 things you could do so the model pays real attention to the rare resistant class. (One line each.)}
 
 \work{1.4cm}

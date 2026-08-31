@@ -47,13 +47,13 @@
 
 \begin{center}
 {\Large \textbf{Quiz 1 --- Foundations}}\\[2pt]
-{\normalsize The neuron, activation functions, and a layer as a matrix}
+{\normalsize The neuron, activation functions, a layer as a matrix, and a two-layer pass}
 \end{center}
 
 \vspace{-2pt}
 \begin{center}
 \fbox{\parbox{0.92\textwidth}{\small
-\textbf{Instructions:}\; Answer all five questions. Intuition first, light arithmetic ---
+\textbf{Instructions:}\; Answer all six questions. Intuition first, light arithmetic ---
 show your work on the blanks. No calculators needed.%
 \ifsolution\else\\[4pt]\textbf{Name:}\ \blk{6cm}\hfill\textbf{Date:}\ \blk{3.5cm}\fi
 }}
@@ -186,6 +186,40 @@ classic machine learning?}
 learning relies on features a human engineers first. (Any answer capturing ``learned features
 from raw data'' vs.\ ``human-engineered features'' earns full credit; phrasing about
 representation learning or end-to-end training is equally acceptable.)}
+
+\vspace{2pt}\hrule\vspace{5pt}
+
+% =========================== Q6 ===========================
+\textbf{6. Two layers, by hand.}\; {\small Run a full two-layer forward pass: first the
+hidden layer (matrix--vector, add bias, then ReLU), then the output layer.}
+
+\vspace{2pt}
+\textbf{Layer 1:}\quad
+$\mathbf{W_1} = \begin{pmatrix} 1 & -1 \\ -1 & 1 \end{pmatrix},\quad
+\mathbf{x} = \begin{pmatrix} 2 \\ 1 \end{pmatrix},\quad
+\mathbf{b_1} = \begin{pmatrix} 0 \\ -4 \end{pmatrix}$
+
+\[
+\mathbf{h} = \operatorname{ReLU}(\mathbf{W_1}\mathbf{x} + \mathbf{b_1})
+= \operatorname{ReLU}\!\begin{pmatrix} \blk{2.2cm} \\[3pt] \blk{2.2cm} \end{pmatrix}
+= \begin{pmatrix} \rb{$1$}{1cm} \\[3pt] \rb{$0$}{1cm} \end{pmatrix}
+\]
+
+\textbf{Layer 2:}\quad
+$\mathbf{W_2} = \begin{pmatrix} 3 & 2 \end{pmatrix},\quad b_2 = -1$
+
+\[
+y = \mathbf{W_2}\mathbf{h} + b_2 = \blk{5cm} = \rb{$2$}{1.3cm}
+\]
+
+\work{0.9cm}
+
+\keybox{Layer 1: row 1 $=(1)(2)+(-1)(1)+0 = 1$, so $\operatorname{ReLU}(1)=1$; row 2
+$=(-1)(2)+(1)(1)+(-4) = -5$, so $\operatorname{ReLU}(-5)=0$. Hence
+$\mathbf{h} = \left(\begin{smallmatrix}1\\0\end{smallmatrix}\right)$ --- the second hidden
+neuron stays silent. Layer 2: $y = (3)(1)+(2)(0)-1 = 2$. The input $(2,1)$ here is the
+layer output $\mathbf{Wx}$ from Q3 carried forward --- a layer's output is simply the
+next layer's input, and stacking that same move is what ``deep'' means.}
 
 \vspace{4pt}\hrule\vspace{3pt}
 {\small\itshape \ifsolution Answer key.\else Keep this sheet --- the neuron and matrix drills
