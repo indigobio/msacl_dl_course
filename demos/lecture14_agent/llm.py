@@ -1,11 +1,11 @@
 """LLM backends for the demo.  A backend is just a function: chat(messages) -> text.
 
-  - offline_chat : a stand-in (no API key, no network) that is scripted just
+  - offline_chat   : a stand-in (no API key, no network) that is scripted just
     enough to show the three stages.  It is NOT a real model: it answers general
     questions, INVENTS specific QC numbers when asked (the hallucination beat),
     and, in ReAct mode, calls tools and answers from the observations.
-  - openai_chat  : a real LLM via a raw HTTP call to any OpenAI-compatible
-    /chat/completions endpoint (OpenAI, or a local server like Ollama). No SDK.
+  - anthropic_chat : a real LLM via a raw HTTP call to the Claude Messages API
+    (https://api.anthropic.com/v1/messages).  No SDK, no framework.
 """
 import json
 import os
@@ -16,49 +16,62 @@ import urllib.request
 
 
 def make_llm(backend):
-    return openai_chat if backend == "openai" else offline_chat
+    return anthropic_chat if backend == "claude" else offline_chat
 
 
 # --------------------------------------------------------------------------- #
-# Real LLM: raw HTTP to any OpenAI-compatible endpoint (no SDK, no framework).
+# Real LLM: raw HTTP to the Claude Messages API (no SDK, no framework).
+# Anthropic differs from OpenAI: the system prompt is a separate top-level
+# field, roles are only user/assistant, and the reply is a list of content
+# blocks.  We translate our messages accordingly.
 # --------------------------------------------------------------------------- #
-def openai_chat(messages, retries=4):
-    base = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
-    key = os.environ.get("OPENAI_API_KEY", "")
-    model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+def anthropic_chat(messages, retries=4):
+    base = os.environ.get("ANTHROPIC_BASE_URL", "https://api.anthropic.com").rstrip("/")
+    key = os.environ.get("ANTHROPIC_API_KEY", "")
+    model = os.environ.get("ANTHROPIC_MODEL", "claude-3-5-haiku-latest")
     if not key:
-        raise SystemExit("Set OPENAI_API_KEY (and optionally OPENAI_BASE_URL / OPENAI_MODEL).")
-    body = json.dumps({
+        raise SystemExit("Set ANTHROPIC_API_KEY (and optionally ANTHROPIC_MODEL / ANTHROPIC_BASE_URL).")
+
+    # Split our [system, user, assistant, ...] into Anthropic's shape.
+    system = "".join(m["content"] for m in messages if m["role"] == "system")
+    convo = [{"role": m["role"], "content": m["content"]}
+             for m in messages if m["role"] != "system"]
+    payload = {
         "model": model,
-        "messages": messages,
+        "max_tokens": 1024,
+        "messages": convo,
         "temperature": 0,
-        "stop": ["Observation:"],   # let OUR loop supply the observation
-    }).encode()
+        "stop_sequences": ["Observation:"],   # let OUR loop supply the observation
+    }
+    if system:
+        payload["system"] = system
     req = urllib.request.Request(
-        base + "/chat/completions", data=body,
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+        base + "/v1/messages", data=json.dumps(payload).encode(),
+        headers={"x-api-key": key,
+                 "anthropic-version": "2023-06-01",
+                 "content-type": "application/json"},
     )
     for attempt in range(retries + 1):
         try:
             with urllib.request.urlopen(req, timeout=60) as resp:
-                return json.loads(resp.read())["choices"][0]["message"]["content"].strip()
+                data = json.loads(resp.read())
+                return "".join(b.get("text", "") for b in data["content"]).strip()
         except urllib.error.HTTPError as e:
             detail = e.read().decode(errors="replace")[:300]
-            # 429 = rate limit OR no quota; 500/503 = transient server. Back off and retry.
-            if e.code in (429, 500, 503) and attempt < retries:
-                wait = float(e.headers.get("Retry-After", 2 ** attempt))
+            # 429 = rate limit / no credit; 500/503/529 = transient. Back off and retry.
+            if e.code in (429, 500, 503, 529) and attempt < retries:
+                wait = float(e.headers.get("retry-after", 2 ** attempt))
                 print(f"  (HTTP {e.code}; retry {attempt + 1}/{retries} in {wait:.0f}s)", file=sys.stderr)
                 time.sleep(wait)
                 continue
             if e.code == 429:
                 raise SystemExit(
-                    "OpenAI API returned 429 (rate limit, or your key has no quota).\n"
+                    "Claude API returned 429 (rate limit, or your key has no credit).\n"
                     f"  detail: {detail}\n"
-                    "  fixes: wait and retry; check billing/quota at platform.openai.com;\n"
-                    "    try a smaller model (export OPENAI_MODEL=gpt-4o-mini); use a LOCAL\n"
-                    "    model (export OPENAI_BASE_URL=http://localhost:11434/v1 for Ollama);\n"
+                    "  fixes: wait and retry; check credit/limits at console.anthropic.com;\n"
+                    "    try a smaller model (export ANTHROPIC_MODEL=claude-3-5-haiku-latest);\n"
                     "    or just run the offline demo:  python3 agent.py 3")
-            raise SystemExit(f"OpenAI API error {e.code}: {detail}")
+            raise SystemExit(f"Claude API error {e.code}: {detail}")
         except urllib.error.URLError as e:
             raise SystemExit(f"Network error reaching {base}: {e.reason}\n"
                              "  (offline fallback:  python3 agent.py 3)")

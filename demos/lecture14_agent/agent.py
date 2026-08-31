@@ -9,7 +9,7 @@ Same loop; flip two switches and watch what each one buys:
   stage 3  + tools (ReAct)  memory=on   tools=on    reads the data; hallucination gone
 
   python3 agent.py 1              # or 2, or 3   (offline; no API key needed)
-  python3 agent.py 3 --openai     # use a real / local LLM instead
+  python3 agent.py 3 --claude     # use the real Claude API instead
 """
 import sys
 
@@ -58,10 +58,10 @@ def show(reply):
 
 def main():
     stage = sys.argv[1] if len(sys.argv) > 1 else "1"
-    backend = "openai" if "--openai" in sys.argv else "offline"
+    backend = "claude" if "--claude" in sys.argv else "offline"
     switches = {"1": (False, False), "2": (True, False), "3": (True, True)}
     if stage not in switches:
-        sys.exit("usage: python3 agent.py [1|2|3] [--openai]")
+        sys.exit("usage: python3 agent.py [1|2|3] [--claude]")
     memory, tools = switches[stage]
     print(f"=== stage {stage}:  memory={memory}  tools={tools}  (backend={backend}) ===")
     agent(QUESTIONS, memory, tools, make_llm(backend))

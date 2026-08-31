@@ -21,21 +21,18 @@ python3 agent.py 1      # chatbot        (offline; no API key)
 python3 agent.py 2      # + memory
 python3 agent.py 3      # + tools (ReAct)
 
-# Use a real or local LLM instead of the offline stand-in:
-export OPENAI_API_KEY=sk-...            # OpenAI, or any compatible key
-export OPENAI_MODEL=gpt-4o-mini         # optional
-python3 agent.py 3 --openai
-#   local model works too (Ollama):
-#   export OPENAI_BASE_URL=http://localhost:11434/v1 ; export OPENAI_MODEL=llama3.1 ; export OPENAI_API_KEY=ollama
+# Use the real Claude API instead of the offline stand-in:
+export ANTHROPIC_API_KEY=sk-ant-...              # from console.anthropic.com
+export ANTHROPIC_MODEL=claude-3-5-haiku-latest   # optional (any model you can access)
+python3 agent.py 3 --claude
 ```
 
 Pure standard library — nothing to install for the offline path.
 
-**`HTTP 429: Too Many Requests`?** That's the `--openai` path only. 429 means
-rate-limited or (most often with a new key) **no quota** — check billing at
-platform.openai.com. The code already retries with backoff; you can also try a
-smaller model (`export OPENAI_MODEL=gpt-4o-mini`), point at a **local** model
-(`export OPENAI_BASE_URL=http://localhost:11434/v1` for Ollama), or just run the
+**`HTTP 429: Too Many Requests`?** That's the `--claude` path only. 429 means
+rate-limited or (most often with a new key) **no credit** — check credit/limits at
+console.anthropic.com. The code already retries with backoff; you can also try a
+smaller model (`export ANTHROPIC_MODEL=claude-3-5-haiku-latest`), or just run the
 offline demo (`python3 agent.py 3`) — it needs no key and never hits the network.
 
 ## What to say at each stage
@@ -64,7 +61,7 @@ runs the Python function. The model never touches your files — that is what ma
 | file | what it is |
 |------|------------|
 | `agent.py` | the demo — one loop, the two switches, the three stages, CLI |
-| `llm.py`   | backends: an offline stand-in + a real OpenAI-compatible HTTP call |
+| `llm.py`   | backends: an offline stand-in + a real Claude Messages API call |
 | `tools.py` | the QC tools (`load_csv`, `check_limits`, `draft_summary`) + ReAct helpers |
 | `qc_runs.csv` | 6 QC runs; QC-04 fails all three limits (matches the handout) |
 
@@ -72,6 +69,11 @@ The offline backend in `llm.py` is a **scripted stand-in**, not a real model —
 is just enough to make the three stages reproducible with no key or network. The
 loop, the tool calls, and the grounded final answer are all real. Run it once
 before class and the printed transcript *is* your fallback.
+
+With the real Claude backend (`--claude`), stage 3 relies on the model emitting
+the `Action: / Action Input:` lines; capable models (Haiku/Sonnet) follow this
+reliably. Stages 1–2 will still hallucinate, but the exact fabricated run/number
+will vary run to run — the offline stand-in is what keeps the demo identical.
 
 ### Spec limits (hard-coded from the QC SOP)
 

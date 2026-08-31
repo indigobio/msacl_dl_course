@@ -215,7 +215,7 @@ slides:
       (adds tools/ReAct — reads the file and answers with the real QC-04 numbers,
       hallucination gone). One small loop with two switches (memory, tools); tools
       and the LLM backend are in separate files. Runs OFFLINE with no API key as
-      the guaranteed fallback, or against a real/local LLM with `--openai`. Open
+      the guaranteed fallback, or against the real Claude API with `--claude`. Open
       agent.py on screen: an agent is just LLM + tools + a loop, no magic.
 
   - type: image
