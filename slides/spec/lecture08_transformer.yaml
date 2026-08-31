@@ -205,7 +205,7 @@ slides:
     title: "Encoder-only reads; decoder-only writes"
     image: img/fig_bert_vs_gpt.png
     img_h: 4.4
-    callout: {kind: pair, text: "Encoder-only (BERT): read the WHOLE sequence both directions → one label/embedding (call a spectrum resistant/susceptible, or embed a peptide). Decoder-only (GPT): generate the next token left to right → write a peptide residue by residue. 💬 Your turn (30 sec): a model that writes a peptide one residue at a time — encoder-only or decoder-only, and why? Worked answer in the notes."}
+    callout: {kind: pair, text: "Encoder-only (BERT): read the WHOLE sequence both directions → one label/embedding (call a spectrum resistant/susceptible, or embed a peptide). Decoder-only (GPT): generate the next token left to right → write a peptide residue by residue — and it's TRAINED this way too, by predicting the next token on massive text (that's LLM pretraining; Lecture 13). 💬 Your turn (30 sec): a model that writes a peptide one residue at a time — encoder-only or decoder-only, and why? Worked answer in the notes."}
     notes: >
       Two dominant wirings, both built from the same block. Encoder-only models
       (BERT is the famous one) keep just the left stack: they read the entire
@@ -215,7 +215,12 @@ slides:
       or "embed this peptide for search." Decoder-only models (the GPT family) keep
       the right stack with masked attention: they generate one token at a time,
       each new token attending only to what came before — the natural fit for
-      GENERATION, like writing a peptide sequence residue by residue. The old
+      GENERATION, like writing a peptide sequence residue by residue. Foreshadow the
+      training idea for Lecture 13: a decoder-only model is TRAINED exactly the way
+      it generates — by predicting the next token over an enormous text corpus, a
+      self-supervised objective that needs no human labels (the same "the data
+      labels itself" trick Lecture 11 will make explicit). That next-token
+      pretraining is what an LLM is. The old
       encoder→decoder pairing (translation: read all of language A, write language
       B) is exactly Casanovo's shape: read a spectrum, write a peptide. Tie it to
       the room's task list: classification jobs → encoder-only; generation/de-novo

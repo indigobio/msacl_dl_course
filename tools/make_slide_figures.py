@@ -5424,7 +5424,7 @@ def hallucination(mode="ido", name="fig_hallucination_ido.png"):
     if blank:
         _prompt = "“What's the upper reference limit for this analyte?”"
         _reply = "“It's 48 nmol/L — see Nguyen et al., Clin. Chem. 2021; 67:1043–1051.”"
-        _note = "✗ that value and paper are fabricated — plausible, but fake"
+        _note = "(fluent and confident — but is any of it grounded in a source?)"
     else:
         _prompt = "“Cite a reference for this method's LOD.”"
         _reply = "“See Smith et al., J. Clin. Mass Spectrom. 2019; 14:221–230.”"
@@ -5438,20 +5438,28 @@ def hallucination(mode="ido", name="fig_hallucination_ido.png"):
     ax.text(2.7, 3.25, _reply,
             ha="left", va="center", color=INK, fontsize=11.5)
     ax.text(2.7, 2.7, _note,
-            ha="left", va="center", color=RED, fontsize=11,
-            fontweight="bold")
-    # guardrail box
-    gcol = AMBER if blank else TEAL
-    gface = AMBER_SOFT if blank else TEAL_SOFT
-    ax.add_patch(FancyBboxPatch((0.6, 0.5), 10.8, 1.35,
-                boxstyle="round,pad=0.02,rounding_size=0.06",
-                facecolor=gface, edgecolor=gcol, lw=2.4))
-    ax.text(1.0, 1.5, "GUARDRAIL", ha="left", va="center", color=gcol,
-            fontsize=11, fontweight="bold")
+            ha="left", va="center", color=(MUTED if blank else RED),
+            fontsize=11, fontweight=("normal" if blank else "bold"),
+            style=("italic" if blank else "normal"))
+    # bottom box: I-do shows the guardrail; you-do asks the room to SPOT + reason
     if blank:
-        ax.text(6.2, 1.05, "?  (what check keeps it honest?)", ha="center",
-                va="center", color=ROI_INK, fontsize=13, fontweight="bold")
+        ax.add_patch(FancyBboxPatch((0.6, 0.35), 10.8, 1.55,
+                    boxstyle="round,pad=0.02,rounding_size=0.06",
+                    facecolor=AMBER_SOFT, edgecolor=ROI_INK, lw=2.4))
+        ax.text(6.2, 1.45,
+                "(a) which parts can you NOT trust without checking a source?",
+                ha="center", va="center", color=ROI_INK, fontsize=11.5,
+                fontweight="bold")
+        ax.text(6.2, 0.8,
+                "(b) why did the model state them so confidently?",
+                ha="center", va="center", color=ROI_INK, fontsize=11.5,
+                fontweight="bold")
     else:
+        ax.add_patch(FancyBboxPatch((0.6, 0.5), 10.8, 1.35,
+                    boxstyle="round,pad=0.02,rounding_size=0.06",
+                    facecolor=TEAL_SOFT, edgecolor=TEAL, lw=2.4))
+        ax.text(1.0, 1.5, "GUARDRAIL", ha="left", va="center", color=TEAL,
+                fontsize=11, fontweight="bold")
         ax.text(6.2, 1.15,
                 "ground answers in RAG'd source documents; require a human to",
                 ha="center", va="center", color=INK, fontsize=11.5)
@@ -5620,10 +5628,10 @@ def use_llm_chart(mode="ido", name="fig_use_llm_ido.png"):
         ax.text(6.5, 4.35, "scenario", ha="center", color=MUTED, fontsize=11,
                 style="italic")
         ax.text(6.5, 3.6,
-                "You want the assistant to answer questions from each",
+                "You want the assistant to ALWAYS format results in your lab's",
                 ha="center", color=INK, fontsize=12.5)
         ax.text(6.5, 3.15,
-                "instrument's CURRENT calibration log — updated every week.",
+                "exact report style — and you have 2,000 past reports as examples.",
                 ha="center", color=INK, fontsize=12.5)
         ax.text(6.5, 1.9,
                 "word bank:   PROMPTING   ·   RAG   ·   FINE-TUNING",
@@ -5731,6 +5739,94 @@ def landscape_match(mode="ido", name="fig_landscape_match_ido.png"):
     _save(fig, name)
 
 
+def rag_pipeline(name="fig_rag_pipeline.png"):
+    """Open the RAG black box (the five components): TOP row builds the knowledge
+    base offline (documents -> CHUNK -> EMBED -> vector store); BOTTOM row answers
+    online (question -> embed -> RETRIEVE nearest chunks -> GENERATE grounded
+    answer). Tiny anchor: 'today's cortisol calibration?' pulls the cortisol-log
+    chunk because its embedding is nearest."""
+    fig, ax = plt.subplots(figsize=(12.9, 5.7))
+    ax.set_xlim(0, 13)
+    ax.set_ylim(0, 6)
+    ax.axis("off")
+
+    def tb(x, y, label, fc, ec, tc=INK, fs=9.8):
+        ax.text(x, y, label, ha="center", va="center", color=tc, fontsize=fs,
+                fontweight="bold",
+                bbox=dict(boxstyle="round,pad=0.42", fc=fc, ec=ec, lw=1.8))
+
+    def ar(x0, x1, y, lab, col=INK_SOFT, ls="-"):
+        ax.add_patch(FancyArrowPatch((x0, y), (x1, y), arrowstyle="-|>",
+                     mutation_scale=15, color=col, lw=1.8, linestyle=ls))
+        ax.text((x0 + x1) / 2, y + 0.26, lab, ha="center", va="bottom",
+                color=TEAL, fontsize=8.8, fontweight="bold")
+
+    ax.text(0.15, 5.62, "BUILD THE KNOWLEDGE BASE  (once, offline)", ha="left",
+            color=MUTED, fontsize=10.5, fontweight="bold")
+    ax.text(0.15, 2.72, "ANSWER A QUESTION  (each query, online)", ha="left",
+            color=MUTED, fontsize=10.5, fontweight="bold")
+
+    yt = 4.35
+    tb(1.35, yt, "your documents\n(SOPs · logs · papers)", "#F1F1EC", MUTED)
+    ar(2.35, 3.35, yt, "1  chunk")
+    tb(4.25, yt, "passages\n(chunks)", WHITE, INK_SOFT)
+    ar(5.15, 6.35, yt, "2  embed")
+    tb(7.35, yt, "chunk vectors\n■ ■ ■", TEAL_SOFT, TEAL)
+    ar(8.45, 9.35, yt, "3  store")
+    ax.text(11.2, 3.5, "Vector store\n(knowledge base)\nchunks + embeddings",
+            ha="center", va="center", color=INK, fontsize=9.8, fontweight="bold",
+            bbox=dict(boxstyle="round,pad=0.8", fc=AMBER_SOFT, ec=AMBER, lw=2.2))
+
+    yb = 1.75
+    tb(1.25, yb, "question\n“today's cortisol\ncalibration?”", TEAL_SOFT, TEAL)
+    ar(2.3, 3.3, yb, "embed")
+    tb(4.15, yb, "query\nvector", WHITE, INK_SOFT)
+    ar(5.05, 6.4, yb, "4  retrieve\nnearest")
+    tb(7.4, yb, "top-k chunks\n(most similar)", WHITE, TEAL)
+    ax.add_patch(FancyArrowPatch((11.2, 2.6), (7.9, yb + 0.5),
+                 arrowstyle="-|>", mutation_scale=14, color=AMBER, lw=1.8,
+                 linestyle="--"))
+    ar(8.55, 9.5, yb, "5  generate")
+    ax.text(11.2, yb, "LLM →\ngrounded answer\n+ citation", ha="center",
+            va="center", color=INK, fontsize=9.8, fontweight="bold",
+            bbox=dict(boxstyle="round,pad=0.55", fc="#F1F1EC", ec=RED, lw=2.0))
+    _save(fig, name)
+
+
+def landscape_transfer(name="fig_landscape_transfer.png"):
+    """Quiz 13 Q1 (upgraded): transfer, not recall. Two NEW unnamed tools ->
+    infer the architecture family + the most-similar landmark; plus a reasoning
+    kicker on why two landmarks share an architecture. The full five-tool map is
+    the I-do chart on the previous slide (the reference bank)."""
+    fig, ax = plt.subplots(figsize=(12.6, 5.6))
+    ax.set_xlim(0, 13)
+    ax.set_ylim(0, 6)
+    ax.axis("off")
+    ax.text(6.5, 5.6, "your turn — place tools you've never seen",
+            ha="center", color=ROI_INK, fontsize=14, fontweight="bold")
+    items = [
+        ("(a)", "A tool reads a routine MALDI-TOF spectrum and calls the\nbacterial SPECIES (not resistance)."),
+        ("(b)", "A tool reads a peptide SEQUENCE and predicts its fragment\nspectrum + retention time for a library."),
+    ]
+    ys = [4.35, 3.0]
+    for (tag, prob), y in zip(items, ys):
+        ax.text(0.5, y, tag, ha="left", va="center", color=TEAL, fontsize=13,
+                fontweight="bold")
+        ax.text(1.35, y + 0.2, prob, ha="left", va="center", color=INK,
+                fontsize=11)
+        ax.text(1.35, y - 0.44, "architecture family?  ______      most like which landmark?  ______",
+                ha="left", va="center", color=MUTED, fontsize=10, fontweight="bold")
+    ax.text(6.5, 1.45,
+            "(c)  Casanovo and AlphaFold solve very different problems but share ONE\n"
+            "architecture family — which, and what do their problems have in common\n"
+            "that makes that architecture fit?",
+            ha="center", va="center", color=INK, fontsize=10.8, fontweight="bold",
+            bbox=dict(boxstyle="round,pad=0.6", fc=TEAL_SOFT, ec=TEAL, lw=1.8))
+    ax.text(6.5, 0.3, "reference: the five-tool map on the previous slide",
+            ha="center", color=MUTED, fontsize=9.5, style="italic")
+    _save(fig, name)
+
+
 def _lecture13_figures():
     next_token_predict()
     softmax_next_token()
@@ -5764,7 +5860,8 @@ def _lecture13_figures():
                    "faster resistance calls from data the lab already collects — earlier right antibiotic",
                    "fig_land_driams.png")
     landscape_match("ido", "fig_landscape_match_ido.png")
-    landscape_match("youdo", "fig_landscape_match_youdo.png")
+    landscape_transfer()
+    rag_pipeline()
 
 
 # =====================================================================
@@ -6543,8 +6640,10 @@ FUNCS = {
                        "faster resistance calls from data the lab already collects — earlier right antibiotic",
                        "fig_land_driams.png"),
         landscape_match("ido", "fig_landscape_match_ido.png"),
-        landscape_match("youdo", "fig_landscape_match_youdo.png"),
+        landscape_transfer(),
     ),
+    "landscape_transfer": landscape_transfer,
+    "rag": rag_pipeline,
 }
 
 

@@ -31,10 +31,10 @@ slides:
     eyebrow: "Lecture 13 · where this hour goes"
     title: "Four stops on the frontier"
     bullets:
-      - {text: "LLMs demystified — next-token prediction, the 3-stage training pipeline, scale, hallucination", time: "16 min"}
+      - {text: "LLMs demystified — next-token prediction, the 3-stage training pipeline, scale, hallucination", time: "14 min"}
       - {text: "Reinforcement learning, touched base — agent/environment/reward, AlphaGo, and RLHF", time: "12 min"}
-      - {text: "Using an LLM without training one — prompting vs RAG vs fine-tuning", time: "8 min"}
-      - {text: "The landscape tour — five landmark MS/biology tools: problem → architecture → impact", time: "18 min"}
+      - {text: "Using an LLM without training one — prompting vs RAG (opened up) vs fine-tuning", time: "12 min"}
+      - {text: "The landscape tour — five landmark MS/biology tools: problem → architecture → impact", time: "16 min"}
     notes: >
       Signpost the four stops. The only arithmetic all hour is one softmax (the
       do-it-together in the first stop), so reassure the room early. The heart of
@@ -64,7 +64,9 @@ slides:
       long tail. Nothing here is magic — it is the softmax over scores we already
       know from Lecture 4 and used in attention (Lecture 7). Next slide we
       compute one of those probability sets by hand so "next-token prediction"
-      is concrete, not a slogan.
+      is concrete, not a slogan. (This is also the decoder-only generation you
+      met in Lecture 8 — and, as we foreshadowed there, an LLM is TRAINED on
+      exactly this next-token game over a huge corpus.)
 
   - type: image
     eyebrow: "LLMs demystified · 2 of 6 · do-it-together"
@@ -146,22 +148,23 @@ slides:
 
   - type: image
     eyebrow: "LLMs demystified · 6 of 6 · your turn (you-do = Q4)"
-    title: "Your turn — where could it hallucinate, and what's the guardrail?"
+    title: "Your turn — which claims can't you trust, and why?"
     image: img/fig_hallucination_youdo.png
     img_h: 4.4
-    callout: {kind: check, text: "Your turn → Quiz 13, Q4. An LLM drafts a patient report and cites a reference to support a result. (a) Where could it hallucinate? (b) What ONE guardrail keeps it honest? Worked answer in the notes."}
+    callout: {kind: check, text: "Your turn → Quiz 13, Q4. An LLM answers 'It's 48 nmol/L — see Nguyen et al., Clin. Chem. 2021.' (a) Which parts can you NOT trust without checking a source? (b) Why did the model state them so confidently? Worked answer in the notes."}
     notes: >
-      YOU-DO = Quiz 13 Q4 (name a hallucination risk and a guardrail; assesses
-      the "design around the failure mode" outcome). Expected answer (any
-      equivalent earns credit): (a) the model can invent a citation that does not
-      exist — or fabricate/round a numeric result — while sounding completely
-      confident, because it produces plausible tokens rather than checking a
-      source; (b) a guardrail such as GROUNDING the draft in retrieved real
-      documents (RAG) so every claim traces to a source, AND/OR requiring a human
-      to verify every citation and number before the report is released. Extend
-      it to their world: the same risk applies to auto-drafted method summaries,
-      QC narratives, or literature reviews — never let unverified LLM text become
-      the record. Take one answer from the floor, then have them fill Q4.
+      YOU-DO = Quiz 13 Q4 (SPOT the untrustworthy claims and explain the
+      mechanism — not 'name the guardrail from the last slide'). (a) BOTH
+      specifics must be verified: the NUMBER (48 nmol/L) and the CITATION (Nguyen
+      et al., Clin. Chem. 2021). You cannot tell from the fluent wording whether
+      either is real — any specific fact an LLM emits without a cited source is
+      unverified by construction, so both are suspect. (b) Because the model is
+      trained to produce PLAUSIBLE next tokens, not to check truth, a fabricated
+      number or paper comes out with the same confidence as a real one. The
+      lesson: treat every LLM-produced specific (number, citation, dose) as a
+      draft to verify; the guardrails (ground in RAG'd sources, human sign-off)
+      exist precisely because you can't trust fluency. Take one answer from the
+      floor, then have them fill Q4.
 
   # ============ PART 2 · Reinforcement learning, touched base ============
   - type: title
@@ -258,7 +261,7 @@ slides:
 
   # ============ PART 3 · Using an LLM without training one ============
   - type: image
-    eyebrow: "Using an LLM · 1 of 2 · the three options · I-do"
+    eyebrow: "Using an LLM · 1 of 3 · the three options · I-do"
     title: "Prompting vs RAG vs fine-tuning"
     image: img/fig_use_llm_ido.png
     img_h: 4.6
@@ -277,27 +280,57 @@ slides:
       it's the most work. The worked clinical example: drafting a report that
       must quote TODAY's SOP → the SOP changes monthly, so you want RAG (pull the
       current SOP at query time), not fine-tuning (which would bake in a snapshot
-      and need retraining every change). Next slide the room picks for a scenario
-      (Quiz 13 Q3).
+      and need retraining every change). Next slide opens up how RAG actually
+      works, then the room picks for a scenario (Quiz 13 Q3).
 
   - type: image
-    eyebrow: "Using an LLM · 2 of 2 · your turn (you-do = Q3)"
+    eyebrow: "Using an LLM · 2 of 3 · RAG, opened up · I-do"
+    title: "Inside RAG: five parts turn your docs into grounded answers"
+    image: img/fig_rag_pipeline.png
+    img_h: 4.3
+    callout: {kind: ms, text: "RAG is five parts, not magic. BUILD once: (1) CHUNK your documents into passages; (2) EMBED each chunk into a vector (meaning → a point in space, the embeddings of Lectures 7–8); (3) STORE them in a knowledge base. ANSWER each query: (4) embed the question and RETRIEVE the nearest chunks (a similarity search — attention's same dot-product 'closeness'); (5) GENERATE — the LLM answers FROM those chunks, with a citation. So 'today's cortisol calibration?' pulls the cortisol-log chunk — the model answers from the CURRENT log, not memory."}
+    notes: >
+      Open the RAG black box, because the room meets it as a guardrail (Q4) and a
+      deployment choice (Q3). Five components, two phases. BUILD THE KNOWLEDGE
+      BASE (offline, once): (1) CHUNKING — split your SOPs, logs, and papers into
+      bite-sized passages so a retrieved piece is specific and fits in the prompt;
+      (2) EMBEDDING — run each chunk through an embedding model that maps text to a
+      vector positioned so passages with similar MEANING land near each other (the
+      'embedding = a point in space' idea from Lectures 7–8, now for whole
+      passages, not tokens); (3) the VECTOR STORE / knowledge base — keep those
+      chunk vectors indexed for fast lookup. ANSWER A QUESTION (online, every
+      query): (4) RETRIEVAL — embed the question the same way and find the k
+      nearest chunk vectors by similarity (cosine / dot-product 'closeness', the
+      same score attention uses; approximate-nearest-neighbour indexes make this
+      instant over millions of chunks); (5) GENERATION — paste the retrieved chunks
+      plus the question into the prompt and let the LLM answer grounded in them,
+      ideally citing the source chunk. Anchor to say aloud: ask 'today's cortisol
+      calibration?' and the retriever returns the cortisol calibration-log chunk
+      because its embedding is nearest — so the model answers from the CURRENT
+      log, not memory. That grounding is exactly why RAG keeps answers current
+      (Q3) and curbs hallucination (Q4). Honest limits: retrieval quality is
+      everything (bad chunks → bad answer), and chunking / embedding choices
+      matter. Next slide the room picks when to use each option.
+
+  - type: image
+    eyebrow: "Using an LLM · 3 of 3 · your turn (you-do = Q3)"
     title: "Your turn — prompting, RAG, or fine-tuning?"
     image: img/fig_use_llm_youdo.png
     img_h: 4.4
-    callout: {kind: check, text: "Your turn → Quiz 13, Q3. You want the assistant to answer questions from each instrument's CURRENT calibration log — updated every week. Prompting, RAG, or fine-tuning? In one sentence, why? Worked answer in the notes."}
+    callout: {kind: check, text: "Your turn → Quiz 13, Q3. You want the assistant to ALWAYS format results in your lab's exact report STYLE — same structure every time — and you have 2,000 past reports as examples. Prompting, RAG, or fine-tuning? In one sentence, why? Worked answer in the notes."}
     notes: >
-      YOU-DO = Quiz 13 Q3 (pick among prompting / RAG / fine-tuning and justify;
-      assesses the "use an LLM without training one" outcome). Answer (identical
-      to the Quiz 13 Q3 key): RAG. Why (any equivalent): the reports must cite
-      the CURRENT calibration logs, which change weekly, so you retrieve the up-to-date log
-      at query time and have the model answer from it — that keeps answers
-      current and grounded (and cuts hallucination). Fine-tuning is wrong here
-      because it would bake a stale snapshot into the weights and need
-      re-training every month; plain prompting is wrong because you can't paste
-      every log into every prompt and keep them current by hand. Note the bonus
-      link: RAG is also the hallucination guardrail from Q4 — grounding answers
-      in real documents. Take one answer with its reason, then have them fill Q3.
+      YOU-DO = Quiz 13 Q3 (pick among prompting / RAG / fine-tuning and justify —
+      and note the answer is DIFFERENT from the I-do's RAG example, so it forces a
+      real discrimination, not a pattern-match). Answer (identical to the Quiz 13
+      Q3 key): FINE-TUNING. Why (any equivalent): you want a consistent new STYLE
+      applied every time and you have MANY labeled examples (2,000 past reports)
+      — exactly the 'consistent new style/skill + many examples' row of the chart,
+      so bake the style into the weights by fine-tuning. RAG is wrong here because
+      the task isn't retrieving changing FACTS (the report content varies but the
+      STYLE is fixed); plain prompting is wrong because a few in-prompt examples
+      won't reliably enforce one house style across every report. Contrast the
+      I-do (a report that must quote today's SOP → RAG, because THAT was about
+      changing facts). Take one answer with its reason, then have them fill Q3.
 
   # ============ PART 4 · The landscape tour ============
   - type: title
@@ -446,33 +479,35 @@ slides:
 
   - type: image
     eyebrow: "Tour · your turn (you-do = Q1)"
-    title: "Your turn — match tool → problem → architecture"
-    image: img/fig_landscape_match_youdo.png
-    img_h: 4.9
-    callout: {kind: check, text: "Your turn → Quiz 13, Q1. For each tool — Casanovo, Prosit, DIA-NN, DRIAMS, AlphaFold — fill in its PROBLEM and its ARCHITECTURE FAMILY, using the two word banks. Worked answer in the notes."}
+    title: "Your turn — place a tool you've never seen"
+    image: img/fig_landscape_transfer.png
+    img_h: 4.6
+    callout: {kind: check, text: "Your turn → Quiz 13, Q1. Not a match — a TRANSFER, using the five-tool map you just saw. (a) A tool calls bacterial SPECIES from a MALDI-TOF spectrum → which architecture family, most like which landmark? (b) A tool predicts a peptide's fragment spectrum + RT from its sequence → which family, like which landmark? (c) Casanovo and AlphaFold share ONE architecture family — which, and what do their problems have in common? Worked answer in the notes."}
     notes: >
-      YOU-DO = Quiz 13 Q1 (match each landmark tool to its problem and its
-      architecture family; assesses the landscape outcome). Answers (identical
-      to the Quiz 13 Q1 key): Casanovo → de novo peptide sequencing →
-      Transformer (translation). Prosit → predict fragment spectrum + retention
-      time → deep sequence model (RNN/attention). DIA-NN → identify & quantify in
-      DIA runs → feed-forward neural net (MLP). DRIAMS → antibiotic resistance
-      (R/S) from MALDI-TOF → 1D CNN (spectrum classifier). AlphaFold → 3D protein
-      structure from sequence → Transformer / attention. Every problem and
-      architecture was shown on its tour slide moments ago, so the room answers
-      straight off the chart. Take one full row from the floor, then have them
-      complete Q1 — that's all four Quiz 13 items worked live.
+      YOU-DO = Quiz 13 Q1 (upgraded from matching the five names to TRANSFERRING
+      the problem→architecture map onto tools you've never seen — the real
+      landscape skill). Answers: (a) a spectrum-in → one-label-out classifier is a
+      1D CNN, most like DRIAMS (same architecture, a species call instead of
+      R/S). (b) sequence-in → predicted spectrum + RT is a deep SEQUENCE MODEL
+      (RNN/attention or transformer), most like Prosit. (c) Casanovo (spectrum →
+      peptide) and AlphaFold (sequence → 3D fold) both use a TRANSFORMER /
+      ATTENTION; what their problems share is LONG-RANGE dependencies across a
+      sequence — distant peaks/residues must inform each other, exactly what
+      attention captures (a CNN sees only local windows). Every answer is
+      reachable from the tour chart on the previous slide, but the room has to
+      REASON, not recall. Take one full answer, then have them complete Q1 —
+      that's all four Quiz 13 items worked live.
 
   # ============ Recap ============
   - type: bullets
     eyebrow: "Lecture 13 · what you can do now"
     title: "You can now…"
     bullets:
-      - "Explain LLM training in pictures — next-token pretraining → SFT → preference tuning (RLHF) — and treat hallucination as a failure mode to design around (Quiz 13 Q4)"
+      - "Explain LLM training in pictures — next-token pretraining → SFT → preference tuning (RLHF) — and spot which claims in an LLM answer you must verify (Quiz 13 Q4)"
       - "Describe reinforcement learning in one loop — agent, environment, action, reward — and label it on a lab scenario (Quiz 13 Q2)"
-      - "Choose among prompting, RAG, and fine-tuning for a lab use case (Quiz 13 Q3)"
-      - "For five landmark tools, name the problem, the architecture you now know, and the impact (Quiz 13 Q1)"
-    callout: {kind: plain, text: "You have now worked every item on Quiz 13 live — the hallucination guardrail (Q4), the RL labels (Q2), the prompting/RAG/fine-tuning choice (Q3), and the tool→problem→architecture match (Q1). Keep the sheet — Lecture 14 turns an LLM into an agent."}
+      - "Name the five parts of RAG, and choose among prompting, RAG, and fine-tuning — including when fine-tuning wins (Quiz 13 Q3)"
+      - "Place a NEW tool you've never seen by its architecture family, and say why an architecture fits a problem (Quiz 13 Q1)"
+    callout: {kind: plain, text: "You have now worked every item on Quiz 13 live — spot the untrustworthy claim (Q4), the RL labels (Q2), the prompting/RAG/fine-tuning choice (Q3), and the place-a-new-tool transfer (Q1). Keep the sheet — Lecture 14 turns an LLM into an agent."}
     notes: >
       Recap = the Lecture 13 outcomes, each already a you-do this hour tied to a
       Quiz 13 item: the LLM pipeline + hallucination guardrail (Q4), the RL loop
