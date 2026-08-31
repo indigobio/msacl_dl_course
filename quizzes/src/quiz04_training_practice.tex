@@ -53,8 +53,8 @@
 \vspace{-2pt}
 \begin{center}
 \fbox{\parbox{0.92\textwidth}{\small
-\textbf{Instructions:}\; Answer all six questions --- the last two (Q5--Q6) are short
-\emph{discussion} prompts on a topic we don't have lecture time to cover, so reason them out
+\textbf{Instructions:}\; Answer all five questions --- the last one (Q5) is a short
+\emph{discussion} prompt on a topic we don't have lecture time to cover, so reason it out
 in a sentence or two. Intuition first; no calculators needed.%
 \ifsolution\else\\[4pt]\textbf{Name:}\ \blk{6cm}\hfill\textbf{Date:}\ \blk{3.5cm}\fi
 }}
@@ -178,29 +178,33 @@ the two curves \emph{split apart} --- training good, validation bad.}}
 \vspace{2pt}\hrule\vspace{5pt}
 
 % =========================== Q3 ===========================
-\textbf{3. The batch-size trade-off.}\; {\small You are training a spectra classifier on Colab and
-consider raising the mini-batch size from 32 to a much larger value.}
+\textbf{3. Diagnose the batch size from the symptom.}\; {\small A colleague retrained the same
+spectra classifier and hit two problems. For each, say what it reveals about the batch size and name
+\emph{one} change you would make.}
 
 \vspace{3pt}
-\textbf{(a)} Name \emph{one} thing a \emph{bigger} batch buys you.
+\textbf{(a)} Batch 1024: it crashes with \texttt{CUDA out of memory} before the first epoch runs.
 
 \work{1.0cm}
 \ifsolution\else\blk{\linewidth}\fi
 
-\textbf{(b)} Name \emph{two} problems that appear if the batch is made \emph{too big}.
+\textbf{(b)} Batch 512: it trains fine, but the loss curve is smooth and \emph{plateaus higher} than
+the batch-32 run reached.
 
-\work{1.4cm}
-\ifsolution\else\blk{\linewidth}\\[10pt]\blk{\linewidth}\fi
+\work{1.2cm}
+\ifsolution\else\blk{\linewidth}\fi
 
-\keybox{(a) A bigger batch gives a \textbf{less noisy, more reliable gradient estimate} (each step
-points more accurately downhill) \emph{and/or} \textbf{better use of the GPU} (bulk matrix math is
-efficient), so each step is steadier. \emph{Either is fine.}\\[3pt]
-(b) Any \textbf{two} of: (i) \textbf{fewer weight updates per epoch} --- for a fixed number of
-epochs you take far fewer steps, so learning per epoch stalls; (ii) it \textbf{may not fit in memory}
-(a T4 will run out and crash); (iii) the very ``clean'' gradient tends to settle into
-\textbf{sharp minima that generalize worse}, so accuracy on new samples can actually drop.
-\emph{Practical rule: start around 32 and only grow it if training stays stable and validation
-doesn't suffer.}}
+\textbf{(c)} In one line: why is the smooth curve in (b) not automatically the \emph{better} run?
+
+\work{0.8cm}
+\ifsolution\else\blk{\linewidth}\fi
+
+\keybox{(a) The batch is \textbf{too big to fit in GPU memory} $\rightarrow$ \textbf{reduce the batch
+size} (or keep it and use gradient accumulation). (b) With a very large batch you take \textbf{far
+fewer weight updates per epoch} \emph{and} the too-clean gradient settles into a \textbf{sharp minimum
+that generalizes worse}, so the loss stalls high $\rightarrow$ \textbf{lower the batch toward $\sim$32}
+(or train more epochs). (c) A \textbf{smooth loss curve is not automatically good} --- judge a run by
+\textbf{where it ends up and by validation}, not by how steady the curve looks.}
 
 \vspace{2pt}\hrule\vspace{5pt}
 
@@ -248,28 +252,25 @@ resistant cases?
 \work{1.2cm}
 \ifsolution\else\blk{\linewidth}\fi
 
+\textbf{(c)} You \emph{cannot} collect more resistant isolates this cycle. Of these moves ---
+\emph{oversample R}, \emph{undersample S}, \emph{class-weight the loss}, \emph{lower the decision
+threshold for R} --- which ones help the model attend to the rare class, and what is the one thing
+\emph{none} of them can fix?
+
+\work{1.4cm}
+\ifsolution\else\blk{\linewidth}\\[10pt]\blk{\linewidth}\fi
+
 \keybox{(a) A model that simply \textbf{always predicts ``susceptible''} scores $94\%$ accuracy while
 catching \emph{zero} of the 41 resistant isolates --- with a rare class, overall accuracy is dominated
 by the majority and can hide total failure on the cases that matter most. (b) Look at \textbf{class-specific}
 measures: \textbf{sensitivity/recall on the resistant class} (what fraction of true R it catches),
 \textbf{precision}, the \textbf{confusion matrix}, and a \textbf{precision--recall curve / PR-AUC}
---- not overall accuracy. (Sensitivity \& specificity return in Lecture 10.)}
-
-\vspace{2pt}\hrule\vspace{5pt}
-
-% =========================== Q6 (discussion) ===========================
-\textbf{6. Discussion --- what would you try?}\; {\small Same imbalanced problem. Name \emph{two}
-things you could do so the model pays real attention to the rare resistant class. (One line each.)}
-
-\work{1.4cm}
-\ifsolution\else\blk{\linewidth}\\[10pt]\blk{\linewidth}\fi
-
-\keybox{Any \textbf{two} reasonable ideas, e.g.: \textbf{get or oversample more resistant examples}
-(or augment them); \textbf{undersample} the susceptible majority; \textbf{weight the loss} toward the
-rare class (class weights) or use \textbf{focal loss} to turn up the rare/hard cases; \textbf{move the
-decision threshold} to favour catching R; \textbf{choose metrics} (sensitivity, precision--recall)
-that reflect the real goal; use \textbf{stratified} train/validation splits. (All revisited in
-Lecture 10 --- this prompt just gets them thinking.)}
+--- not overall accuracy. (c) \textbf{All four legitimately help} --- oversampling R, undersampling S,
+class-weighting, and shifting the threshold all push the model to pay more attention to the 41
+resistant cases. But the catch: \textbf{none of them adds new resistant \emph{signal}} --- every one
+reuses the same 41 examples --- so the real ceiling still needs \textbf{more / more-varied resistant
+data} (more isolates, other sites). \emph{Reweighting $\neq$ new information; all revisited in
+Lecture 10.}}
 
 \vspace{4pt}\hrule\vspace{3pt}
 {\small\itshape \ifsolution Answer key.\else Keep this sheet --- the overfitting fixes and the

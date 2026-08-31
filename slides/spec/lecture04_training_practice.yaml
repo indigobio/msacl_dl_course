@@ -42,7 +42,7 @@ slides:
       signposted sections of the hour, and each maps to items on Quiz 4: the
       cross-entropy loss choice (Q1), the overfitting curves (Q2), the batch-
       size trade-off (Q3), the vanishing-gradient chain (Q4), and the class-
-      imbalance discussion (Q5–Q6). One
+      imbalance discussion (Q5). One
       categorization to nail up front: the OPTIMIZER (Adam) is a Part-2 "tuning"
       choice, not a data-feeding detail. Keep energy high — this is the most
       immediately useful hour of the course for their day job.
@@ -370,26 +370,23 @@ slides:
 
   - type: image
     eyebrow: "Part 2 · tuning · your turn (you-do = Q3)"
-    title: "See the batch size in the loss curve"
+    title: "Two runs went wrong — diagnose the batch size"
     image: img/fig_batch_youdo.png
     img_h: 4.0
-    callout: {kind: check, text: "Your turn → Quiz 4, Q3. Name ONE thing a bigger batch buys you, and TWO problems if the batch is made too big. Clue in the picture: the clean curve that stalls HIGH is the too-big fingerprint. Worked answer in the notes."}
+    callout: {kind: check, text: "Your turn → Quiz 4, Q3. A colleague retrained this classifier and hit two problems: (a) batch 1024 → 'CUDA out of memory' before epoch 1; (b) batch 512 → smooth curve, but it plateaus HIGHER than batch-32 did (the picture). For each, say what it reveals about the batch and one change. Worked answer in the notes."}
     notes: >
-      YOU-DO = Quiz 4 Q3. The figure is the cue: same model, two batch sizes.
-      Large batch (teal) descends smoothly because each gradient is clean — but
-      with a big batch you take far fewer updates per epoch and the too-clean
-      gradient tends to a sharp minimum, so it FLATTENS HIGHER (the red gap).
-      Small batch (amber) is jagged — noisy mini-batches yank the loss around —
-      yet many more updates plus flatter minima take it LOWER. Answers to Q3:
-      (a) a bigger batch buys a LESS NOISY, more reliable gradient (each step
-      points more accurately downhill) and/or better GPU use (bulk matrix math is
-      efficient). (b) any two of: FEWER weight updates per epoch (learning per
-      epoch stalls); it may NOT FIT IN MEMORY (a T4 runs out and crashes); the
-      very clean gradient settles into SHARP MINIMA that generalize worse.
-      Practical rule: start around 32 and only grow it if training stays stable
-      and validation doesn't suffer. Say the trap aloud: a smooth loss curve is
-      not automatically a good one — judge a run by where it ENDS UP and by
-      validation, not by how pretty it looks. Have them fill Q3.
+      YOU-DO = Quiz 4 Q3 — a symptom→cause diagnosis, NOT a list-the-tradeoffs
+      recall. Each symptom points at one cause and one fix, all covered on the
+      last two slides. (a) 'CUDA out of memory' before training even starts →
+      the batch is simply TOO BIG TO FIT IN GPU MEMORY → shrink the batch (or
+      keep it and use gradient accumulation). (b) smooth curve that PLATEAUS
+      HIGHER than batch-32 (exactly the teal curve on screen) → with a very
+      large batch you take FAR FEWER weight updates per epoch AND the too-clean
+      gradient settles into a SHARP minimum that generalizes worse, so the loss
+      stalls high → lower the batch toward ~32 (or train more epochs). (c) the
+      trap, say it aloud: the smooth run is NOT automatically the better one —
+      judge a run by where it ENDS UP and by validation, never by how steady the
+      curve looks. Have a pair name each cause before revealing, then fill Q3.
 
   - type: image
     eyebrow: "Part 2 · tuning · searching combinations"
@@ -505,7 +502,7 @@ slides:
       Ground the abstract idea in their reality, then run a fast show-of-hands
       (kept to ~30 seconds, not a full turn-to-neighbour, so Part 3's three
       interactive beats don't crowd out the 0:55 quiz-walkthrough slot — the
-      graded pair discussions are Q5 and Q6 just ahead). The
+      graded pair discussion is Q5 just ahead). The
       mass-spec anchor: a network trained on spectra from a single instrument can
       reach near-perfect training accuracy by latching onto that instrument's
       fingerprint — its particular baseline drift, detector noise, calibration
@@ -594,43 +591,24 @@ slides:
     title: "When plain accuracy lies: the rare resistant isolate"
     image: img/fig_imbalance.png
     img_h: 4.0
-    callout: {kind: pair, text: "Pair → Quiz 4, Q5. Real DRIAMS S. aureus + oxacillin: 41 resistant among 738. A classifier reports 94% accuracy — why might that be MISLEADING, and what would you look at INSTEAD of overall accuracy? Worked answer in the notes."}
+    callout: {kind: pair, text: "Pair → Quiz 4, Q5. DRIAMS S. aureus + oxacillin: 41 R among 738; a classifier reports 94% accuracy. (a) Why is 94% misleading, and what would you look at instead? (b) You CAN'T collect more R this cycle — of oversample-R / undersample-S / class-weight / lower-threshold, which help, and what can NONE of them fix? Worked answer in the notes."}
     notes: >
-      PAIR = Quiz 4 Q5 — a short discussion on a real clinical problem we don't
-      have lecture time to teach fully (it returns in Lecture 10). This is a REAL
-      DRIAMS slice: S. aureus + oxacillin, 697 susceptible vs. 41 resistant (about
-      6% resistant) — exactly the Lab 2 data. Q5 answer: (a) a model that simply
-      ALWAYS predicts "susceptible" scores about 94% accuracy while catching ZERO
-      of the 41 resistant isolates — with a rare class, overall accuracy is
-      dominated by the majority and can hide total failure on the cases that
-      matter most. (b) look at CLASS-SPECIFIC measures instead: sensitivity /
-      recall on the resistant class (what fraction of true R it catches),
-      precision, the confusion matrix, and a precision–recall curve / PR-AUC —
-      not overall accuracy. (Sensitivity and specificity return in Lecture 10.)
-      Give them two minutes, harvest a couple of answers; don't expect one right
-      answer.
-
-  - type: bullets
-    eyebrow: "Part 3 · discussion · what would you try? (pair = Q6)"
-    title: "Make the model pay attention to the rare class"
-    bullets:
-      - "Get or oversample more resistant examples (or augment them)"
-      - "Undersample the susceptible majority for balance"
-      - "Weight the loss toward the rare class (class weights) — or focal loss for the hard cases"
-      - "Move the decision threshold to favour catching R; use stratified train/validation splits"
-    callout: {kind: pair, text: "Pair → Quiz 4, Q6. Name TWO things you could do so the model pays real attention to the rare resistant class (one line each). Worked answer in the notes."}
-    notes: >
-      PAIR = Quiz 4 Q6, the companion discussion. Any two reasonable ideas earn
-      full credit, e.g.: get or oversample more resistant examples (or augment
-      them); undersample the susceptible majority; weight the loss toward the
-      rare class (class weights) or use focal loss to turn up the rare/hard cases
-      — the focal-loss pointer from Part 1 pays off here; move the decision
-      threshold to favour catching R; choose metrics (sensitivity, precision–
-      recall) that reflect the real goal; use stratified train/validation splits.
-      All of this returns properly in Lecture 10 — this prompt just gets them
-      thinking. The bullets are the answer bank; keep it a 2–3 minute
-      conversation and harvest a few. If time is short, this can spill into the
-      start of Lecture 5.
+      PAIR = Quiz 4 Q5 — a real clinical problem we can't teach fully now (it
+      returns in Lecture 10). REAL DRIAMS slice: 697 susceptible vs. 41 resistant
+      (~6%) — the Lab 2 data. (a) A model that ALWAYS predicts "susceptible"
+      scores ~94% while catching ZERO of the 41 resistant isolates — with a rare
+      class, overall accuracy is dominated by the majority and hides total
+      failure on the cases that matter; look INSTEAD at class-specific measures:
+      sensitivity/recall on R, precision, the confusion matrix, a precision–recall
+      curve / PR-AUC. (b) The constrained-decision half (this is the real
+      thinking): oversampling R, undersampling S, class-weighting the loss, and
+      lowering the decision threshold all legitimately shift the model's
+      attention toward the 41 resistant cases — so all four "help." The catch
+      they must name: NONE of them adds new resistant SIGNAL — every one reuses
+      the same 41 examples — so the real ceiling still needs more/varied R data
+      (more isolates, other sites). That reweighting ≠ new information insight is
+      the point, and it seeds Lecture 10. Give two minutes, harvest a couple;
+      don't expect one right answer.
 
   - type: bullets
     eyebrow: "Lecture 4 · what you can do now"
@@ -640,12 +618,12 @@ slides:
       - "Tune the knobs: mini-batches, Adam, a learning-rate schedule, and the right activation"
       - "Explain vanishing/exploding gradients as multiplying per-layer slopes down the chain"
       - "Read train-vs-validation curves to diagnose under/overfitting — and fix it with more data, early stopping, dropout, weight decay"
-    callout: {kind: plain, text: "You have now worked every compute item on Quiz 4 live — the loss choice (Q1), the curve diagnosis (Q2), the batch-size trade-off (Q3), the vanishing-gradient chain (Q4) — and talked through class imbalance (Q5–Q6). Keep the sheet: it is your Lab 2 cheat-sheet."}
+    callout: {kind: plain, text: "You have now worked every compute item on Quiz 4 live — the loss choice (Q1), the curve diagnosis (Q2), the batch-size trade-off (Q3), the vanishing-gradient chain (Q4) — and talked through class imbalance (Q5). Keep the sheet: it is your Lab 2 cheat-sheet."}
     notes: >
       Recap = the Lecture 4 outcomes; each was already a you-do or a pair this
       hour and each maps to a Quiz 4 item: Q1 the cross-entropy loss choice, Q2
       the four-curve diagnosis, Q3 the batch-size trade-off, Q4 the vanishing-
-      gradient chain-multiply, Q5–Q6 the
+      gradient chain-multiply, and Q5 the
       class-imbalance discussion. There is no separate "quiz block" — they have
       done it all. Point them to keep the sheet as their Lab 2 cheat-sheet, then
       the closing bridge on the next slide.
@@ -667,4 +645,4 @@ slides:
       Vanishing gradients set up Lecture 5's ResNet skip connection — the
       "gradient highway" — and the CNNs that read spectra directly; Lab 2 puts
       all of today to work on real DRIAMS resistance data, including the class-
-      imbalance problem from Q5–Q6. Then a ten-minute break before Lecture 5.
+      imbalance problem from Q5. Then a ten-minute break before Lecture 5.
