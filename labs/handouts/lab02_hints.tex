@@ -1,6 +1,6 @@
 % =====================================================================
 %  MSACL DS301 Deep Learning · Lab 2 · Code Hint Sheet
-%  Multiple-choice code options for the four fill-in cells.
+%  Multiple-choice code options for the five fill-in cells.
 %  Style matches labs/handouts/lab01_hints.tex.
 % =====================================================================
 \documentclass[11pt]{article}
@@ -36,7 +36,7 @@
 \fbox{\parbox{0.92\textwidth}{\small
 Stuck on a \textbf{YOUR TURN} cell? Each blank you need is below with a few options.
 Pick one, type it in, and \textbf{run the cell} --- the built-in \texttt{assert} checks will tell you
-whether it is right. Only the four marked cells need editing; run everything else as-is.
+whether it is right. Only the five marked cells need editing; run everything else as-is.
 }}
 \end{center}
 
@@ -83,10 +83,27 @@ the \textbf{8} channels block 1 produced and turning them into \textbf{16}.}
 
 \vspace{3pt}\hrule\vspace{4pt}
 
+\textbf{Step 4 --- the input size of the first \texttt{Linear} layer.}\; {\small The \texttt{Conv1d}
+layers keep the length unchanged (that's the padding); each \texttt{MaxPool1d(4)} divides the length
+by 4, and there are \textbf{two} of them; \texttt{Flatten} then stacks all \textbf{16} channels into
+one vector. So: $16 \times (6000 \div 4 \div 4)$.}
+
+\textbf{Blank 4 --- \texttt{self.fc1}.}
+\begin{itemize}
+  \item[(a)] \opt{self.fc1 = nn.Linear(16 * (6000 // 4 // 4), 32)}
+  \item[(b)] \opt{self.fc1 = nn.Linear(16 * 6000, 32)}
+  \item[(c)] \opt{self.fc1 = nn.Linear(8 * 375, 32)}
+\end{itemize}
+{\small (a) is right: two \texttt{MaxPool1d(4)}s take 6000 $\to$ 1500 $\to$ 375, and 16 channels give
+$16 \times 375 = 6000$ features. (b) forgets the pooling shrank the length; (c) uses the wrong channel
+count (8, not 16) --- both make \texttt{fc1} the wrong size and the forward pass will error.}
+
+\vspace{3pt}\hrule\vspace{4pt}
+
 \textbf{Step 5 --- pick a batch size.}\; {\small A middle-ground value for 590 training spectra
 (Lecture 4's Goldilocks range).}
 
-\textbf{Blank 4 --- \texttt{CNN\_BATCH\_SIZE}.}
+\textbf{Blank 5 --- \texttt{CNN\_BATCH\_SIZE}.}
 \begin{itemize}
   \item[(a)] \opt{CNN\_BATCH\_SIZE = 32}
   \item[(b)] \opt{CNN\_BATCH\_SIZE = 1}
@@ -95,10 +112,27 @@ the \textbf{8} channels block 1 produced and turning them into \textbf{16}.}
 {\small (a) and other values in roughly 8--64 all pass the check and train fine --- (b) updates
 extremely often but painfully slowly, (c) is the whole training set at once, no mini-batching at all.}
 
+\vspace{3pt}\hrule\vspace{4pt}
+
+\textbf{Step 8 --- commit to a threshold.}\; {\small From your Step 7 exploration, pick a cut that
+catches at least \emph{half} the resistant cases (recall $\geq 0.5$). On this trained model recall
+stays 0 near \texttt{0.5} and climbs only for low cuts.}
+
+\textbf{Blank 6 --- \texttt{chosen\_threshold}.}
+\begin{itemize}
+  \item[(a)] \opt{chosen\_threshold = 0.05}
+  \item[(b)] \opt{chosen\_threshold = 0.5}
+  \item[(c)] \opt{chosen\_threshold = 0.9}
+\end{itemize}
+{\small (a) reaches recall $\approx 0.67$ --- it clears the \texttt{assert recall\_at\_cut >= 0.5}.
+(b) is the default where recall $\approx 0$; (c) is even stricter, still $0$. Any low cut that hits
+recall $\geq 0.5$ passes --- there is no single "right" number, it's the clinical trade-off.}
+
 \vspace{4pt}\hrule\vspace{3pt}
-{\small\itshape Answers self-check in the notebook: if the \texttt{assert} cells print their success
-message (shapes \texttt{(2, 8, 1500)} then \texttt{(2, 16, 375)}, and a batch size between 4 and 128),
-you chose right. Watch the \textbf{resistant recall} number, not just accuracy --- a model that
-always says "susceptible" can still score $\sim$92\% accuracy while catching zero real cases.}
+{\small\itshape Answers self-check in the notebook: the shape cell confirms \texttt{fc1} accepts the
+right number of features and the forward pass returns one logit per spectrum; the batch-size and
+threshold cells print their own success messages. Watch the \textbf{resistant recall} number, not just
+accuracy --- a model that always says "susceptible" can still score $\sim$94\% accuracy while catching
+zero real cases.}
 
 \end{document}

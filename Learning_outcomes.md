@@ -223,17 +223,19 @@ CNN section ≈ slides 150–170: numeric grids computed cell by cell).
 ### Lab 2 (slot 6) · 1D CNN on Clinical MALDI-TOF Spectra
 
 **Outcomes** — participant can adapt the Lab 1 workflow to spectra; build a small
-1D CNN in PyTorch; apply data augmentation; run a structured mini hyperparameter
-search.
+1D CNN in PyTorch; compute the flattened dimension that feeds a dense layer; and
+choose a decision threshold for imbalanced data.
 
 **Structure (45 min lab + 10 min discussion)**
-- Guided notebook `lab02`: load prepared MALDI-TOF spectra slice (candidate:
-  DRIAMS; Phase 2 confirms), visualize spectra, train a 1D CNN classifier.
-- Blanks: `Conv1d` parameters, adding a second conv block, choosing batch size.
-- Compare against the Lab 1-style MLP on the same data (CNN should win — the
-  teachable moment).
-- Augmentation: intensity noise and small m/z shifts; observe the effect.
-- Stretch goal: mini grid search over learning rate × batch size.
+- Guided notebook `lab02`: load prepared MALDI-TOF spectra slice (DRIAMS
+  S. aureus + oxacillin R/S), visualize spectra, train a 1D CNN classifier.
+- Blanks: `Conv1d` parameters, adding a second conv block, choosing batch size,
+  and **computing the flattened input size of the first dense layer** (pooling
+  arithmetic → channels × pooled length), self-checked against the real model.
+- Imbalanced evaluation: read **recall, not accuracy**; then **explore the
+  decision threshold** yourself (change it / loop it) to catch at least half the
+  resistant cases — the Lecture 10 imbalance lesson made hands-on.
+- Stretch goal: focal loss to lift the rare class without moving the threshold.
 
 **Discussion D2** — *"Where in your workflow is there a 1D signal a CNN could
 read? Who labels it today, and how well?"*
