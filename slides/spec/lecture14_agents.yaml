@@ -191,7 +191,7 @@ slides:
     title: "The demo, five reason→act beats"
     image: img/fig_demo_storyboard.png
     img_h: 4.2
-    callout: {kind: ms, text: "The demo as five beats, each one reason→act: READ the QC/spectra CSV → ANALYZE (limits, stats) → PLOT the spectra/trends → FLAG the out-of-range run → DRAFT the QC summary for review. 💬 Before the FLAG beat, take 30 s: predict which run the agent will flag. Primary: instructor's Claude Code (or demos/lecture14_agent/agent.py, staged 1→2→3) · fallback: offline run — the demo never fails live."}
+    callout: {kind: ms, text: "The demo as five beats, each one reason→act: READ the QC/spectra CSV → ANALYZE (limits, stats) → PLOT the spectra/trends → FLAG the out-of-range run → DRAFT the QC summary for review. 💬 Before the FLAG beat, take 30 s: predict which run the agent will flag. Primary: instructor's Claude Code (or demos/lecture14_agent/, run stage1→stage2→stage3) · fallback: a saved transcript — the demo never fails live."}
     notes: >
       The storyboard so the room knows what's coming and can map each step to the
       ReAct loop. Five beats: READ (open the CSV — an Action; the Thought before
@@ -209,14 +209,15 @@ slides:
       plan: primary Claude Code, alternative Bedrock, fallback recording. Next
       slide, the flag→draft beat made concrete on the QC numbers.
       INSTRUCTOR NOTE — a ready-made, framework-free version of this demo lives in
-      demos/lecture14_agent/. It builds the agent in THREE stages so the room sees
-      why each piece matters: `python3 agent.py 1` (chatbot — can't see the data),
-      `2` (adds memory — fluent but INVENTS QC numbers, a live hallucination), `3`
-      (adds tools/ReAct — reads the file and answers with the real QC-04 numbers,
-      hallucination gone). One small loop with two switches (memory, tools); tools
-      and the LLM backend are in separate files. Runs OFFLINE with no API key as
-      the guaranteed fallback, or against the real Claude API with `--claude`. Open
-      agent.py on screen: an agent is just LLM + tools + a loop, no magic.
+      demos/lecture14_agent/, built as THREE small scripts run in order so the room
+      sees why each piece matters: `python3 stage1_chatbot.py` (bare LLM — forgets
+      the run we just named), `stage2_memory.py` (adds a running history — now it
+      remembers, but INVENTS a QC number and passes a run that actually fails), and
+      `stage3_react.py` (adds tools/ReAct — reads the file and correctly flags
+      QC-04 OUT OF SPEC). Each file adds exactly one idea; open them side by side
+      and diff. Uses the real Claude API (ANTHROPIC_API_KEY); the shared call is in
+      llm.py and the tools in tools.py. An agent is just LLM + memory + tools + a
+      loop, no magic.
 
   - type: image
     eyebrow: "Live demo · flag → draft, concrete"
