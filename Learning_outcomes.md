@@ -278,27 +278,39 @@ read? Who labels it today, and how well?"*
 
 **Assessment: Quiz 8** — label four blocks on an unlabeled transformer diagram; match three data types (imaging MS image, peak list, raw binned spectrum) to tokenization strategies; one fine-tune vs. train-from-scratch scenario; one "which norm averages over what?" item.
 
-### Lab 3 (slot 9) · Fine-Tuning a Pretrained Transformer
+### Lab 3 (slot 9) · Transfer Learning by Fine-Tuning — Teach a Pretrained Generator YOUR Symbol
 
-**Outcomes** — participant can load a pretrained model, replace its head, freeze
-layers, fine-tune on a small dataset, and compare against training from scratch.
+**Outcomes** — participant can take a **real pretrained model downloaded from a
+model hub**, **fine-tune it on a handful of their own examples** with a small
+fine-tune learning rate, and see it learn a brand-new task instead of training
+from scratch. Transfer learning made **visual and generative**.
 
-**Structure (45 min lab + 10 min discussion)** — resolved in Phase 2:
-- Guided notebook `lab03`: fine-tune **DistilBERT** on the `medical_abstracts`
-  dataset (5 disease classes, CC-BY-SA); ~4,000 training abstracts, fp16,
-  3 epochs ≈ 2–4 min on a T4.
-- Blanks: swapping the classification head, choosing what to freeze,
-  fine-tuning learning rate (much smaller — why?).
-- Built-in three-way comparison: full fine-tune vs. frozen-body head-only vs.
-  from-scratch (from-scratch lands near the 33% majority floor; fine-tuned
-  reaches ~65% — the game-changer lesson, made visible).
-- **Bonus demo cell (peptides!):** the same recipe on ESM-2 (8M), a protein
-  language model, classifying ~3,000 peptides in ~30 s — "DistilBERT read 3B
-  words of English; ESM-2 read 250M protein sequences. Same move, different
-  alphabet."
+**Structure (45 min lab + 10 min discussion)** — fine-tuning a real pretrained
+image **diffusion generator**, CPU/T4-friendly (~25–60 s fine-tune; whole
+notebook well under 10 min):
+- A **real pretrained MNIST digit-generator** (`balakrish181/ddpm-class-mnist-28`,
+  a ~4M-parameter 28×28 diffusion UNet) is downloaded straight from the Hugging
+  Face Hub (public, ~15 MB, no login) and shown drawing handwritten digits.
+  Provided read-and-run: the Hub download, a linear-beta `DDPMScheduler`, and the
+  sampling/fine-tune loops. *No VAE/autoencoder/KL vocabulary — the model is
+  framed simply as a pretrained "digit-drawer" you fine-tune, keeping the lab
+  inside Lectures 1–8; the probabilistic-latent story waits for Lecture 11.*
+- **Blank 1 (creative): invent your symbol** — the student edits a 16×16 ASCII
+  grid (`'#'`=ink, `'.'`=blank) into a bold shape (heart / star / letter /
+  initial); provided code parses it to a 28×28 image and makes ~32 jittered
+  copies as the tiny training set. **Blank 2 (the heart of diffusion training):**
+  the noise-prediction objective line `loss = F.mse_loss(noise_pred, noise)`
+  inside a provided fine-tune scaffold. **Blank 3:** the fine-tune learning rate
+  `FINETUNE_LR` (~`1e-4`) — the rule, not the number: much smaller than a
+  from-scratch rate because you're nudging a pretrained model.
+- **The payoff, made visible:** a BEFORE grid (the pretrained model = digits) vs
+  an AFTER grid (~400-step fine-tune = the student's symbol, with variation). A
+  provided self-check computes the cosine similarity of the AFTER samples to the
+  student's target symbol and asserts it clearly beats the BEFORE digits; a
+  noise-interpolation morph is an optional stretch.
 
-**Discussion D3** — *"What pretrained model could your product borrow — and what
-would 'the head' predict?"*
+**Discussion D3** — *"Where in YOUR work is there a big pretrained model you could
+fine-tune on your few labels instead of building one from scratch?"*
 
 ## SEGMENT 4 — Monday afternoon: Making It Real
 
@@ -340,29 +352,39 @@ course objectives 3–5.
 
 **Assessment: Quiz 11** — pick which of two latent-space pictures is the VAE and justify in one sentence; match four lab scenarios to paradigms (supervised / unsupervised / self-supervised / semi-supervised); one "what does reconstruction error tell you?" item; one DINO/contrastive intuition item ("why must the two views agree?").
 
-### Lab 4 (slot 12) · VAE for Spectra QC, Anomaly Detection, and Generation
+### Lab 4 (slot 12) · The Fashion VAE — a Latent Playground
 
-**Outcomes** — participant can train a VAE on normal spectra, use reconstruction
-error to flag anomalies, visualize and explore a 2D latent space, and generate
-new spectra by decoding latent points.
+**Outcomes** — participant can build a VAE, plot and explore a 2D latent space
+(VAE vs. plain AE), morph between examples, and generate new ones by decoding
+latent points they choose — the Lecture 11 generative-VAE ideas made playable.
 
 **Structure (45 min lab + 10 min discussion)**
-- Guided notebook `lab04`: train a VAE on "normal" spectra (reuse the Lab 2
-  dataset). Encoder/decoder and the reparameterization helper are provided as
-  read-and-run code; participants fill in the key choices.
-- Blanks: bottleneck (latent) size, the combined loss line (reconstruction +
-  KL "tidiness" term with a weight), the anomaly threshold.
-- Score held-out spectra by reconstruction error and flag anomalies; plot the
-  2D latent space colored by class — visually compare against a plain AE's
-  latent space (pre-trained, provided) to see the Lecture 11 picture on real data.
-- Fun payoff: sample latent points and interpolate between two spectra —
-  watch the decoded spectrum morph.
-- Teachable moments: KL weight too high = blurry reconstructions; bottleneck
-  too big = anomaly detector stops working; threshold choice is a
-  sensitivity/specificity decision (callback to Lecture 10).
+- Guided notebook `lab04`: a VAE that **only knows clothes**. Trains on
+  **FashionMNIST** (28×28 grayscale garments); loads free from torchvision (no
+  credentials). The model, loss, training loop, and every plot are read-and-run;
+  participants fill in just two creative pieces (kept light on purpose).
+- Blanks (2): **make your own clothes** — type a 2-D latent point `MY_LATENT`
+  and decode it (change the numbers, re-run, explore the map); and a
+  **draw-anything** ASCII `DOODLE` the clothes-VAE reimagines as the nearest
+  garment. The VAE loss (reconstruction + KL "tidiness") is provided read-and-run,
+  matching Lecture 11's no-math "reconstruct + keep the cloud tidy" framing (no
+  KL formula, consistent with the lecture).
+- Latent playground: encode held-out clothes to the 2D latent and scatter by
+  class — clothing types cluster; compare the VAE's tidy map against a plain
+  autoencoder's scattered islands (the Lecture 11 AE-vs-VAE picture).
+- Morph: interpolate the latent between a sneaker and an ankle boot for a smooth
+  garment morph. Generate: decode latent points (yours + random z ~ N(0, I))
+  into brand-new clothes (realizing the "generate" outcome).
+- Draw-anything: turn a 16×16 ASCII doodle into a 28×28 image and watch the
+  clothes-VAE squeeze it through the latent and redraw it as the nearest garment
+  (a letter, a spiral, a smiley — the weirder the input, the more fun the rebuild).
+- Why it works: because the VAE keeps a **tidy** latent, *every* point decodes to
+  something plausible — so it can generate and interpolate where a plain AE's
+  scattered latent only hits gaps.
 
-**Discussion D4** — *"What does 'abnormal' look like in your instrument's output,
-and would reconstruction error catch it before a human does?"*
+**Discussion D4** — *"Where could a model that learns the 'shape' of normal data
+help in your work — generating realistic examples, filling gaps — and what would
+you check before trusting what it generates?"*
 
 ## SEGMENT 5 — Tuesday morning: The Frontier + Capstone
 
@@ -435,8 +457,9 @@ resources-to-keep-learning slide.
 | Sessions | Need | Leading candidate |
 |---|---|---|
 | Lab 1 | clinical/metabolomics tabular set, clean labels | **resolved:** MTBLS90 serum metabolomics (968×189 named metabolites, balanced, zero NaNs, 1-line Colab load) |
-| Lab 2, Lab 4, Lab 5 (A, C) | MALDI-TOF or comparable 1D spectra with labels, Colab-sized slice | **resolved:** DRIAMS-A (CC0, Zenodo): S. aureus+oxacillin (3,064, 24% R) primary; E. coli+ceftriaxone (3,875, 28% R) for Track C; prep script written (instructor runs the one-time 86 GB pull) |
-| Lab 3 | small text or peptide dataset + pretrained model that fine-tunes in <10 min on a T4 | **resolved:** DistilBERT + HF `medical_abstracts` (CC-BY-SA) core; ESM-2 8M peptide bonus demo |
+| Lab 2, Lab 5 (A, C) | MALDI-TOF or comparable 1D spectra with labels, Colab-sized slice | **resolved:** DRIAMS-A (CC0, Zenodo): S. aureus+oxacillin (3,064, 24% R) primary; E. coli+ceftriaxone (3,875, 28% R) for Track C; prep script written (instructor runs the one-time 86 GB pull) |
+| Lab 4 | one image set to build a VAE latent playground (plot, morph, generate) | **resolved:** **FashionMNIST** via torchvision loaders (MIT-licensed data, BSD loaders, ~30 MB, no credentials, cached to gitignored data dir) — no DRIAMS dependency |
+| Lab 3 | a real pretrained generative model for a transfer-learning lab, fine-tunes in <10 min on a T4, no credentials | **resolved:** pretrained diffusion generator **`balakrish181/ddpm-class-mnist-28`** from the Hugging Face Hub (public, ~15 MB, no login) — no dataset download; the student invents a symbol and its ~32-image training set is synthetic from that drawing |
 | Lecture 5 segment, Lab 5 (B) | labeled chromatographic peaks/ROIs | **resolved:** PeakOnly annotated ROIs (5,365 windows, peak/noise + quality sub-labels); slice built and tested (3.8 MB npz) |
 | Lecture 10 | one published cautionary tale of distribution shift in clinical ML | **resolved:** Wiesmann et al., *J Clin Microbiol* 2025 — DRIAMS-trained AMR models lose 0.07–0.23 AUROC on German specimens and decay within 18 months (same task as Lab 2!); Zech et al. 2018 as optional second example |
-| Lecture 14 | demo CSV + agent tooling | derive from Lab 2/4 data; instructor's Claude Code (Bedrock as alternative, recording as fallback); participants' own free-tier chatbots |
+| Lecture 14 | demo CSV + agent tooling | derive from Lab 2 data; instructor's Claude Code (Bedrock as alternative, recording as fallback); participants' own free-tier chatbots |
