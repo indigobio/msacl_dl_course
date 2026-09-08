@@ -95,22 +95,24 @@ in Phase 2 before a lab is built on it.
   BSD-licensed.
 - Size: ~30 MB, cached under a **gitignored** `torchvision_data/` dir (see
   `.gitignore`); nothing is committed.
-- Role: the single clothing family the VAE learns — a fun, non-medical latent
-  playground. No DRIAMS slice and no hosted file are involved. (An earlier draft
-  also loaded MNIST digits as anomaly "impostors"; that anomaly-detection arc was
-  dropped to keep the lab a light, purely generative playground.)
-- **Lab 4 rebuild (Fashion-VAE latent playground), built & run-verified
-  (2026-09-01):** `lab04_vae_fashion.ipynb` trains a small 2-D-latent MLP VAE
-  (784→256→64→(mu,logvar); dec 2→64→256→784 sigmoid) on 12,000 FashionMNIST
-  images (Adam 1e-3, batch 128, 12 epochs, ~3 s + downloads). The loss and
-  training loop are read-and-run; participants fill **two creative blanks** only:
-  `MY_LATENT` (type a 2-D latent point and decode it) and the draw-anything ASCII
-  `DOODLE` (reimagined as the nearest garment). It plots the VAE latent vs. a
-  plain-AE latent (Lecture 11 picture), morphs a sneaker→ankle-boot, and
-  generates clothes from latent points (yours + random z ~ N(0, I)). Asserts are
-  structural (`MY_LATENT` is two finite numbers; the doodle parses to `(1,784)`).
-  Verified end-to-end (`jupyter nbconvert --execute`): all code cells ran with
-  **0 errors**, 8 asserts pass, total runtime ~24 s (incl. cached
+- Role: **FashionMNIST** is the clothing family the VAE learns; **MNIST digits**
+  are also loaded as unseen anomaly "impostors" for the reconstruction-error
+  detector in Step 8. No DRIAMS slice and no hosted file are involved.
+- **Lab 4 rebuild (Fashion-VAE latent playground + impostor detector), built &
+  run-verified (2026-09-01):** `lab04_vae_fashion.ipynb` trains a small
+  2-D-latent MLP VAE (784→256→64→(mu,logvar); dec 2→64→256→784 sigmoid) on
+  12,000 FashionMNIST images (Adam 1e-3, batch 128, ~12 epochs) and scores
+  held-out MNIST digits as impostors. The model, training loop, and every plot
+  are read-and-run; participants fill **four blanks**: **Blank 1** the VAE loss
+  `loss = recon_loss + beta * kl_loss` (Step 2); **Blank 2** one KL value by hand
+  `kl_by_hand = 0.5` for mu=[1,0], logvar=[0,0] (Step 3); **Blank 3** the impostor
+  `THRESHOLD = np.percentile(normal_errors, 90)` plus a prediction
+  `expected_false_alarms = round(0.10 * len(normal_errors))` (Step 8); **Blank 4**
+  the creative ASCII `DOODLE` impostor (Step 9). It plots the VAE latent vs. a
+  plain-AE latent (Lecture 11 picture), morphs a sneaker→ankle-boot, generates
+  clothes from random z ~ N(0, I), and flags impostor digits by reconstruction
+  error (AUROC > 0.85). Verified end-to-end (`jupyter nbconvert --execute`): all
+  code cells ran with **0 errors** and all **16 asserts** pass (incl. cached
   downloads).
 
 ### Lab 3 — transfer learning by fine-tuning: pretrained diffusion generator (redesigned 2026-09-01)
@@ -125,9 +127,9 @@ in Phase 2 before a lab is built on it.
   parses it to a 28×28 image and makes ~32 lightly jittered (small rotation +
   shift) copies. Nothing to host, register, or license.
 - Lab concept: download the pretrained digit-generator, watch it draw digits,
-  then **few-shot fine-tune** it (~400 steps, `lr≈1e-4`, ~25–60 s) so it draws
-  the student's brand-new symbol. Transfer learning made visual and generative;
-  anchors the Lecture 8 fine-tuning outcome.
+  then **few-shot fine-tune** it (~100 steps, `lr≈1e-4`, well under a minute) so
+  it draws the student's brand-new symbol. Transfer learning made visual and
+  generative; anchors the Lecture 8 fine-tuning outcome.
 - **No VAE/autoencoder/KL vocabulary** (VAEs are Lecture 11, a later segment):
   the model is framed simply as a pretrained "digit-drawer" you fine-tune,
   keeping the lab inside Lectures 1–8.
@@ -136,15 +138,14 @@ in Phase 2 before a lab is built on it.
   `loss = F.mse_loss(noise_pred, noise)`; **Blank 3** the fine-tune learning rate
   `FINETUNE_LR ≈ 1e-4` (rule given, not the number). `assert`s: parsed symbol is
   28×28 in [0,1] with a sensible ink amount; loss is a finite scalar ≥ 0;
-  `0 < FINETUNE_LR < 1e-2`; and the AFTER samples' cosine similarity to the
-  student's target clearly beats the BEFORE digits and passes a conservative bar.
+  and `0 < FINETUNE_LR < 1e-2`. The before-vs-after payoff (Step 6) is a **visual**
+  side-by-side: the same denoising loop draws digits BEFORE and the student's
+  symbol AFTER the fine-tune — there is no numeric similarity assert.
 - **Built & run-verified (2026-09-01):** `labs/solutions/lab03_generator_transfer.ipynb`
   executed end-to-end via `jupyter nbconvert --to notebook --execute`
-  (`/tmp/lab03_executed.ipynb`): 0 error outputs, all **8 asserts** pass. For the
-  shipped heart, cosine similarity to the target jumps **0.50 BEFORE → 0.90
-  AFTER** fine-tuning (threshold 0.72); the 400-step fine-tune runs in **~23 s**
-  and the whole notebook in **~37 s** on Apple MPS (similar or faster on a T4) —
-  well under the 10-min budget.
+  (`/tmp/lab03_executed.ipynb`): 0 error outputs, all **9 asserts** pass. The
+  100-step fine-tune runs in well under a minute on Apple MPS (similar or faster
+  on a T4) — comfortably under the 10-min budget.
 
 ### Lab 5 capstone — verified end-to-end (2026-08-31)
 - `labs/solutions/lab05_capstone.ipynb`: three self-contained tracks (set `TRACK='A'/'B'/'C'`)

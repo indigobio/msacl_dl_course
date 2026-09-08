@@ -88,15 +88,15 @@ from-scratch rate. The check is \opt{0 < FINETUNE\_LR < 1e-2}.}
   \item[(b)] \opt{FINETUNE\_LR = 1e-1}
   \item[(c)] \opt{FINETUNE\_LR = 1e-6}
 \end{itemize}
-{\small (a) is the sweet spot --- big enough to pick up your symbol in $\sim$400 steps, small enough
+{\small (a) is the sweet spot --- big enough to pick up your symbol in $\sim$100 steps, small enough
 not to wreck the pretrained model. (b) is far too big: it blows the model apart and the AFTER grid is
 garbage (and it exceeds the \opt{< 1e-2} check). (c) is so tiny the model barely moves --- the AFTER
-samples still look like digits and the similarity \texttt{assert} fails.}
+samples still look like digits instead of your symbol.}
 
 \vspace{4pt}\hrule\vspace{3pt}
 {\small\itshape Answers self-check in the notebook: the symbol cell prints its ink \% and shape; the
-objective cell prints a probe loss; the learning-rate cell prints its value; and Step 7 prints the
-\textbf{before vs after} similarity to your symbol and asserts the AFTER pictures clearly match it.
-Watch the \textbf{AFTER row} of Step 6 --- it should unmistakably show the symbol \emph{you} drew.}
+objective cell prints a probe loss; and the learning-rate cell prints its value. Step 6 is a
+\textbf{visual} before-vs-after: watch the \textbf{AFTER row} --- it should unmistakably show the
+symbol \emph{you} drew, while the BEFORE row still shows the pretrained digits.}
 
 \end{document}

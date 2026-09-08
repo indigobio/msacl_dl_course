@@ -352,32 +352,42 @@ course objectives 3–5.
 
 **Assessment: Quiz 11** — pick which of two latent-space pictures is the VAE and justify in one sentence; match four lab scenarios to paradigms (supervised / unsupervised / self-supervised / semi-supervised); one "what does reconstruction error tell you?" item; one DINO/contrastive intuition item ("why must the two views agree?").
 
-### Lab 4 (slot 12) · The Fashion VAE — a Latent Playground
+### Lab 4 (slot 12) · The Fashion VAE — a Latent Playground + Impostor Detector
 
-**Outcomes** — participant can build a VAE, plot and explore a 2D latent space
-(VAE vs. plain AE), morph between examples, and generate new ones by decoding
-latent points they choose — the Lecture 11 generative-VAE ideas made playable.
+**Outcomes** — participant can build a VAE (combine the reconstruction + KL
+loss), compute one KL value by hand, plot and explore a 2D latent space (VAE vs.
+plain AE), morph between examples, generate new ones from random latent points,
+and use **reconstruction error as an anomaly score** to flag unseen impostors —
+the Lecture 11 generative-VAE ideas plus the Lecture 10 threshold dial, made
+playable.
 
 **Structure (45 min lab + 10 min discussion)**
 - Guided notebook `lab04`: a VAE that **only knows clothes**. Trains on
   **FashionMNIST** (28×28 grayscale garments); loads free from torchvision (no
-  credentials). The model, loss, training loop, and every plot are read-and-run;
-  participants fill in just two creative pieces (kept light on purpose).
-- Blanks (2): **make your own clothes** — type a 2-D latent point `MY_LATENT`
-  and decode it (change the numbers, re-run, explore the map); and a
-  **draw-anything** ASCII `DOODLE` the clothes-VAE reimagines as the nearest
-  garment. The VAE loss (reconstruction + KL "tidiness") is provided read-and-run,
-  matching Lecture 11's no-math "reconstruct + keep the cloud tidy" framing (no
-  KL formula, consistent with the lecture).
+  credentials); **MNIST digits** load too as unseen impostors for the detector.
+  The model, training loop, and every plot are read-and-run; participants fill in
+  four short pieces.
+- Blanks (4): **Blank 1** combine the VAE loss `loss = recon_loss + beta *
+  kl_loss` (reconstruction + KL "tidiness"); **Blank 2** compute one KL value by
+  hand (`kl_by_hand = 0.5` for mu=[1,0], logvar=[0,0], from the KL formula shown
+  on the slide); **Blank 3** the impostor `THRESHOLD` = 90th percentile of the
+  normal errors, plus a prediction of the ~10% `expected_false_alarms`; **Blank
+  4** a **draw-anything** ASCII `DOODLE` the detector then judges. The
+  reconstruction and KL terms are provided; the student combines and calibrates
+  them.
 - Latent playground: encode held-out clothes to the 2D latent and scatter by
   class — clothing types cluster; compare the VAE's tidy map against a plain
   autoencoder's scattered islands (the Lecture 11 AE-vs-VAE picture).
 - Morph: interpolate the latent between a sneaker and an ankle boot for a smooth
   garment morph. Generate: decode latent points (yours + random z ~ N(0, I))
   into brand-new clothes (realizing the "generate" outcome).
+- Impostor detector: score held-out clothes vs. unseen MNIST digits by
+  reconstruction error, set the threshold at the 90th percentile of normal errors
+  (~10% false alarms, the Lecture 10 sensitivity/specificity dial), and separate
+  digits from clothes well (AUROC > 0.85).
 - Draw-anything: turn a 16×16 ASCII doodle into a 28×28 image and watch the
-  clothes-VAE squeeze it through the latent and redraw it as the nearest garment
-  (a letter, a spiral, a smiley — the weirder the input, the more fun the rebuild).
+  detector decide whether it lands above the threshold (thin lines/text flag
+  easily; a big solid blob may slip through).
 - Why it works: because the VAE keeps a **tidy** latent, *every* point decodes to
   something plausible — so it can generate and interpolate where a plain AE's
   scattered latent only hits gaps.

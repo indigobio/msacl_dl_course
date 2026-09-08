@@ -1,6 +1,6 @@
 % =====================================================================
 %  MSACL DS301 Deep Learning · Lab 4 · Code Hint Sheet
-%  Multiple-choice code options for the two fill-in cells.
+%  Multiple-choice code options for the four fill-in cells.
 %  Style matches labs/handouts/lab02_hints.tex and lab03_hints.tex.
 % =====================================================================
 \documentclass[11pt]{article}
@@ -28,64 +28,111 @@
 
 \begin{center}
 {\Large \textbf{Lab 4 --- Code Hint Sheet}}\\[2pt]
-{\normalsize The Fashion VAE --- a Latent Playground}
+{\normalsize The Fashion VAE --- a Latent Playground + Impostor Detector}
 \end{center}
 
 \vspace{-2pt}
 \begin{center}
 \fbox{\parbox{0.92\textwidth}{\small
-Only \textbf{two} cells need editing --- both are creative, so there is no single ``right''
-answer, just a \textbf{format} to follow. Type something in and \textbf{run the cell}; the built-in
-\texttt{assert} checks confirm the format, and the picture shows the result. Everything else --- the
-model, the training loop, and every plot --- runs as-is. The encoder, decoder, and the
-reparameterization trick are already written for you.
+You fill in \textbf{four} short pieces --- two are one-line ideas that matter (the VAE loss and one
+KL number), one is a threshold plus a prediction, and one is a creative drawing. Everything else ---
+the model, the encoder/decoder, the reparameterization trick, the training loop, and every plot ---
+runs as-is. Type your answer in and \textbf{run the cell}; the built-in \texttt{assert} checks give
+instant feedback.
 }}
 \end{center}
 
 \vspace{2pt}\hrule\vspace{4pt}
 
-\textbf{Step 5 --- make your own clothes.}\; {\small The VAE's latent is 2-D, so a ``latent point''
-is just \textbf{two numbers}. Every point decodes to something clothes-like --- pick a point, see
-what the VAE draws, then change the numbers and re-run. Roughly $-3\ldots 3$ stays near the clothes
-the model knows; go further out for stranger results.}
+\textbf{Step 2 --- the VAE loss.}\; {\small A VAE trains on \textbf{two ideas at once}:
+\opt{recon\_loss} (rebuild the picture) and \opt{kl\_loss} (keep the latent cloud tidy near the
+origin). Both are already computed for you; your one line \textbf{combines} them, with the KL term
+weighted by \opt{beta}.}
 
-\textbf{Blank 1 --- \texttt{MY\_LATENT} (a latent point).}
+\textbf{Blank 1 --- \texttt{loss} (combine the two terms).}
 \begin{itemize}
-  \item[(a)] \opt{MY\_LATENT = [1.5, -0.8]}\; --- any \textbf{list of two finite numbers}. This is
-    the format the cell wants; try \opt{[0, 0]}, \opt{[-2, 1.3]}, \opt{[3, 3]}, \ldots
-  \item[(b)] \opt{MY\_LATENT = 1.5}\; --- a single number, not a list; trips the check
-    (\opt{len(MY\_LATENT) == 2}).
-  \item[(c)] \opt{MY\_LATENT = [1, 2, 3, 4]}\; --- four numbers; the latent is only 2-D, so this also
-    fails the length check.
+  \item[(a)] \opt{loss = recon\_loss + beta * kl\_loss}\; --- \textbf{add} the KL penalty (scaled by
+    \opt{beta}) to the reconstruction. This is a VAE.
+  \item[(b)] \opt{loss = recon\_loss - beta * kl\_loss}\; --- \emph{subtracting} the penalty
+    \textbf{rewards} a messy latent; the space stops being sampleable. Wrong sign.
+  \item[(c)] \opt{loss = recon\_loss * beta * kl\_loss}\; --- \emph{multiplying} is not the recipe;
+    when \opt{kl\_loss} is near 0 the whole loss collapses to $\approx 0$. Wrong.
 \end{itemize}
-{\small (a) is the format --- \emph{any} two finite numbers work, so explore. (b) and (c) are the
-wrong shape and fail the \opt{len == 2} \texttt{assert}.}
+{\small (a) is the VAE objective (reconstruction $+\ \beta\cdot$KL). (b) and (c) break training ---
+the self-check only confirms \opt{loss} is a finite scalar, so reason about the \emph{sign} and the
+\emph{operator}, not just whether it runs.}
 
 \vspace{3pt}\hrule\vspace{4pt}
 
-\textbf{Step 6 --- draw anything.}\; {\small Edit the 16$\times$16 ASCII grid: \opt{'\#'} is ink,
-\opt{'.'} is blank. The rule is only about \textbf{format} --- keep \textbf{every row exactly 16
-characters} and use only \opt{'\#'} and \opt{'.'}. Any shape is fair game; the clothes-VAE will redraw
-whatever you give it as the nearest garment.}
+\textbf{Step 3 --- KL by hand.}\; {\small No code --- a calculator. For one latent cloud with
+$\text{mu}=[1,0]$, $\text{logvar}=[0,0]$, plug into
+$\mathrm{KL}=-\tfrac12\sum_i\big(1+\text{logvar}_i-\text{mu}_i^2-e^{\text{logvar}_i}\big)$ with
+$e^0=1$: dim~1 gives $1+0-1-1=-1$, dim~2 gives $1+0-0-1=0$, so the sum is $-1$ and
+$\mathrm{KL}=-\tfrac12(-1)$.}
 
-\textbf{Blank 2 --- \texttt{DOODLE} (the drawing).}
+\textbf{Blank 2 --- \texttt{kl\_by\_hand} (one number).}
 \begin{itemize}
-  \item[(a)] Any shape you like --- the shipped \textbf{spiral}, your initials, a smiley, a star ---
-    as long as every row is exactly 16 chars of only \opt{'\#'}/\opt{'.'}. This passes and gets
-    reimagined as clothing.
-  \item[(b)] Rows of \emph{unequal} length, or a stray character like \opt{'x'} or a space --- trips
-    the grid sanity-check \opt{assert} (every row must be 16 chars of only \opt{'\#'}/\opt{'.'}).
-  \item[(c)] An empty grid (all \opt{'.'}) --- runs fine, but there is nothing to reimagine; draw
-    \emph{something} for a fun rebuild.
+  \item[(a)] \opt{kl\_by\_hand = 0.5}\; --- $-\tfrac12\times(-1)=0.5$. Matches the formula the code
+    evaluates on the same numbers.
+  \item[(b)] \opt{kl\_by\_hand = -0.5}\; --- this is the \emph{sum} times $\tfrac12$ \emph{without}
+    the leading minus sign; the $-\tfrac12$ flips it to $+0.5$. Fails the check.
+  \item[(c)] \opt{kl\_by\_hand = 1.0}\; --- dropped the factor $\tfrac12$. Fails the check.
 \end{itemize}
-{\small (a) is the goal --- there is no wrong drawing, only the format. (b) errors out at the parse
-check. (c) is legal but boring.}
+{\small (a) is exact. The \texttt{assert} recomputes the same KL formula in code and demands your
+number match to $10^{-6}$, so recompute carefully rather than guessing.}
+
+\vspace{3pt}\hrule\vspace{4pt}
+
+\textbf{Step 8 --- the impostor threshold (+ a prediction).}\; {\small Reconstruction error is the
+impostor score: clothes rebuild well (low), unseen digits rebuild badly (high). The rule: put the
+line at the \textbf{90th percentile of the \emph{normal} (clothes) errors}, so about \textbf{10\%}
+of real clothes are false alarms.}
+
+\textbf{Blank 3a --- \texttt{THRESHOLD}.}
+\begin{itemize}
+  \item[(a)] \opt{THRESHOLD = np.percentile(normal\_errors, 90)}\; --- the 90th percentile of the
+    \textbf{normal} errors, exactly the rule.
+  \item[(b)] \opt{THRESHOLD = np.percentile(impostor\_errors, 90)}\; --- wrong array: you would
+    calibrate on the \emph{digits} you are trying to catch, not the clothes.
+  \item[(c)] \opt{THRESHOLD = normal\_errors.mean()}\; --- the mean sits far below the 90th
+    percentile, so roughly half of all clothes would false-alarm.
+\end{itemize}
+
+\textbf{Blank 3b --- \texttt{expected\_false\_alarms} (predict, then check).}
+\begin{itemize}
+  \item[(a)] \opt{expected\_false\_alarms = round(0.10 * len(normal\_errors))}\; --- by
+    construction the 90th percentile leaves \textbf{10\%} of normals above the line.
+  \item[(b)] \opt{expected\_false\_alarms = round(0.90 * len(normal\_errors))}\; --- confuses the
+    percentile (90) with the false-alarm \emph{rate} (10\%).
+  \item[(c)] \opt{expected\_false\_alarms = 0}\; --- a 90th-percentile cut always flags $\approx$10\%
+    of normals, never 0.
+\end{itemize}
+{\small (a) for both. The prediction \texttt{assert} confirms the count you predicted is what the
+threshold actually produces.}
+
+\vspace{3pt}\hrule\vspace{4pt}
+
+\textbf{Step 9 --- draw your own impostor.}\; {\small Edit the 16$\times$16 ASCII grid: \opt{'\#'} is
+ink, \opt{'.'} is blank. The rule is only about \textbf{format} --- keep \textbf{every row exactly 16
+characters} and use only \opt{'\#'} and \opt{'.'}. The code upsamples it to 28$\times$28 and tells
+you whether the VAE flags it as an impostor.}
+
+\textbf{Blank 4 --- \texttt{DOODLE} (the drawing).}
+\begin{itemize}
+  \item[(a)] Any shape --- the shipped \textbf{spiral}, your initials, a squiggle, a molecule
+    sketch --- as long as it is a list of \textbf{16 rows}, each exactly \textbf{16 chars} of only
+    \opt{'\#'}/\opt{'.'}. This passes and gets scored against the threshold.
+  \item[(b)] Rows of \emph{unequal} length, a wrong number of rows, or a stray character like
+    \opt{'x'} or a space --- trips the grid sanity-check \opt{assert}.
+  \item[(c)] An empty grid (all \opt{'.'}) --- runs, but there is nothing for the detector to judge;
+    draw \emph{something} thin (lines and text flag easily; a big solid blob may slip through).
+\end{itemize}
 
 \vspace{4pt}\hrule\vspace{3pt}
-{\small\itshape Answers self-check in the notebook: if the \texttt{assert} cells pass ---
-\opt{MY\_LATENT} is two finite numbers, and the doodle parses to \opt{(1, 784)} --- you have the
-format right; the rest is play. The payoff is the tidy VAE latent map (vs. the scattered plain-AE
-one), the sneaker$\to$boot morph, clothes generated from latent points you choose, and your own
-doodle snapped to the nearest garment.}
+{\small\itshape Answers self-check in the notebook: the loss is a finite scalar with the KL term
+non-negative, \opt{kl\_by\_hand} matches the code's KL, the threshold flags about 10\% of clothes and
+separates digits well (AUROC $>0.85$), and your doodle parses to \opt{(1, 784)}. The payoff is the
+tidy VAE latent map (vs. the scattered plain-AE one), the sneaker$\to$boot morph, generated clothes,
+and your own doodle judged by the detector.}
 
 \end{document}
