@@ -1,6 +1,6 @@
 % =====================================================================
 %  MSACL DS301 Deep Learning · Lab 4 · Code Hint Sheet
-%  Multiple-choice code options for the three fill-in cells.
+%  Multiple-choice code options for the two fill-in cells.
 %  Style matches labs/handouts/lab02_hints.tex and lab03_hints.tex.
 % =====================================================================
 \documentclass[11pt]{article}
@@ -28,83 +28,64 @@
 
 \begin{center}
 {\Large \textbf{Lab 4 --- Code Hint Sheet}}\\[2pt]
-{\normalsize A VAE for Spectra QC, Anomaly Detection \& Generation}
+{\normalsize The Fashion VAE --- a Latent Playground}
 \end{center}
 
 \vspace{-2pt}
 \begin{center}
 \fbox{\parbox{0.92\textwidth}{\small
-Stuck on a \textbf{YOUR TURN} cell? Each blank you need is below with a few options.
-Pick one, type it in, and \textbf{run the cell} --- the built-in \texttt{assert} checks will tell you
-whether it is right. Only the three marked cells need editing; run everything else as-is.
-The encoder, decoder, and the reparameterization trick are already written for you.
+Only \textbf{two} cells need editing --- both are creative, so there is no single ``right''
+answer, just a \textbf{format} to follow. Type something in and \textbf{run the cell}; the built-in
+\texttt{assert} checks confirm the format, and the picture shows the result. Everything else --- the
+model, the training loop, and every plot --- runs as-is. The encoder, decoder, and the
+reparameterization trick are already written for you.
 }}
 \end{center}
 
 \vspace{2pt}\hrule\vspace{4pt}
 
-\textbf{Step 3 --- the bottleneck (latent) size.}\; {\small The narrow layer every spectrum must
-squeeze through (Lecture 11). Keep it \emph{small} so unfamiliar spectra can't be rebuilt --- that is
-what makes their reconstruction error spike. Value \opt{2} also lets us plot the latent space directly.}
+\textbf{Step 5 --- make your own clothes.}\; {\small The VAE's latent is 2-D, so a ``latent point''
+is just \textbf{two numbers}. Every point decodes to something clothes-like --- pick a point, see
+what the VAE draws, then change the numbers and re-run. Roughly $-3\ldots 3$ stays near the clothes
+the model knows; go further out for stranger results.}
 
-\textbf{Blank 1 --- \texttt{LATENT\_DIM}.}
+\textbf{Blank 1 --- \texttt{MY\_LATENT} (a latent point).}
 \begin{itemize}
-  \item[(a)] \opt{LATENT\_DIM = 2}
-  \item[(b)] \opt{LATENT\_DIM = 256}
-  \item[(c)] \opt{LATENT\_DIM = 1}
+  \item[(a)] \opt{MY\_LATENT = [1.5, -0.8]}\; --- any \textbf{list of two finite numbers}. This is
+    the format the cell wants; try \opt{[0, 0]}, \opt{[-2, 1.3]}, \opt{[3, 3]}, \ldots
+  \item[(b)] \opt{MY\_LATENT = 1.5}\; --- a single number, not a list; trips the check
+    (\opt{len(MY\_LATENT) == 2}).
+  \item[(c)] \opt{MY\_LATENT = [1, 2, 3, 4]}\; --- four numbers; the latent is only 2-D, so this also
+    fails the length check.
 \end{itemize}
-{\small (a) is right --- small enough to force real compression, and exactly \opt{2} so the 2-D latent
-plot in Step 9 works (the check requires \opt{LATENT\_DIM == 2}). (b) is \textbf{too big}: a wide
-bottleneck lets the network copy \emph{any} input straight through, so even weird spectra reconstruct
-well and the \textbf{anomaly detector stops working}. (c) is \textbf{too tight} and can't be plotted in
-2-D --- both (b) and (c) fail the \opt{== 2} check.}
+{\small (a) is the format --- \emph{any} two finite numbers work, so explore. (b) and (c) are the
+wrong shape and fail the \opt{len == 2} \texttt{assert}.}
 
 \vspace{3pt}\hrule\vspace{4pt}
 
-\textbf{Step 5 --- the combined VAE loss.}\; {\small A VAE is trained on \emph{two terms added
-together} (Lecture 11's recipe slide): the \opt{recon\_loss} (rebuild the spectrum accurately) plus the
-\opt{kl\_loss} (keep the latent cloud tidy), with the KL weighted by \opt{beta}. Both terms are already
-computed for you --- write the one line that combines them.}
+\textbf{Step 6 --- draw anything.}\; {\small Edit the 16$\times$16 ASCII grid: \opt{'\#'} is ink,
+\opt{'.'} is blank. The rule is only about \textbf{format} --- keep \textbf{every row exactly 16
+characters} and use only \opt{'\#'} and \opt{'.'}. Any shape is fair game; the clothes-VAE will redraw
+whatever you give it as the nearest garment.}
 
-\textbf{Blank 2 --- \texttt{loss}.}
+\textbf{Blank 2 --- \texttt{DOODLE} (the drawing).}
 \begin{itemize}
-  \item[(a)] \opt{loss = recon\_loss + beta * kl\_loss}
-  \item[(b)] \opt{loss = recon\_loss}
-  \item[(c)] \opt{loss = recon\_loss - beta * kl\_loss}
+  \item[(a)] Any shape you like --- the shipped \textbf{spiral}, your initials, a smiley, a star ---
+    as long as every row is exactly 16 chars of only \opt{'\#'}/\opt{'.'}. This passes and gets
+    reimagined as clothing.
+  \item[(b)] Rows of \emph{unequal} length, or a stray character like \opt{'x'} or a space --- trips
+    the grid sanity-check \opt{assert} (every row must be 16 chars of only \opt{'\#'}/\opt{'.'}).
+  \item[(c)] An empty grid (all \opt{'.'}) --- runs fine, but there is nothing to reimagine; draw
+    \emph{something} for a fun rebuild.
 \end{itemize}
-{\small (a) is the VAE objective: reconstruction \emph{plus} the weighted KL ``tidiness'' term. (b)
-drops the KL entirely --- that is just a plain autoencoder, and the check (loss must equal
-\opt{recon\_loss + BETA*kl\_loss}) fails. (c) \emph{subtracts} the KL, which rewards a messy latent and
-also fails the check --- and would blow training up. (Turning \opt{BETA} way \emph{up} instead makes
-reconstructions blurry --- tidiness beats accuracy.)}
-
-\vspace{3pt}\hrule\vspace{4pt}
-
-\textbf{Step 7 --- the anomaly threshold.}\; {\small Turn reconstruction error into a flag. Measure the
-error on the \emph{normal training} spectra, then flag anything well above that. A high percentile ---
-the \textbf{95th} --- expects to false-alarm on only $\sim$5\% of normal spectra. This is a
-sensitivity/specificity dial (Lecture 10 callback).}
-
-\textbf{Blank 3 --- \texttt{THRESHOLD}.}
-\begin{itemize}
-  \item[(a)] \opt{THRESHOLD = np.percentile(train\_errors, 95)}
-  \item[(b)] \opt{THRESHOLD = 0}
-  \item[(c)] \opt{THRESHOLD = train\_errors.max()}
-\end{itemize}
-{\small (a) is the 95th-percentile cut --- it lands strictly \emph{inside} the range of training errors,
-which is exactly what the check requires. (b) \opt{= 0} sits below every error, so it flags
-\textbf{everything} as an anomaly (all false alarms) and fails the ``inside the range'' check at the low
-end. (c) \opt{.max()} sits \emph{at} the very top, so it flags \textbf{almost nothing} (misses every
-anomaly) --- the opposite failure, and it too fails the check, which requires the threshold to sit
-strictly \emph{below} the max. You can raise the percentile for fewer false alarms or lower it to catch
-more; \opt{99} also passes (still below the max).}
+{\small (a) is the goal --- there is no wrong drawing, only the format. (b) errors out at the parse
+check. (c) is legal but boring.}
 
 \vspace{4pt}\hrule\vspace{3pt}
 {\small\itshape Answers self-check in the notebook: if the \texttt{assert} cells pass ---
-\opt{LATENT\_DIM == 2}, the loss equals \opt{recon\_loss + BETA*kl\_loss} (a finite scalar, KL $\ge 0$),
-and the threshold falls strictly between the min and max training error --- you chose right. Then read the
-histograms \textbf{honestly}: resistant and normal spectra \emph{overlap} --- reconstruction error is a
-\textbf{QC / novelty} signal, not a resistance test. The payoff is the smooth VAE latent map (vs. the
-scattered plain-AE one) and the decoded spectrum morph.}
+\opt{MY\_LATENT} is two finite numbers, and the doodle parses to \opt{(1, 784)} --- you have the
+format right; the rest is play. The payoff is the tidy VAE latent map (vs. the scattered plain-AE
+one), the sneaker$\to$boot morph, clothes generated from latent points you choose, and your own
+doodle snapped to the nearest garment.}
 
 \end{document}
