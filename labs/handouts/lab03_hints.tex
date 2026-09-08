@@ -74,7 +74,10 @@ is from the truth with \textbf{mean-squared error} and store it in \texttt{loss}
 \end{itemize}
 {\small (a) is right --- diffusion training makes the \emph{predicted noise} match the \emph{real
 noise} you added. (b) compares the guess to the noisy \emph{image}, not the noise --- wrong target.
-(c) cross-entropy is for class labels, not for matching two continuous noise images (it errors here).}
+(c) cross-entropy is for class \emph{labels}, not for matching two continuous noise images — the
+wrong tool. It does not error (same-shape float targets are read as probabilities), so the scalar/
+finite/$\geq 0$ self-checks still pass; you only see it fail \emph{visually} at Step 6, where the
+AFTER grid never becomes your symbol.}
 
 \vspace{3pt}\hrule\vspace{4pt}
 

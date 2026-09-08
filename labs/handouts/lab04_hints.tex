@@ -58,9 +58,9 @@ weighted by \opt{beta}.}
   \item[(c)] \opt{loss = recon\_loss * beta * kl\_loss}\; --- \emph{multiplying} is not the recipe;
     when \opt{kl\_loss} is near 0 the whole loss collapses to $\approx 0$. Wrong.
 \end{itemize}
-{\small (a) is the VAE objective (reconstruction $+\ \beta\cdot$KL). (b) and (c) break training ---
-the self-check only confirms \opt{loss} is a finite scalar, so reason about the \emph{sign} and the
-\emph{operator}, not just whether it runs.}
+{\small (a) is the VAE objective (reconstruction $+\ \beta\cdot$KL). The self-check asserts
+\opt{loss == recon\_loss + BETA*kl\_loss} (scalar, finite, KL $\geq 0$), so both the wrong sign (b)
+and the wrong operator (c) \textbf{fail} the assert with a clear message.}
 
 \vspace{3pt}\hrule\vspace{4pt}
 

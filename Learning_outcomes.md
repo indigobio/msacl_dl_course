@@ -304,10 +304,9 @@ notebook well under 10 min):
   `FINETUNE_LR` (~`1e-4`) — the rule, not the number: much smaller than a
   from-scratch rate because you're nudging a pretrained model.
 - **The payoff, made visible:** a BEFORE grid (the pretrained model = digits) vs
-  an AFTER grid (~400-step fine-tune = the student's symbol, with variation). A
-  provided self-check computes the cosine similarity of the AFTER samples to the
-  student's target symbol and asserts it clearly beats the BEFORE digits; a
-  noise-interpolation morph is an optional stretch.
+  an AFTER grid (~100-step fine-tune = the student's symbol, with variation) — a
+  purely **visual** side-by-side (same denoising loop, same seeds), no numeric
+  similarity assert; a noise-interpolation morph is an optional stretch.
 
 **Discussion D3** — *"Where in YOUR work is there a big pretrained model you could
 fine-tune on your few labels instead of building one from scratch?"*
