@@ -3611,207 +3611,6 @@ def rnn_vs_attention(name="fig_rnn_vs_attention.png"):
 
 
 
-def qkv_projection(name="fig_qkv_projection.png"):
-    """Where q, k and v COME FROM (rule 6, worked): one token vector is pushed
-    through three learned matrices W_Q, W_K, W_V to give its query, key and
-    value. Same x on every row — three different projections, three different
-    jobs. Course-drawn; the mechanism is Vaswani et al., NeurIPS 2017."""
-    x = [[1, 2], [2, 0]]
-    mats = [
-        ("W_Q", [[1, 0], [1, 1]], "QUERIES", TEAL, TEAL_SOFT, "q"),
-        ("W_K", [[0, 1], [1, 0]], "KEYS", AMBER, AMBER_SOFT, "k"),
-        ("W_V", [[1, 1], [0, 1]], "VALUES", RED, "#F7E4E3", "v"),
-    ]
-    fig, ax = plt.subplots(figsize=(12.6, 5.9))
-    ax.set_xlim(0, 14)
-    ax.set_ylim(0, 6.5)
-    ax.axis("off")
-    cell = 0.52
-    col_x = [3.05, 6.05]
-    mat_x = 9.6
-
-    ax.text(0.35, 5.62, "EMBEDDING", ha="left", va="center", color=INK_SOFT,
-            fontsize=12.5, fontweight="bold")
-    for c, (cx, lab) in enumerate(zip(col_x, ["token 1", "token 2"])):
-        ax.text(cx + cell, 6.18, lab, ha="center", color=INK, fontsize=13,
-                fontweight="bold")
-        _cellgrid(ax, [x[c]], cx, 5.88, cell, face=WHITE, edge=INK_SOFT,
-                  fontsize=15)
-        ax.text(cx - 0.18, 5.62, f"x{'\u2081' if c == 0 else '\u2082'}",
-                ha="right", va="center", color=INK, fontsize=14,
-                fontweight="bold")
-
-    rows_y = [4.42, 2.82, 1.22]
-    for (mname, M, rlab, colr, soft, sym), ry in zip(mats, rows_y):
-        ax.text(0.35, ry, rlab, ha="left", va="center", color=colr,
-                fontsize=12.5, fontweight="bold")
-        out = [[sum(x[c][i] * M[i][j] for i in range(2)) for j in range(2)]
-               for c in range(2)]
-        for c, cx in enumerate(col_x):
-            _cellgrid(ax, [out[c]], cx, ry + cell / 2, cell, face=soft,
-                      edge=colr, txt=colr, fontsize=15)
-            sub = "\u2081" if c == 0 else "\u2082"
-            ax.text(cx - 0.18, ry, f"{sym}{sub}", ha="right", va="center",
-                    color=colr, fontsize=14, fontweight="bold")
-        _cellgrid(ax, M, mat_x, ry + cell, cell, face=WHITE, edge=colr,
-                  txt=colr, fontsize=14)
-        ax.text(mat_x + 2 * cell + 0.22, ry, mname, ha="left", va="center",
-                color=colr, fontsize=15, fontweight="bold")
-        ax.annotate("", xy=(mat_x - 0.22, ry), xytext=(col_x[1] + 2 * cell + 0.3, ry),
-                    arrowprops=dict(arrowstyle="<|-", color=colr, lw=2.0))
-        ax.text((mat_x + col_x[1] + 2 * cell) / 2 + 0.05, ry + 0.3,
-                "learned \u00b7 shared by every token", ha="center", color=MUTED,
-                fontsize=10.5, style="italic")
-
-    ax.text(7.0, 0.28,
-            "one worked cell:  q\u2081 = x\u2081\u00b7W_Q = (1\u00b71 + 2\u00b71,  1\u00b70 + 2\u00b71) = (3, 2)"
-            "      \u2014 same x, three matrices, three roles",
-            ha="center", va="center", color=INK, fontsize=12.5,
-            fontweight="bold",
-            bbox=dict(boxstyle="round,pad=0.5", fc=TEAL_SOFT, ec=TEAL, lw=1.6))
-    _save(fig, name)
-
-
-# A deterministic synthetic spectrum for the denoising panels: fixed peak
-# positions/heights so every rebuild is byte-identical, and a seeded RNG for
-# the corruption. No external data, so a clean checkout can regenerate them.
-_DENOISE_PEAKS = [(118, 0.55, 3.0), (205, 0.95, 3.4), (262, 0.40, 2.8),
-                  (348, 0.72, 3.2), (430, 0.30, 2.6)]
-
-
-def _clean_spectrum(nbins=520, shift=0, scale=None):
-    mz = np.arange(nbins, dtype=float)
-    y = np.zeros(nbins)
-    scale = scale or [1.0] * len(_DENOISE_PEAKS)
-    for (c, h, w), k in zip(_DENOISE_PEAKS, scale):
-        y += k * h * np.exp(-0.5 * ((mz - (c + shift)) / w) ** 2)
-    return y
-
-
-def _noisy_spectrum(y, rng, sigma=0.13):
-    return np.clip(y + rng.normal(0, sigma, y.shape), 0, None)
-
-
-def _reconstructed(y, rng, sigma=0.022):
-    """What a trained denoiser returns: the peaks back, slightly smoothed and
-    a little short — NOT a perfect copy of the target."""
-    return np.clip(0.94 * y + rng.normal(0, sigma, y.shape), 0, None)
-
-
-def denoising_autoencoder(name="fig_denoising_ae.png"):
-    """The denoising autoencoder as a pipeline (rule 2, MS-anchored): corrupt a
-    good spectrum on purpose, make the network rebuild the CLEAN one. The label
-    is the original, so no human ever annotates anything. Course-drawn."""
-    rng = np.random.default_rng(3)
-    clean = _clean_spectrum()
-    noisy = _noisy_spectrum(clean, rng)
-    out = _reconstructed(clean, np.random.default_rng(11))
-
-    fig = plt.figure(figsize=(13.0, 5.0))
-    ov = fig.add_axes([0, 0, 1, 1]); ov.set_xlim(0, 1); ov.set_ylim(0, 1)
-    ov.axis("off")
-
-    def spectrum(rect, y, colour, title, sub):
-        ax = fig.add_axes(rect)
-        ax.plot(y, color=colour, lw=1.3)
-        ax.fill_between(np.arange(len(y)), y, color=colour, alpha=0.16)
-        ax.set_xticks([]); ax.set_yticks([])
-        ax.set_ylim(-0.05, 1.35)
-        for sp in ax.spines.values():
-            sp.set_edgecolor(HAIRLINE); sp.set_linewidth(1.2)
-        ov.text(rect[0] + rect[2] / 2, rect[1] + rect[3] + 0.055, title,
-                ha="center", va="bottom", color=colour, fontsize=12.5,
-                fontweight="bold")
-        ov.text(rect[0] + rect[2] / 2, rect[1] - 0.045, sub, ha="center",
-                va="top", color=MUTED, fontsize=10.5, style="italic")
-
-    spectrum([0.035, 0.42, 0.20, 0.34], noisy, AMBER,
-             "NOISY INPUT", "a good run, + noise WE added")
-    spectrum([0.775, 0.42, 0.20, 0.34], out, TEAL,
-             "DENOISED OUTPUT", "scored against the ORIGINAL clean spectrum")
-
-    # the hourglass between them: wide -> narrow -> code -> narrow -> wide
-    mid = 0.59
-    layers = [(0.300, 0.60), (0.360, 0.38), (0.420, 0.18),
-              (0.480, 0.38), (0.540, 0.60)]
-    for i, (lx, lh) in enumerate(layers):
-        is_code = i == 2
-        colr = RED if is_code else INK_SOFT
-        ov.add_patch(FancyBboxPatch(
-            (lx, mid - lh / 2), 0.034, lh,
-            boxstyle="round,pad=0.004,rounding_size=0.012",
-            facecolor="#F7E4E3" if is_code else PAPER,
-            edgecolor=colr, lw=2.0))
-    ov.text(0.365, 0.20, "ENCODER", ha="center", color=INK_SOFT,
-            fontsize=12, fontweight="bold")
-    ov.text(0.437, 0.20, "CODE", ha="center", color=RED, fontsize=12,
-            fontweight="bold")
-    ov.text(0.522, 0.20, "DECODER", ha="center", color=INK_SOFT,
-            fontsize=12, fontweight="bold")
-    for xa, xb in [(0.245, 0.292), (0.582, 0.767)]:
-        ov.annotate("", xy=(xb, mid), xytext=(xa, mid),
-                    arrowprops=dict(arrowstyle="-|>", color=INK_SOFT, lw=2.2))
-
-    ov.text(0.5, 0.045,
-            "the label is the spectrum we started from \u2014 nobody annotates "
-            "anything, so training data is free",
-            ha="center", va="center", color=INK, fontsize=12.5,
-            fontweight="bold")
-    _save(fig, name)
-
-
-def denoising_results(name="fig_denoising_results.png"):
-    """The payoff, three rows the room reads top to bottom: what the network
-    SEES, what it PRODUCES, and the clean original it was scored against.
-    Course-drawn schematic on synthetic spectra (not measured output)."""
-    rng = np.random.default_rng(7)
-    ncol = 4
-    shifts = [0, 9, -7, 15]
-    scales = [[1.0, 1.0, 1.0, 1.0, 1.0],
-              [0.6, 0.8, 1.3, 0.7, 1.4],
-              [1.3, 0.5, 0.9, 1.2, 0.6],
-              [0.8, 1.2, 0.6, 1.0, 1.1]]
-    cleans = [_clean_spectrum(shift=sh, scale=sc)
-              for sh, sc in zip(shifts, scales)]
-    noisys = [_noisy_spectrum(c, rng) for c in cleans]
-    outs = [_reconstructed(c, rng) for c in cleans]
-
-    rows = [("NOISY INPUT", noisys, AMBER, "what the network sees"),
-            ("DENOISED OUTPUT", outs, TEAL, "what it produces"),
-            ("CLEAN TARGET", cleans, INK_SOFT, "the original it is scored against")]
-
-    fig = plt.figure(figsize=(13.0, 5.6))
-    ov = fig.add_axes([0, 0, 1, 1]); ov.set_xlim(0, 1); ov.set_ylim(0, 1)
-    ov.axis("off")
-    left, w, gap = 0.175, 0.185, 0.022
-    rh = 0.225
-    tops = [0.705, 0.425, 0.145]
-    for (label, series, colour, sub), ry in zip(rows, tops):
-        ov.text(left - 0.025, ry + rh / 2, label, ha="right", va="center",
-                color=colour, fontsize=12.5, fontweight="bold")
-        ov.text(left - 0.025, ry + rh / 2 - 0.055, sub, ha="right", va="center",
-                color=MUTED, fontsize=10, style="italic")
-        for c in range(ncol):
-            ax = fig.add_axes([left + c * (w + gap), ry, w, rh])
-            ax.plot(series[c], color=colour, lw=1.2)
-            ax.fill_between(np.arange(len(series[c])), series[c],
-                            color=colour, alpha=0.16)
-            ax.set_xticks([]); ax.set_yticks([])
-            ax.set_ylim(-0.05, 1.35)
-            for sp in ax.spines.values():
-                sp.set_edgecolor(HAIRLINE); sp.set_linewidth(1.2)
-    ov.text(0.5, 0.965,
-            "four different spectra, one trained autoencoder",
-            ha="center", va="center", color=INK, fontsize=13.5,
-            fontweight="bold")
-    ov.text(0.5, 0.045,
-            "the peaks survive, the noise does not \u2014 the bottleneck can only "
-            "carry what the training spectra had in common",
-            ha="center", va="center", color=INK, fontsize=12.5,
-            fontweight="bold",
-            bbox=dict(boxstyle="round,pad=0.45", fc=TEAL_SOFT, ec=TEAL, lw=1.6))
-    _save(fig, name)
-
 
 def _lecture7_figures():
     seq_order_matters()
@@ -3822,7 +3621,6 @@ def _lecture7_figures():
     attention_heatmap("sentence", "fig_attn_heatmap_ido.png")
     attention_heatmap("youdo", "fig_attn_heatmap_youdo.png")
     attention_formula()
-    qkv_projection()
     # I-do = ONE full head: q=(1,1); keys (1,1),(1,0),(2,-2) -> scores (2,1,0)
     #  softmax(2,1,0)=(0.67,0.24,0.09); values (10,4,1)
     #  output = 0.67·10 + 0.24·4 + 0.09·1 = 6.7 + 0.96 + 0.09 = 7.75
@@ -6506,8 +6304,6 @@ def semisup_scenario(name="fig_semisup_youdo.png"):
 
 def _lecture11_figures():
     autoencoder_bottleneck()
-    denoising_autoencoder()
-    denoising_results()
     anomaly_overlay()
     recon_error_worked("ido", "fig_recon_error_ido.png",
                        x=(0.2, 0.5, 0.1), xhat=(0.2, 0.4, 0.1), thr=0.01)
@@ -8969,8 +8765,6 @@ FUNCS = {
     "tokenize": tokenize_sentence,
     "embedding": embedding_space,
     "selfattn": selfattn_all_to_all,
-    "qkv_projection": qkv_projection,
-    "denoising": lambda: (denoising_autoencoder(), denoising_results()),
     "qkv": lambda: (
         qkv_lookup(reveal=True, name="fig_qkv_ido.png"),
     ),

@@ -38,14 +38,12 @@ NOTES:
 --- slide 5 · layout: Title and Body ---
 Autoencoder - Applications
 Dense Autoencoder for denoising
-[image: Picture 4]
-Course-drawn figure for MSACL DS301 · denoising-autoencoder construction after Vincent et al., ICML 2008
+source: GeeksforGeeks, “Denoising Autoencoders in Machine Learning” — geeksforgeeks.org
 
 --- slide 6 · layout: Title and Body ---
 Autoencoder
-Denoising Results on Noisy Spectra
-[image: Picture 4]
-Course-drawn schematic for MSACL DS301 · synthetic spectra, not measured model output
+Denoising Results on MNIST
+source: GeeksforGeeks, “Denoising Autoencoders in Machine Learning” — geeksforgeeks.org
 
 --- slide 7 · layout: Blank ---
 AUTOENCODERS · APPLICATIONS
