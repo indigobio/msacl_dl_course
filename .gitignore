@@ -1,5 +1,5 @@
 # Generated outputs — rebuild with tools/, never hand-edit
-slides/pptx/
+# (slides/pptx/ is the SOURCE OF TRUTH and IS committed — see CLAUDE.md)
 quizzes/pdf/
 labs/student/
 # Student pack: env files, README, AND the assembled lab notebooks are all

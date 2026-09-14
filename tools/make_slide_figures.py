@@ -6568,7 +6568,7 @@ def hallucination(mode="ido", name="fig_hallucination_ido.png"):
     """Hallucination as a failure mode to design AROUND: the model answers
     fluently and CONFIDENTLY even when it is wrong — here inventing a citation.
     mode='ido' shows the guardrail; mode='youdo' leaves the guardrail blank for
-    Quiz 13 Q4."""
+    Quiz 13 Q3."""
     blank = mode == "youdo"
     fig, ax = plt.subplots(figsize=(11.6, 4.6))
     ax.set_xlim(0, 12)
@@ -6634,8 +6634,8 @@ def rl_loop(mode="ido", name="fig_rl_loop_ido.png"):
     """The reinforcement-learning loop in ONE diagram: an AGENT takes an ACTION
     in an ENVIRONMENT, which returns a REWARD and a new state; the agent learns
     by trial and feedback to earn more reward. mode='ido' labels the generic
-    loop; mode='youdo' recasts it as an auto-tuned LC gradient loop with the
-    agent/action/reward labels blanked for Quiz 13 Q2."""
+    loop; mode='youdo' is a BLANK template the room fills in for a problem of
+    their own — the open-ended Quiz 13 Q1."""
     blank = mode == "youdo"
     fig, ax = plt.subplots(figsize=(11.0, 5.0))
     ax.set_xlim(0, 11)
@@ -6969,8 +6969,8 @@ def explore_exploit(mode="ido", name="fig_explore_ido.png"):
     arithmetic done exactly.  epsilon-greedy: with probability eps pick UNIFORMLY
     at random among the K actions, otherwise pick the best average so far — so a
     specific non-greedy action is taken with probability eps/K.  I-do works
-    eps = 0.1, K = 2 -> 0.05; the you-do (Quiz 13 Q5) is the same shape on MALDI
-    laser power with eps = 0.2 -> 0.10, left blank."""
+    eps = 0.1, K = 2 -> 0.05; the you-do (Quiz 13 Q4) is the same shape on two
+    routes to work with eps = 0.2 -> 0.10, left blank."""
     d = EXPLORE_IDO if mode == "ido" else EXPLORE_YOUDO
     blank = mode == "youdo"
     fig, (axl, axr) = plt.subplots(1, 2, figsize=(13.0, 5.2),
@@ -7075,7 +7075,7 @@ def explore_exploit(mode="ido", name="fig_explore_ido.png"):
 # slide: three moves paying 0, 0, 1 (only arriving at the goal pays).
 # Return G = r1 + γ·r2 + γ²·r3.
 # At γ = 0.9 the first step still earns 0.81 credit — exact, since 0.9² = 0.81.
-# γ = 0.5 is deliberately NOT shown: it is the Quiz 13 Q6 answer (0.25).
+# γ = 0.5 is deliberately NOT shown: it is the Quiz 13 Q5 answer (0.25).
 def discounted_return(name="fig_return_discount.png"):
     """DELAYED REWARD and the fix.  AlphaGo's win arrives 200 moves after the
     move that earned it — that is the credit-assignment problem.  RL answers it
@@ -7434,7 +7434,7 @@ def use_llm_chart(mode="ido", name="fig_use_llm_ido.png"):
     """Using an LLM WITHOUT training one: prompting vs RAG vs fine-tuning, as a
     decision chart anchored to one clinical report-drafting task. mode='ido'
     shows all three options + when to use each; mode='youdo' presents the
-    Quiz 13 Q3 scenario with a word bank of the three options."""
+    Quiz 13 Q2 scenario with a word bank of the three options."""
     fig, ax = plt.subplots(figsize=(12.4, 5.2))
     ax.set_xlim(0, 13)
     ax.set_ylim(0, 6)
@@ -7854,7 +7854,8 @@ def landscape_match(mode="ido", name="fig_landscape_match_ido.png"):
     """The landscape tour as one matching grid: tool | problem | architecture
     family | impact. mode='ido' is the full teaching grid (all five systems
     shown before the match); mode='youdo' blanks the problem + architecture
-    columns and gives word banks for Quiz 13 Q1."""
+    columns and gives word banks for the spoken match (the old Quiz 13 Q1
+    transfer question was removed from the sheet)."""
     rows = [
         ("Casanovo", TEAL, "de novo peptide sequencing",
          "Transformer (translation)", "reads peptides not in any database"),
@@ -7973,7 +7974,8 @@ def rag_pipeline(name="fig_rag_pipeline.png"):
 
 
 def landscape_transfer(name="fig_landscape_transfer.png"):
-    """Quiz 13 Q1 (upgraded): transfer, not recall. Two NEW unnamed tools ->
+    """The closing transfer exercise, run OUT LOUD (it is no longer a quiz
+    item): transfer, not recall. Two NEW unnamed tools ->
     infer the architecture family + the most-similar landmark; plus a reasoning
     kicker on why two landmarks share an architecture. The full five-tool map is
     the I-do chart on the previous slide (the reference bank)."""
@@ -8025,6 +8027,11 @@ def _lecture13_figures():
     rlhf_limits()
     use_llm_chart("ido", "fig_use_llm_ido.png")
     use_llm_chart("youdo", "fig_use_llm_youdo.png")
+    tour_casanovo()
+    tour_prosit()
+    tour_diann()
+    tour_driams()
+    tour_alphafold()
     landscape_card("Casanovo / DeepNovo", TEAL,
                    "de novo peptide sequencing — read the peptide from an MS/MS spectrum, no database",
                    "Transformer encoder–decoder — spectrum → peptide (Lec 7–8)",

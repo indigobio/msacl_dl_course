@@ -39,8 +39,8 @@ Only the standard library is needed (plus a Claude API key).
 Output is colour-coded for the projector — a reverse-video chip and a coloured
 bar mark every turn: **YOU** (blue), **BOT** (green), **OBS** (amber, a real tool
 result), **THINK** / **ACT** (grey / purple, the agent's ReAct steps). Colour
-switches itself off when the output is not a terminal; `NO_COLOR=1` forces it off
-and `FORCE_COLOR=1` forces it on (useful when piping to `tee` for a transcript).
+switches itself off when the output is not a terminal, and `NO_COLOR=1` forces it
+off.
 
 ## The diff, step by step
 
