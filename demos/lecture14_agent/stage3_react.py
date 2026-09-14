@@ -34,7 +34,7 @@ banner(3, "+ TOOLS (ReAct)", "think -> act -> observe, until it can answer from 
 for q in QUESTIONS:
     user(q)
     messages.append({"role": "user", "content": q})
-    reply = claude(messages)
+    reply = claude(messages, stop=["Observation:"])
     steps = 0
     capped = False
     while has_action(reply):            # the ReAct loop: think -> act -> observe
@@ -51,7 +51,7 @@ for q in QUESTIONS:
         obs(result)
         if result.startswith("ERROR:"):
             note("the tool errored — watch it read that and try again")
-        reply = claude(messages)
+        reply = claude(messages, stop=["Observation:"])
     messages.append({"role": "assistant", "content": reply})
     if capped:
         bot(f"(no answer — the loop hit the {MAX_STEPS}-tool-call cap)")
