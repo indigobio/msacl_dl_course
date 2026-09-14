@@ -35,6 +35,7 @@
 \newcommand{\blk}[1]{\underline{\hspace{#1}}}
 % Reveal-or-blank: shows the answer in the key, a blank rule on the student sheet.
 \newcommand{\rb}[2]{\ifsolution\textbf{#1}\else\blk{#2}\fi}
+\newcommand{\rbo}[1]{\ifsolution\else\par\vspace{#1}\noindent\blk{\linewidth}\par\fi}
 % Boxed answer (key only) and blank writing space (student only).
 \newcommand{\keybox}[1]{\ifsolution\par\vspace{2pt}%
   \fbox{\parbox{0.965\textwidth}{\small\textbf{Answer.}\; #1}}\par\fi}
@@ -59,14 +60,15 @@
 
 \begin{center}
 {\Large \textbf{Quiz 13 --- LLMs + the DL-in-MS Landscape}}\\[2pt]
-{\normalsize Transfer the landmark map to a new tool, label a reinforcement-learning loop, choose how to use an LLM, and spot what you can't trust}
+{\normalsize Formulate a problem of your own as reinforcement learning, work the RL mechanics, choose how to use an LLM, and spot what you can't trust}
 \end{center}
 
 \vspace{-2pt}
 \begin{center}
 \fbox{\parbox{0.92\textwidth}{\small
-\textbf{Instructions:}\; Answer all four questions --- every part is answerable from the pictures and
-rules on the slides. Intuition first; no calculators, no math beyond one softmax you did together in class.%
+\textbf{Instructions:}\; Answer all five questions --- every part is answerable from the pictures and
+rules on the slides. Intuition first; no calculators, and no math beyond one division and one square.
+\emph{Q1 is open-ended --- there is no single right answer, and we talk a few through out loud.}%
 \ifsolution\else\\[4pt]\textbf{Name:}\ \blk{6cm}\hfill\textbf{Date:}\ \blk{3.5cm}\fi
 }}
 \end{center}
@@ -74,73 +76,55 @@ rules on the slides. Intuition first; no calculators, no math beyond one softmax
 \vspace{-2pt}\hrule\vspace{5pt}
 
 % =========================== Q1 ===========================
-\textbf{1. Place a tool you've never seen.}\; {\small Not a match --- a \textbf{transfer}. Using the
-five-tool landscape map from the slides, place each new tool by its \textbf{architecture family} and the
-\textbf{landmark it most resembles}.}
+\textbf{1. Formulate one of your own problems as reinforcement learning.}\;
+{\small Pick a decision that gets made \emph{over and over} in your own lab --- tuning a method, scheduling QC or
+calibration, choosing which flagged sample to re-run, deciding what to acquire next --- and write it as an RL
+problem. There is no single right answer; what matters is that the four roles are coherent and that the reward
+really encodes what you want.}
 
 \vspace{4pt}
-\textbf{(a)} A tool reads a routine \textbf{MALDI-TOF spectrum} and calls the bacterial \textbf{species}
-(not resistance).\\[2pt]
-\hspace*{1em}architecture family $\rightarrow$ \rb{1D CNN (spectrum classifier)}{5.2cm}\quad
-most like $\rightarrow$ \rb{DRIAMS}{2.6cm}
-\work{0.4cm}
+\textbf{(a)} The problem, in one line:\rbo{3pt}
 
-\textbf{(b)} A tool reads a \textbf{peptide sequence} and predicts its \textbf{fragment spectrum + retention
-time} for a library.\\[2pt]
-\hspace*{1em}architecture family $\rightarrow$ \rb{deep sequence model (RNN/attention)}{5.2cm}\quad
-most like $\rightarrow$ \rb{Prosit}{2.6cm}
-\work{0.4cm}
+\vspace{3pt}
+\textbf{(b)} \textbf{AGENT} --- who or what decides?\rbo{3pt}
 
-\textbf{(c)} \textbf{Casanovo} (spectrum $\rightarrow$ peptide) and \textbf{AlphaFold} (sequence $\rightarrow$
-3D fold) solve very different problems but share \emph{one} architecture family. Which one, and what do their
-problems have in common that makes it fit?
+\vspace{3pt}
+\textbf{(c)} \textbf{ACTIONS} --- what may it change?\rbo{3pt}
 
-\work{1.0cm}
-\ifsolution\else\blk{\linewidth}\\[6pt]\blk{\linewidth}\fi
+\vspace{3pt}
+\textbf{(d)} \textbf{STATE} --- what does it observe before deciding?\rbo{3pt}
 
-\keybox{(a) \textbf{1D CNN} (a spectrum-in, one-label-out classifier), most like \textbf{DRIAMS} --- the same
-architecture, just a species call instead of R/S. (b) \textbf{Deep sequence model} (RNN/LSTM + attention, or a
-transformer), most like \textbf{Prosit} --- sequence-in, predicted-spectrum/RT-out. (c) Both use a
-\textbf{Transformer / attention}; their problems share \textbf{long-range dependencies across a sequence} ---
-distant peaks (Casanovo) or distant residues (AlphaFold) must inform each other, exactly what attention
-captures, whereas a CNN sees only local windows.}
+\vspace{3pt}
+\textbf{(e)} \textbf{REWARD} --- what number says the outcome was better?\rbo{3pt}
 
-\vspace{2pt}\hrule\vspace{5pt}
+\vspace{3pt}
+\textbf{(f)} \emph{Is your state \textbf{Markov}} --- is it enough on its own to decide from, without knowing how
+you got there? \emph{If not, what would you add?}\rbo{3pt}\rbo{8pt}
+
+\vspace{2pt}
+
+\keybox{\textbf{Open-ended --- mark the reasoning, not the answer.} A good response has four coherent roles, e.g.
+\emph{auto-tuning an LC gradient}: \textbf{agent} = the tuning routine; \textbf{actions} = the gradient changes it
+may make; \textbf{state} = the current settings plus the last run's separation metrics; \textbf{reward} = a
+resolution or peak-capacity score, minus instrument time. Three things to look for. (1) \textbf{Is it really RL?}
+If you already know the correct action for every case, you need a \emph{classifier}, not RL --- RL earns its keep
+only when nobody can label the right action and the feedback arrives afterwards. (2) \textbf{Does the reward
+encode what you want?} ``Maximise identifications'' is gamed by loosening the FDR; a reward must carry the cost as
+well as the benefit (\emph{reward hacking}). (3) \textbf{Is the state Markov?} A single instrument reading usually
+is \emph{not} --- add the rate of drift, the position in the run, or the last few readings, and it usually is. The
+fix for a non-Markov problem is always the \textbf{state}, never the algorithm.}
+
+\vspace{4pt}
 
 % =========================== Q2 ===========================
-\textbf{2. Label the reinforcement-learning loop.}\; {\small An optimizer \textbf{auto-tunes an LC gradient}
-to maximize peak separation. Each cycle it \emph{picks a new gradient slope}, \emph{runs the sample}, and
-\emph{scores the resulting chromatogram's resolution}; it keeps the settings that score best. Fill in each
-role of the RL loop.}
-
-\vspace{4pt}
-\textbf{(a)} The \textbf{AGENT} (the learner) is\hfill $\rightarrow$\;\rb{the tuning optimizer}{5.6cm}
-
-\vspace{3pt}
-\textbf{(b)} The \textbf{ACTION} it takes each cycle is\hfill $\rightarrow$\;\rb{picking a gradient slope}{5.6cm}
-
-\vspace{3pt}
-\textbf{(c)} The \textbf{REWARD} it learns from is\hfill $\rightarrow$\;\rb{the chromatogram's resolution score}{5.6cm}
-
-\work{0.4cm}
-
-\keybox{\textbf{(a) AGENT = the tuning optimizer} --- the learner that chooses settings.\;
-\textbf{(b) ACTION = the gradient it picks} that cycle (e.g.\ the slope/steps).\;
-\textbf{(c) REWARD = the chromatogram's resolution / separation score} (higher is better).
-(The \emph{environment} is the LC--MS instrument + sample.) Just like AlphaGo, no one labels the ``right''
-gradient --- the optimizer discovers it by trying gradients and reading the reward. This is also exactly
-how RLHF tunes an LLM, with a \emph{human preference} as the reward.}
-
-\vspace{2pt}\hrule\vspace{5pt}
-
-% =========================== Q3 ===========================
-\textbf{3. Prompting, RAG, or fine-tuning?}\; {\small You want the assistant to \textbf{always format results
+\textbf{2. Prompting, RAG, or fine-tuning?}\; {\small You want the assistant to \textbf{always format results
 in your lab's exact report style} --- the same structure every time --- and you have \textbf{2{,}000 past
 reports} as examples.}
 
 \vspace{3pt}
 \textbf{(a)} Which approach fits best --- \emph{prompting}, \emph{RAG} (retrieval-augmented generation), or
-\emph{fine-tuning}?\hfill $\rightarrow$\;\rb{fine-tuning}{3.4cm}
+\emph{fine-tuning}?\\[2pt]
+\hspace*{1em}$\rightarrow$\;\rb{fine-tuning}{4cm}
 
 \vspace{3pt}
 \textbf{(b)} In one sentence, why?
@@ -157,8 +141,8 @@ example: a report that must quote \emph{today's SOP} $\rightarrow$ RAG, because 
 
 \vspace{2pt}\hrule\vspace{5pt}
 
-% =========================== Q4 ===========================
-\textbf{4. Spot what you can't trust.}\; {\small An LLM answers a question with: \emph{``It's 48 nmol/L ---
+% =========================== Q3 ===========================
+\textbf{3. Spot what you can't trust.}\; {\small An LLM answers a question with: \emph{``It's 48 nmol/L ---
 see Nguyen et al., Clin.\ Chem.\ 2021; 67:1043--1051.''} It sounds fluent and confident.}
 
 \vspace{3pt}
@@ -181,6 +165,58 @@ the \emph{same} confidence as a real one --- \emph{hallucination}. The rule: tre
 (number, citation, dose) as a \textbf{draft to verify} --- ground it in RAG'd sources, require a human
 sign-off --- never as the record.}
 
+% =========================== Q4 ===========================
+\textbf{4. Explore or exploit?}\; {\small An agent chooses between two \textbf{routes to work} each morning and scores
+each trip (higher is better). So far: route \textbf{A} has been driven \textbf{30 times} for a total score of
+\textbf{180}; route \textbf{B} has been driven \textbf{twice} for a total of \textbf{8}. It uses \textbf{$\varepsilon$-greedy} with $\varepsilon = 0.2$ over $K = 2$ actions: with
+probability $\varepsilon$ pick a random action, otherwise pick the highest average so far --- so
+$P(\text{a specific non-greedy action}) = \varepsilon / K$.}
+
+\vspace{3pt}
+\textbf{(a)} Which route does the \textbf{greedy} rule take? $\rightarrow$\ \rb{A (mean $6.0$ vs $4.0$)}{5.5cm}
+\work{0.3cm}
+
+\textbf{(b)} What is the probability that \emph{this} trip takes \textbf{B}? $\rightarrow$\
+\rb{$0.2 / 2 = 0.10$}{4cm}
+\work{0.3cm}
+
+\textbf{(c)} \emph{One sentence: why would an \textbf{always-greedy} driver be a mistake here?}
+
+\work{0.8cm}
+\ifsolution\else\blk{\linewidth}\fi
+
+\keybox{(a) \textbf{A}: its average is $180/30 = \mathbf{6.0}$ against B's $8/2 = \mathbf{4.0}$, and
+``greedy'' means \emph{highest average so far}. (b) $P(B) = \varepsilon/K = 0.2/2 = \mathbf{0.10}$ ---
+about 1 cycle in 10. (Not $0.2$: that is the chance of exploring \emph{at all}, and half those draws land
+back on A.) (c) Any equivalent of: \textbf{B has only been driven twice}, so its $4.0$ is nearly meaningless
+--- two bad days of traffic would produce it --- and an always-greedy driver would take A forever and never
+collect the evidence that would settle which route is faster.}
+
+\vspace{4pt}
+
+% =========================== Q5 ===========================
+\textbf{5. The reward arrives late.}\; {\small An agent takes three steps through the gridworld, earning rewards
+$r_1 = 0$, $r_2 = 0$, $r_3 = 1$ --- only the last step reaches the goal. The \textbf{return} credits a step
+with the rewards that \emph{follow} it, discounted one notch per step:
+$G = r_1 + \gamma\, r_2 + \gamma^2 r_3$.}
+
+\vspace{3pt}
+\textbf{(a)} With $\gamma = 0.5$, how much credit does \textbf{step 1} get? $\rightarrow$\
+\rb{$0 + 0.5{\times}0 + 0.25{\times}1 = 0.25$}{6cm}
+\work{0.3cm}
+
+\textbf{(b)} \emph{One sentence: what does a \textbf{small} $\gamma$ make the agent do?}
+
+\work{0.8cm}
+\ifsolution\else\blk{\linewidth}\fi
+
+\keybox{(a) $G = 0 + 0.5{\times}0 + 0.5^2{\times}1 = 0.25 \times 1 = \mathbf{0.25}$ (compare $\gamma = 0.9$,
+worked in class, which gives $0.9^2 = \mathbf{0.81}$). (b) A small $\gamma$ makes the agent \textbf{myopic}
+--- it heavily discounts anything more than a step or two away, so it chases immediate reward and barely
+credits the early moves that set up a late win. For a long episode --- a method development, or a game of Go
+--- you want $\gamma$ near 1.}
+
+\vspace{4pt}
 \vspace{4pt}\hrule\vspace{3pt}
 {\small\itshape \ifsolution Answer key.\else Keep this sheet --- Lecture 14 turns an LLM into an agent that
 uses tools, with these same guardrails.\fi}
