@@ -31,8 +31,8 @@ Then:
 
 ```bash
 python tools/strip_solutions.py --all   # solution notebooks → student notebooks
-python tools/html2pptx.py --all         # HTML decks → PowerPoint
-python tools/make_quiz_pdf.py --all     # quiz HTML → printable PDFs
+python tools/pptx2txt.py --all          # decks → reviewable text dumps
+tools/build.sh quizzes                  # quiz LaTeX → printable PDFs + answer keys
 ```
 
 Generated outputs (`labs/student/`, `slides/pptx/`, `quizzes/pdf/`) are never

@@ -83,12 +83,12 @@ NOTES:
 --- slide 11 · layout: Title and Body ---
 Transformer
 Encoder/Decoder Interaction
-source: Jay Alammar, “The Illustrated Transformer” — decoding animation, step 1 (jalammar.github.io/illustrated-transformer/)
+source: Jay Alammar, “The Illustrated Transformer” — decoding animation, step 1 (jalammar.github.io/illustrated-transformer/) · © the author; all rights reserved, not for redistribution
 
 --- slide 12 · layout: Title and Body ---
 Transformer
 Encoder/Decoder Interaction
-source: Jay Alammar, “The Illustrated Transformer” — decoding animation, step 2: the encoder’s K/V feed every decoder step (jalammar.github.io/illustrated-transformer/)
+source: Jay Alammar, “The Illustrated Transformer” — decoding animation, step 2: the encoder’s K/V feed every decoder step (jalammar.github.io/illustrated-transformer/) · © the author; all rights reserved, not for redistribution
 
 --- slide 13 · layout: Blank ---
 ENCODER + DECODER · THREE FAMILIES · I-DO → DECIDE
