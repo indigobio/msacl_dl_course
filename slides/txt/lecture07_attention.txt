@@ -88,14 +88,15 @@ NOTES:
 --- slide 11 · layout: Title and Body ---
 Self-Attention - QKV
 Generating QKV
-cc https://jalammar.github.io/illustrated-transformer/
+[image: Picture 14]
+Course-drawn figure for MSACL DS301 · mechanism after Vaswani et al., NeurIPS 2017 (arXiv:1706.03762)
 
 --- slide 12 · layout: Title and Body ---
-Self-Attention - Heap Map
+Self-Attention - Heat Map
 Compute Similarity (dot product)
 
 --- slide 13 · layout: Title and Body ---
-Self-Attention - Heap Map
+Self-Attention - Heat Map
 Compute Similarity (dot product)
 [image: Picture 6]
 

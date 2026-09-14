@@ -181,8 +181,8 @@ NOTES:
 --- slide 20 · layout: Blank ---
 STACKING · ONE LAYER FEEDS THE NEXT (I-DO)
 Deep = repeat the move, feeding each layer the last
-[image: Picture 6]
 [image: Picture 4]
+[image: Picture 6]
 A layer's output is the next layer's input — stack it and you have depth.
 NOTES:
   I-DO, read straight off the diagram (same 2→2→1 node layout as the you-do next slide, every weight and bias now printed on the figure). Feed x = (2, 1) into layer 1: hidden neuron 1 = (1)(2) + (−1)(1) + 0 = 1 → ReLU 1; hidden neuron 2 = (0)(2) + (1)(1) + 0 = 1 → ReLU 1. Both neurons fire, so hidden h = (1, 1) — a fresh representation, and a layer's output is just the next layer's input. Layer 2 reads h like any input, with weights W2 = (2, 1) and bias b2 = −1: y = (2)(1) + (1)(1) − 1 = 2. That is all "deep" means — multiply, add, bend, pass it on; stack the same move and depth builds the hierarchy on the next two slides. Soft callback: layer 1 is the same multiply-add-bend the room just ran on the matrix–vector slides, now feeding a second layer that reads the hidden vector — we do NOT claim the hidden layer just copies the input; here it recomputes to (1, 1). Next slide you take a fresh (2, 1) through your own two layers, with different weights — that is Quiz 1 Q6.
