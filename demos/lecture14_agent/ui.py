@@ -6,7 +6,7 @@ chip (` YOU `, ` BOT `, ` OBS `) in its own colour, a coloured bar down the left
 of the body text, and wrapping that keeps everything off the screen edges.
 
 Colour is switched off automatically when the output is not a terminal (piping
-to a file or a pager), and honours the usual NO_COLOR env var.
+to a file or a pager), and honours the usual NO_COLOR / FORCE_COLOR env vars.
 
     from ui import banner, user, bot, obs, agent_step, note
 """
@@ -19,6 +19,8 @@ import textwrap
 def _colour_enabled():
     if os.environ.get("NO_COLOR"):
         return False
+    if os.environ.get("FORCE_COLOR"):
+        return True
     return sys.stdout.isatty()
 
 

@@ -221,8 +221,8 @@ NOTES:
   Land the composition: conv (their 5×5 grid) makes pattern maps, pooling shrinks them, repeat to build patterns of patterns, then flatten to a vector and feed the fully connected head — which is exactly the MLP from Lab 1. A CNN is a learned feature extractor bolted onto their old friend. The output labels are susceptible/resistant on purpose: this is the exact shape of Lab 2 on MALDI-TOF spectra, next hour.
 
 --- slide 24 · layout: Blank ---
-Inside VGG: your grid tricks, stacked sixteen deep
 DEEPER · WHAT 'JUST STACK MORE' LOOKS LIKE
+Inside VGG: your grid tricks, stacked sixteen deep
 [image: Picture 7]
 NOTES:
   Fast beat, ~60 seconds, part of the architecture story; do not walk every block. One point: there is nothing new here. Conv (their 5×5 grid), pooling (their max-pool), a fully connected head (Lab 1) — repeated sixteen layers deep, channels doubling as the maps shrink. The uniform all-3×3 design is why VGG became the "just stack more" poster child, and its ≈138M weights is the cliffhanger's setup: stacking further stopped working — the next slide is why, and the fix.

@@ -62,9 +62,9 @@ NOTES:
 PART TWO · GRADIENT DESCENT
 Find network parameters 𝜽∗ that minimize total loss L
 Pick an initial value for w
-Total  Loss 𝐿
 Compute 𝜕𝐿 𝜕𝑤
 𝑤 ← 𝑤 − 𝜂𝜕𝐿 𝜕𝑤
+Total  Loss 𝐿
 Repeat
 η is called  “learning rate”
 w
