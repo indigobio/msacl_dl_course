@@ -2,5 +2,5 @@
 python-pptx>=1.0
 pyyaml>=6.0
 pillow>=10.0
-# Slides are authored as YAML specs (slides/spec/) and built to native, editable
-# PowerPoint with tools/spec2pptx.py. No browser/Playwright needed.
+# Decks are hand-edited PowerPoint in slides/pptx/ (the source of truth) and
+# scripted with python-pptx. No browser/Playwright needed.

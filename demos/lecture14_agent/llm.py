@@ -35,40 +35,37 @@ def claude(messages, retries=4, stop=None):
     convo = [{"role": m["role"], "content": m["content"]}
              for m in messages if m["role"] != "system"]
 
-    def post(stop_sequences):
-        # claude-sonnet-5 rejects a temperature argument, so none is sent.
-        payload = {"model": model, "max_tokens": 1024, "messages": convo}
-        if stop_sequences:
-            payload["stop_sequences"] = stop_sequences
-        if system:
-            payload["system"] = system
-        req = urllib.request.Request(
-            base + "/v1/messages", data=json.dumps(payload).encode(),
-            headers={"x-api-key": key,
-                     "anthropic-version": "2023-06-01",
-                     "content-type": "application/json"},
-        )
-        for attempt in range(retries + 1):
-            try:
-                with urllib.request.urlopen(req, timeout=60) as resp:
-                    data = json.loads(resp.read())
-                    return "".join(b.get("text", "") for b in data["content"]).strip()
-            except urllib.error.HTTPError as e:
-                detail = e.read().decode(errors="replace")[:300]
-                # 429 = rate limit / no credit; 500/503/529 = transient. Back off and retry.
-                if e.code in (429, 500, 503, 529) and attempt < retries:
-                    wait = float(e.headers.get("retry-after", 2 ** attempt))
-                    print(f"  (HTTP {e.code}; retry {attempt + 1}/{retries} in {wait:.0f}s)", file=sys.stderr)
-                    time.sleep(wait)
-                    continue
-                if e.code == 429:
-                    raise SystemExit(
-                        "Claude API returned 429 (rate limit, or your key has no credit).\n"
-                        f"  detail: {detail}\n"
-                        "  fixes: wait and retry; check credit/limits at console.anthropic.com;\n"
-                        "    or try a different model (export ANTHROPIC_MODEL=claude-3-5-haiku-latest).")
-                raise SystemExit(f"Claude API error {e.code}: {detail}")
-            except urllib.error.URLError as e:
-                raise SystemExit(f"Network error reaching {base}: {e.reason}")
-
-    return post(stop) or NO_REPLY
+    # claude-sonnet-5 rejects a temperature argument, so none is sent.
+    payload = {"model": model, "max_tokens": 1024, "messages": convo}
+    if stop:
+        payload["stop_sequences"] = stop
+    if system:
+        payload["system"] = system
+    req = urllib.request.Request(
+        base + "/v1/messages", data=json.dumps(payload).encode(),
+        headers={"x-api-key": key,
+                 "anthropic-version": "2023-06-01",
+                 "content-type": "application/json"},
+    )
+    for attempt in range(retries + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                data = json.loads(resp.read())
+                return "".join(b.get("text", "") for b in data["content"]).strip() or NO_REPLY
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode(errors="replace")[:300]
+            # 429 = rate limit / no credit; 500/503/529 = transient. Back off and retry.
+            if e.code in (429, 500, 503, 529) and attempt < retries:
+                wait = float(e.headers.get("retry-after", 2 ** attempt))
+                print(f"  (HTTP {e.code}; retry {attempt + 1}/{retries} in {wait:.0f}s)", file=sys.stderr)
+                time.sleep(wait)
+                continue
+            if e.code == 429:
+                raise SystemExit(
+                    "Claude API returned 429 (rate limit, or your key has no credit).\n"
+                    f"  detail: {detail}\n"
+                    "  fixes: wait and retry; check credit/limits at console.anthropic.com;\n"
+                    "    or try a different model (export ANTHROPIC_MODEL=claude-3-5-haiku-latest).")
+            raise SystemExit(f"Claude API error {e.code}: {detail}")
+        except urllib.error.URLError as e:
+            raise SystemExit(f"Network error reaching {base}: {e.reason}")
