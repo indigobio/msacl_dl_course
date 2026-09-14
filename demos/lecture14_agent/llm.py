@@ -71,8 +71,4 @@ def claude(messages, retries=4, stop=None):
             except urllib.error.URLError as e:
                 raise SystemExit(f"Network error reaching {base}: {e.reason}")
 
-    text = post(stop)
-    if not text and stop:
-        # the stop sequence swallowed the whole turn — ask again without it
-        text = post(None)
-    return text or NO_REPLY
+    return post(stop) or NO_REPLY
