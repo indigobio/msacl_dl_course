@@ -5331,7 +5331,7 @@ MNIST_RAW = (Path(__file__).resolve().parent.parent / "labs" / "solutions"
 DIFF_IDO = dict(x0=[1.0, 0.0, -1.0, 0.5], eps=[0.5, -0.5, 1.0, 0.0],
                 pred=[0.3, -0.4, 0.8, 0.1])
 # you-do patch = Quiz 8 Q5 (same shape, new numbers): x_t = (0.8, −0.5, 0.1, 0.6),
-# errors (−0.2, 0.1, −0.2, 0.3) → MSE = 0.18/4 = 0.045
+# errors (0.2, −0.1, 0.2, −0.3) → MSE = 0.18/4 = 0.045
 DIFF_QUIZ = dict(x0=[1.0, -1.0, 0.5, 0.0], eps=[0.0, 0.5, -0.5, 1.0],
                  pred=[0.2, 0.4, -0.3, 0.7])
 SQRT_AB, SQRT_1MAB = 0.8, 0.6          # √ᾱ and √(1−ᾱ) at the worked noise level
