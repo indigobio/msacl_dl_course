@@ -14,6 +14,12 @@ data/slices/
 *.mzXML
 *.raw
 
+# torchvision download cache (Lab 4 FashionMNIST + MNIST), fetched at runtime
+torchvision_data/
+labs/**/torchvision_data/
+**/MNIST/
+**/FashionMNIST/
+
 # Python / notebook cruft
 __pycache__/
 .ipynb_checkpoints/
@@ -36,3 +42,5 @@ __pycache__/
 .pi/npm/
 ~$*
 *.tmp
+slides/scaffold/
+quizzes/src/*.pdf

@@ -24,6 +24,7 @@ slides:
     bullets:
       - "The fundamental math — intuition and arithmetic, no calculus"
       - "The popular architectures — MLP, CNN, RNN, Transformer"
+      - "Practical training techniques - cope with imbalanced data, overfitting"
       - "The learning paradigms — supervised and self-supervised"
       - "Hands-on training on real data by filling in Colab blanks"
       - "Judgment: the good, the bad, and the ugly of deep learning"

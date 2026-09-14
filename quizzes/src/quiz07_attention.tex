@@ -63,46 +63,46 @@ one small calculation. No calculators needed.%
 \vspace{-2pt}\hrule\vspace{5pt}
 
 % =========================== Q1 ===========================
-\textbf{1. Read the attention heat map.}\; {\small A short peptide is tokenized one amino acid at a
-time: \texttt{A -- C -- D -- E -- K}. The row below shows how much the last token, \textbf{K}
-(lysine), attends to every token in the peptide --- darker = more attention. The five weights
-already sum to 1.}
+\textbf{1. Read the attention heat map.}\; {\small The sentence \emph{``the farmer fed the chickens
+because they were hungry''} is tokenized one word at a time. The row below shows how much the token
+\textbf{they} attends to each earlier word --- darker = more attention. The five weights already sum
+to 1.}
 
 \vspace{6pt}
 \begin{center}
-\begin{tikzpicture}[x=1.05cm, y=1.05cm, line cap=round, line join=round]
-  \def\toks{A,C,D,E,K}
-  \def\wts{0.05,0.05,0.35,0.45,0.10}
-  \foreach \t [count=\i from 0] in \toks {
-    \pgfmathsetmacro{\w}{ (\i==0)*0.05 + (\i==1)*0.05 + (\i==2)*0.35 + (\i==3)*0.45 + (\i==4)*0.10 }
-    \pgfmathsetmacro{\op}{min(\w*1.8,0.92)}
+\begin{tikzpicture}[x=2.15cm, y=1.05cm, line cap=round, line join=round]
+  \foreach \t/\ws [count=\i from 0] in {farmer/0.10, fed/0.05, chickens/0.60,
+                                        because/0.10, they/0.15} {
+    \pgfmathsetmacro{\op}{min(\ws*1.8,0.92)}
     \fill[teal, opacity=\op] (\i,0) rectangle ++(0.95,0.95);
     \draw[gray] (\i,0) rectangle ++(0.95,0.95);
     \node at (\i+0.475,1.28) {\small\textbf{\t}};
-    \node[font=\scriptsize] at (\i+0.475,0.475) {\w};
+    \node[font=\scriptsize] at (\i+0.475,0.475) {\ws};
   }
   \draw[decorate,decoration={brace,amplitude=5pt},thick] (4,-0.15) -- (4.95,-0.15)
-    node[midway,below=6pt,font=\scriptsize] {query = K};
+    node[midway,below=6pt,font=\scriptsize] {query = they};
 \end{tikzpicture}
 \end{center}
 
 \vspace{4pt}
-\textbf{(a)} Which token does \textbf{K} attend to \emph{most}?
+\textbf{(a)} Which word does \textbf{they} attend to \emph{most}?
 
 \work{0.6cm}
 \ifsolution\else\blk{4cm}\fi
 
-\textbf{(b)} In one sentence, why might that be a \emph{chemically sensible} thing for the model to
-have learned?
+\textbf{(b)} In one sentence, why is that a \emph{linguistically sensible} thing for the model to
+have learned --- and what rules out \emph{farmer}?
 
 \work{1.0cm}
 \ifsolution\else\blk{\linewidth}\fi
 
-\keybox{(a) \textbf{E} (weight 0.45, the darkest cell) --- with D (0.35) a close second.
-(b) \textbf{K is positively charged (basic)}, while \textbf{D and E are negatively charged
-(acidic)} --- opposite charges attracting is exactly the kind of residue--residue relationship
-(a salt bridge) a model trained on real sequences could plausibly pick up on, so K ``looking at''
-the acidic residues nearby is a sensible pattern, not a random one.}
+\keybox{(a) \textbf{chickens} (weight 0.60, by far the darkest cell).
+(b) \textbf{``they'' is a pronoun and its referent is the chickens} --- resolving a pronoun to the
+thing it stands for (\emph{coreference}) is exactly the kind of long-range link attention is good at,
+and the giveaway is \textbf{number agreement}: ``they'' is plural and \emph{chickens} is the only
+plural noun in the sentence, so the singular \emph{farmer} is ruled out. Nobody wrote that rule ---
+the model learned it from text. (The same picture on a peptide would show a head lighting up on,
+say, a charge pair; same machinery, different vocabulary.)}
 
 \vspace{2pt}\hrule\vspace{5pt}
 

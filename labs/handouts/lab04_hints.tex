@@ -1,6 +1,6 @@
 % =====================================================================
 %  MSACL DS301 Deep Learning · Lab 4 · Code Hint Sheet
-%  Multiple-choice code options for the three fill-in cells.
+%  Multiple-choice code options for the four fill-in cells.
 %  Style matches labs/handouts/lab02_hints.tex and lab03_hints.tex.
 % =====================================================================
 \documentclass[11pt]{article}
@@ -28,83 +28,111 @@
 
 \begin{center}
 {\Large \textbf{Lab 4 --- Code Hint Sheet}}\\[2pt]
-{\normalsize A VAE for Spectra QC, Anomaly Detection \& Generation}
+{\normalsize The Fashion VAE --- a Latent Playground + Impostor Detector}
 \end{center}
 
 \vspace{-2pt}
 \begin{center}
 \fbox{\parbox{0.92\textwidth}{\small
-Stuck on a \textbf{YOUR TURN} cell? Each blank you need is below with a few options.
-Pick one, type it in, and \textbf{run the cell} --- the built-in \texttt{assert} checks will tell you
-whether it is right. Only the three marked cells need editing; run everything else as-is.
-The encoder, decoder, and the reparameterization trick are already written for you.
+You fill in \textbf{four} short pieces --- two are one-line ideas that matter (the VAE loss and one
+KL number), one is a threshold plus a prediction, and one is a creative drawing. Everything else ---
+the model, the encoder/decoder, the reparameterization trick, the training loop, and every plot ---
+runs as-is. Type your answer in and \textbf{run the cell}; the built-in \texttt{assert} checks give
+instant feedback.
 }}
 \end{center}
 
 \vspace{2pt}\hrule\vspace{4pt}
 
-\textbf{Step 3 --- the bottleneck (latent) size.}\; {\small The narrow layer every spectrum must
-squeeze through (Lecture 11). Keep it \emph{small} so unfamiliar spectra can't be rebuilt --- that is
-what makes their reconstruction error spike. Value \opt{2} also lets us plot the latent space directly.}
+\textbf{Step 2 --- the VAE loss.}\; {\small A VAE trains on \textbf{two ideas at once}:
+\opt{recon\_loss} (rebuild the picture) and \opt{kl\_loss} (keep the latent cloud tidy near the
+origin). Both are already computed for you; your one line \textbf{combines} them, with the KL term
+weighted by \opt{beta}.}
 
-\textbf{Blank 1 --- \texttt{LATENT\_DIM}.}
+\textbf{Blank 1 --- \texttt{loss} (combine the two terms).}
 \begin{itemize}
-  \item[(a)] \opt{LATENT\_DIM = 2}
-  \item[(b)] \opt{LATENT\_DIM = 256}
-  \item[(c)] \opt{LATENT\_DIM = 1}
+  \item[(a)] \opt{loss = recon\_loss + beta * kl\_loss}\; --- \textbf{add} the KL penalty (scaled by
+    \opt{beta}) to the reconstruction. This is a VAE.
+  \item[(b)] \opt{loss = recon\_loss - beta * kl\_loss}\; --- \emph{subtracting} the penalty
+    \textbf{rewards} a messy latent; the space stops being sampleable. Wrong sign.
+  \item[(c)] \opt{loss = recon\_loss * beta * kl\_loss}\; --- \emph{multiplying} is not the recipe;
+    when \opt{kl\_loss} is near 0 the whole loss collapses to $\approx 0$. Wrong.
 \end{itemize}
-{\small (a) is right --- small enough to force real compression, and exactly \opt{2} so the 2-D latent
-plot in Step 9 works (the check requires \opt{LATENT\_DIM == 2}). (b) is \textbf{too big}: a wide
-bottleneck lets the network copy \emph{any} input straight through, so even weird spectra reconstruct
-well and the \textbf{anomaly detector stops working}. (c) is \textbf{too tight} and can't be plotted in
-2-D --- both (b) and (c) fail the \opt{== 2} check.}
+{\small (a) is the VAE objective (reconstruction $+\ \beta\cdot$KL). The self-check asserts
+\opt{loss == recon\_loss + BETA*kl\_loss} (scalar, finite, KL $\geq 0$), so both the wrong sign (b)
+and the wrong operator (c) \textbf{fail} the assert with a clear message.}
 
 \vspace{3pt}\hrule\vspace{4pt}
 
-\textbf{Step 5 --- the combined VAE loss.}\; {\small A VAE is trained on \emph{two terms added
-together} (Lecture 11's recipe slide): the \opt{recon\_loss} (rebuild the spectrum accurately) plus the
-\opt{kl\_loss} (keep the latent cloud tidy), with the KL weighted by \opt{beta}. Both terms are already
-computed for you --- write the one line that combines them.}
+\textbf{Step 3 --- KL by hand.}\; {\small No code --- a calculator. For one latent cloud with
+$\text{mu}=[1,0]$, $\text{logvar}=[0,0]$, plug into
+$\mathrm{KL}=-\tfrac12\sum_i\big(1+\text{logvar}_i-\text{mu}_i^2-e^{\text{logvar}_i}\big)$ with
+$e^0=1$: dim~1 gives $1+0-1-1=-1$, dim~2 gives $1+0-0-1=0$, so the sum is $-1$ and
+$\mathrm{KL}=-\tfrac12(-1)$.}
 
-\textbf{Blank 2 --- \texttt{loss}.}
+\textbf{Blank 2 --- \texttt{kl\_by\_hand} (one number).}
 \begin{itemize}
-  \item[(a)] \opt{loss = recon\_loss + beta * kl\_loss}
-  \item[(b)] \opt{loss = recon\_loss}
-  \item[(c)] \opt{loss = recon\_loss - beta * kl\_loss}
+  \item[(a)] \opt{kl\_by\_hand = 0.5}\; --- $-\tfrac12\times(-1)=0.5$. Matches the formula the code
+    evaluates on the same numbers.
+  \item[(b)] \opt{kl\_by\_hand = -0.5}\; --- this is the \emph{sum} times $\tfrac12$ \emph{without}
+    the leading minus sign; the $-\tfrac12$ flips it to $+0.5$. Fails the check.
+  \item[(c)] \opt{kl\_by\_hand = 1.0}\; --- dropped the factor $\tfrac12$. Fails the check.
 \end{itemize}
-{\small (a) is the VAE objective: reconstruction \emph{plus} the weighted KL ``tidiness'' term. (b)
-drops the KL entirely --- that is just a plain autoencoder, and the check (loss must equal
-\opt{recon\_loss + BETA*kl\_loss}) fails. (c) \emph{subtracts} the KL, which rewards a messy latent and
-also fails the check --- and would blow training up. (Turning \opt{BETA} way \emph{up} instead makes
-reconstructions blurry --- tidiness beats accuracy.)}
+{\small (a) is exact. The \texttt{assert} recomputes the same KL formula in code and demands your
+number match to $10^{-6}$, so recompute carefully rather than guessing.}
 
 \vspace{3pt}\hrule\vspace{4pt}
 
-\textbf{Step 7 --- the anomaly threshold.}\; {\small Turn reconstruction error into a flag. Measure the
-error on the \emph{normal training} spectra, then flag anything well above that. A high percentile ---
-the \textbf{95th} --- expects to false-alarm on only $\sim$5\% of normal spectra. This is a
-sensitivity/specificity dial (Lecture 10 callback).}
+\textbf{Step 8 --- the impostor threshold (+ a prediction).}\; {\small Reconstruction error is the
+impostor score: clothes rebuild well (low), unseen digits rebuild badly (high). The rule: put the
+line at the \textbf{90th percentile of the \emph{normal} (clothes) errors}, so about \textbf{10\%}
+of real clothes are false alarms.}
 
-\textbf{Blank 3 --- \texttt{THRESHOLD}.}
+\textbf{Blank 3a --- \texttt{THRESHOLD}.}
 \begin{itemize}
-  \item[(a)] \opt{THRESHOLD = np.percentile(train\_errors, 95)}
-  \item[(b)] \opt{THRESHOLD = 0}
-  \item[(c)] \opt{THRESHOLD = train\_errors.max()}
+  \item[(a)] \opt{THRESHOLD = np.percentile(normal\_errors, 90)}\; --- the 90th percentile of the
+    \textbf{normal} errors, exactly the rule.
+  \item[(b)] \opt{THRESHOLD = np.percentile(impostor\_errors, 90)}\; --- wrong array: you would
+    calibrate on the \emph{digits} you are trying to catch, not the clothes.
+  \item[(c)] \opt{THRESHOLD = normal\_errors.mean()}\; --- the mean sits far below the 90th
+    percentile, so roughly half of all clothes would false-alarm.
 \end{itemize}
-{\small (a) is the 95th-percentile cut --- it lands strictly \emph{inside} the range of training errors,
-which is exactly what the check requires. (b) \opt{= 0} sits below every error, so it flags
-\textbf{everything} as an anomaly (all false alarms) and fails the ``inside the range'' check at the low
-end. (c) \opt{.max()} sits \emph{at} the very top, so it flags \textbf{almost nothing} (misses every
-anomaly) --- the opposite failure, and it too fails the check, which requires the threshold to sit
-strictly \emph{below} the max. You can raise the percentile for fewer false alarms or lower it to catch
-more; \opt{99} also passes (still below the max).}
+
+\textbf{Blank 3b --- \texttt{expected\_false\_alarms} (predict, then check).}
+\begin{itemize}
+  \item[(a)] \opt{expected\_false\_alarms = round(0.10 * len(normal\_errors))}\; --- by
+    construction the 90th percentile leaves \textbf{10\%} of normals above the line.
+  \item[(b)] \opt{expected\_false\_alarms = round(0.90 * len(normal\_errors))}\; --- confuses the
+    percentile (90) with the false-alarm \emph{rate} (10\%).
+  \item[(c)] \opt{expected\_false\_alarms = 0}\; --- a 90th-percentile cut always flags $\approx$10\%
+    of normals, never 0.
+\end{itemize}
+{\small (a) for both. The prediction \texttt{assert} confirms the count you predicted is what the
+threshold actually produces.}
+
+\vspace{3pt}\hrule\vspace{4pt}
+
+\textbf{Step 9 --- draw your own impostor.}\; {\small Edit the 16$\times$16 ASCII grid: \opt{'\#'} is
+ink, \opt{'.'} is blank. The rule is only about \textbf{format} --- keep \textbf{every row exactly 16
+characters} and use only \opt{'\#'} and \opt{'.'}. The code upsamples it to 28$\times$28 and tells
+you whether the VAE flags it as an impostor.}
+
+\textbf{Blank 4 --- \texttt{DOODLE} (the drawing).}
+\begin{itemize}
+  \item[(a)] Any shape --- the shipped \textbf{spiral}, your initials, a squiggle, a molecule
+    sketch --- as long as it is a list of \textbf{16 rows}, each exactly \textbf{16 chars} of only
+    \opt{'\#'}/\opt{'.'}. This passes and gets scored against the threshold.
+  \item[(b)] Rows of \emph{unequal} length, a wrong number of rows, or a stray character like
+    \opt{'x'} or a space --- trips the grid sanity-check \opt{assert}.
+  \item[(c)] An empty grid (all \opt{'.'}) --- runs, but there is nothing for the detector to judge;
+    draw \emph{something} thin (lines and text flag easily; a big solid blob may slip through).
+\end{itemize}
 
 \vspace{4pt}\hrule\vspace{3pt}
-{\small\itshape Answers self-check in the notebook: if the \texttt{assert} cells pass ---
-\opt{LATENT\_DIM == 2}, the loss equals \opt{recon\_loss + BETA*kl\_loss} (a finite scalar, KL $\ge 0$),
-and the threshold falls strictly between the min and max training error --- you chose right. Then read the
-histograms \textbf{honestly}: resistant and normal spectra \emph{overlap} --- reconstruction error is a
-\textbf{QC / novelty} signal, not a resistance test. The payoff is the smooth VAE latent map (vs. the
-scattered plain-AE one) and the decoded spectrum morph.}
+{\small\itshape Answers self-check in the notebook: the loss is a finite scalar with the KL term
+non-negative, \opt{kl\_by\_hand} matches the code's KL, the threshold flags about 10\% of clothes and
+separates digits well (AUROC $>0.85$), and your doodle parses to \opt{(1, 784)}. The payoff is the
+tidy VAE latent map (vs. the scattered plain-AE one), the sneaker$\to$boot morph, generated clothes,
+and your own doodle judged by the detector.}
 
 \end{document}

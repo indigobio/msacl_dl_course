@@ -1,16 +1,22 @@
 #!/usr/bin/env python3
-"""Build NATIVE, editable PowerPoint decks from a compact YAML spec.
+"""SCAFFOLD new structured slide sequences from a compact YAML spec.
 
-Why this exists (replaces the html->screenshot pipeline):
-  - the old tools/html2pptx.py rendered each HTML slide to a PNG and pasted it
-    full-bleed, so the .pptx was flat images: not editable, web-styled, and
-    every deck was 700-900 lines of hand-written HTML/CSS/SVG.
-  - this builder reads a small YAML deck spec (~10-15 lines per slide) and emits
-    real PowerPoint objects: native text boxes, tables, shapes, connectors and
-    placed images. Titles/body stay editable in PowerPoint; look is driven by a
-    shared theme here, not CSS. Real licensed images live under slides/assets/img
-    and are placed with `image:`; hand-drawn SVG is used only where rule 6 (the
-    numeric mechanics) truly needs it.
+Role change (PPTX-first toolchain, course_plan/DECISIONS.md 2026-09-08):
+  - slides/pptx/ decks are now the SOURCE OF TRUTH, edited directly in
+    PowerPoint on top of the course master (slides/template/msacl_ds301.pptx,
+    built by tools/make_template.py, spliced in by tools/adopt_template.py).
+  - this tool no longer writes slides/pptx/. It builds a scratch deck in
+    slides/scaffold/ from a YAML spec — use it when a new numeric walkthrough
+    (rule 6: conv grids, backprop steps, attention averages) is faster to
+    author as data than by hand — then copy the slides you want into the real
+    deck in PowerPoint ("Use Destination Theme" keeps them identical, since
+    the scaffold is built from the same course master).
+  - it emits real PowerPoint objects: native text boxes, tables, shapes,
+    connectors and placed images; never screenshots. Real licensed images live
+    under slides/assets/img and are placed with `image:`.
+  - archived specs of already-graduated decks live in slides/spec/archive/;
+    rebuilding one of those does NOT reproduce hand edits made since
+    graduation — the deck in slides/pptx/ is the only authority.
 
 Spec contract (see slides/spec/*.yaml for a worked example):
 
@@ -62,8 +68,8 @@ Spec contract (see slides/spec/*.yaml for a worked example):
         calc: "3x3 filter, stride 1 -> 4x4 map"
 
 Usage:
-    python tools/spec2pptx.py slides/spec/lecture05_cnns.yaml
-    python tools/spec2pptx.py --all
+    python tools/spec2pptx.py slides/spec/new_walkthrough.yaml
+    python tools/spec2pptx.py --all        # every spec in slides/spec/ (not archive/)
 """
 
 import sys
@@ -78,8 +84,9 @@ from pptx.util import Emu, Inches, Pt
 
 ROOT = Path(__file__).resolve().parent.parent
 SPEC_DIR = ROOT / "slides" / "spec"
-PPTX_DIR = ROOT / "slides" / "pptx"
+SCAFFOLD_DIR = ROOT / "slides" / "scaffold"
 ASSETS = ROOT / "slides" / "assets"
+TEMPLATE = ROOT / "slides" / "template" / "msacl_ds301.pptx"
 
 # ---- theme (mirrors slides/assets/theme.css, but native) --------------------
 PAPER = RGBColor(0xFB, 0xFB, 0xF8)
@@ -165,17 +172,6 @@ def _set(run, size, color, bold=False, italic=False, font=SANS):
     run.font.bold = bold
     run.font.italic = italic
     run.font.name = font
-
-
-def _bg(slide, prs):
-    r = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, prs.slide_width, prs.slide_height)
-    r.fill.solid()
-    r.fill.fore_color.rgb = PAPER
-    r.line.fill.background()
-    r.shadow.inherit = False
-    slide.shapes._spTree.remove(r._element)
-    slide.shapes._spTree.insert(2, r._element)
-    return r
 
 
 def _text(slide, left, top, width, height, anchor=MSO_ANCHOR.TOP):
@@ -613,14 +609,15 @@ def build(spec_path: Path) -> Path:
     deck = spec.get("deck", {})
     default_eyebrow = deck.get("eyebrow", "")
 
-    prs = Presentation()
-    prs.slide_width = EMU_W
-    prs.slide_height = EMU_H
-    blank = prs.slide_layouts[6]
+    # build on the course master so scaffolded slides paste into real decks
+    # with "Use Destination Theme" as exact matches; the master paints the
+    # paper background, so slides carry no bg rectangle of their own
+    prs = Presentation(str(TEMPLATE))
+    blank = next(l for l in prs.slide_masters[0].slide_layouts
+                 if l.name == "Blank")
 
     for s in spec["slides"]:
         slide = prs.slides.add_slide(blank)
-        _bg(slide, prs)
         s.setdefault("eyebrow", default_eyebrow)
         builder = BUILDERS.get(s["type"])
         if not builder:
@@ -631,8 +628,8 @@ def build(spec_path: Path) -> Path:
 
     if deck.get("title"):
         prs.core_properties.title = deck["title"]
-    PPTX_DIR.mkdir(parents=True, exist_ok=True)
-    dest = PPTX_DIR / (spec_path.stem + ".pptx")
+    SCAFFOLD_DIR.mkdir(parents=True, exist_ok=True)
+    dest = SCAFFOLD_DIR / (spec_path.stem + ".pptx")
     prs.save(str(dest))
     print(f"{spec_path.name}: {len(spec['slides'])} slide(s) -> {dest.relative_to(ROOT)}")
     return dest

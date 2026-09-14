@@ -15,15 +15,15 @@ dependencies = [
     "scikit-learn",
     "matplotlib",
     "openpyxl",        # Lab 1 reads the MTBLS90 .xlsx
-    "transformers",    # Lab 3
-    "datasets",        # Lab 3
-    "accelerate",      # Lab 3 (hard-depends on torch; satisfied by Colab's torch)
+    "tqdm",            # progress bars in the Lab 2/3/4 training loops
+    "diffusers",       # Lab 3 loads a pretrained diffusion generator from the HF Hub
 ]
 
 [dependency-groups]
-# CPU build of torch for LOCAL use only. Kept out of Colab installs so Colab's
-# preinstalled GPU torch is never touched (CUDA-mismatch / wasted minutes).
-local = ["torch"]
+# CPU build of torch (+ torchvision) for LOCAL use only. Kept out of Colab
+# installs so Colab's preinstalled GPU torch is never touched (CUDA-mismatch /
+# wasted minutes). torchvision is needed by Lab 4 (FashionMNIST + MNIST loaders).
+local = ["torch", "torchvision"]
 # Local-only convenience for running notebooks under the uv env; Colab already
 # provides Jupyter.
 dev = ["jupyterlab", "ipykernel"]
@@ -37,6 +37,9 @@ default-groups = ["local", "dev"]
 # the default PyPI index (already CPU-only on macOS).
 [tool.uv.sources]
 torch = [
+    { index = "pytorch-cpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+torchvision = [
     { index = "pytorch-cpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
 ]
 

@@ -19,7 +19,7 @@
 
 \usepackage[letterpaper, margin=0.6in, top=0.7in, bottom=0.5in]{geometry}
 \usepackage{amsmath, amssymb}
-\usepackage{xcolor}
+\usepackage[table]{xcolor}
 \usepackage{array}
 \usepackage{tikz}
 \usepackage{fancyhdr}
@@ -45,6 +45,8 @@
 \definecolor{amber}{HTML}{E09E2F}
 % square, centred, monospace cells for the numeric grids
 \newcolumntype{G}{>{\centering\arraybackslash\ttfamily}p{6.5mm}}
+% same cell, shaded: marks the window the filter is sitting on (Q5)
+\newcolumntype{W}{>{\columncolor{amber!22}\centering\arraybackslash\ttfamily}p{6.5mm}}
 \newcommand{\gr}{\renewcommand{\arraystretch}{1.5}}
 
 \setlength{\parindent}{0pt}
@@ -56,13 +58,13 @@
 
 \begin{center}
 {\Large \textbf{Quiz 5 --- Convolutional Networks}}\\[2pt]
-{\normalsize Convolution by hand, stride, max pooling, output size, and peak-picking as detection}
+{\normalsize Convolution by hand, stride, channels, max pooling, output size, and peak-picking as detection}
 \end{center}
 
 \vspace{-2pt}
 \begin{center}
 \fbox{\parbox{0.92\textwidth}{\small
-\textbf{Instructions:}\; Answer all four questions --- the same overlay--multiply--add drill you
+\textbf{Instructions:}\; Answer all five questions --- the same overlay--multiply--add drill you
 did on the slides, new numbers. Intuition first; no calculators needed.%
 \ifsolution\else\\[4pt]\textbf{Name:}\ \blk{6cm}\hfill\textbf{Date:}\ \blk{3.5cm}\fi
 }}
@@ -71,10 +73,11 @@ did on the slides, new numbers. Intuition first; no calculators needed.%
 \vspace{-2pt}\hrule\vspace{5pt}
 
 % =========================== Q1 ===========================
-\textbf{1. Convolution by hand --- stride 1 and stride 2.}\; {\small \emph{The rule:} lay the
-$3\times3$ filter on a $3\times3$ window of the image, multiply each pair of matching cells, and add
-the nine products --- that number is one feature-map cell. \emph{Stride} is how far the window jumps;
-with a $5\times5$ image and a $3\times3$ filter the map is $(5-3)/s+1$ cells per side.}
+\textbf{1. Convolution by hand --- derive the whole map at stride 1 and at stride 2.}\; {\small
+\emph{The rule:} lay the $3\times3$ filter on a $3\times3$ window of the image, multiply each pair of
+matching cells, and add the nine products --- that number is one feature-map cell. \emph{Stride} is
+how far the window jumps; with a $5\times5$ image and a $3\times3$ filter the map is $(5-3)/s+1$
+cells per side.}
 
 \vspace{4pt}
 \begin{center}
@@ -100,32 +103,51 @@ with a $5\times5$ image and a $3\times3$ filter the map is $(5-3)/s+1$ cells per
 \end{center}
 
 \vspace{3pt}
-\textbf{(a)} At \emph{stride 1}, the output map is $3\times3$. The cell at output position $(r,c)$ uses
-the window whose top-left corner sits at image row $r$, column $c$. Compute the \emph{top row}:
+\textbf{(a)} At \emph{stride 1} the map is $(5-3)/1+1 = 3\times3$: fill in \emph{all nine} cells. The
+cell at output position $(r,c)$ uses the window whose top-left corner sits at image row $r$, column
+$c$ --- so $r,c \in \{1,2,3\}$.\quad
+\textbf{(b)} At \emph{stride 2} the window jumps two cells, so the map is $(5-3)/2+1 = 2\times2$ and
+the windows start at image rows/cols $1$ and $3$: fill in \emph{all four} cells.
 
-\vspace{2pt}
-\quad $(1,1) = $ \rb{$4$}{1.6cm} \hfill $(1,2) = $ \rb{$3$}{1.6cm} \hfill
-$(1,3) = $ \rb{$1$}{1.6cm} \hspace*{1.2cm}
+\vspace{4pt}
+\begin{center}
+\begin{minipage}[t]{0.40\linewidth}\centering
+{\small \textbf{(a)} stride-1 map \textbf{3$\times$3}}\\[3pt]
+\renewcommand{\arraystretch}{1.7}%
+\begin{tabular}{|>{\centering\arraybackslash\ttfamily\bfseries}p{9mm}|>{\centering\arraybackslash\ttfamily\bfseries}p{9mm}|>{\centering\arraybackslash\ttfamily\bfseries}p{9mm}|}\hline
+\rb{4}{6mm} & \rb{3}{6mm} & \rb{1}{6mm} \\\hline
+\rb{1}{6mm} & \rb{4}{6mm} & \rb{3}{6mm} \\\hline
+\rb{5}{6mm} & \rb{0}{6mm} & \rb{4}{6mm} \\\hline
+\end{tabular}
+\end{minipage}%
+\begin{minipage}[t]{0.30\linewidth}\centering
+{\small \textbf{(b)} stride-2 map \textbf{2$\times$2}}\\[3pt]
+\renewcommand{\arraystretch}{1.7}%
+\begin{tabular}{|>{\centering\arraybackslash\ttfamily\bfseries}p{9mm}|>{\centering\arraybackslash\ttfamily\bfseries}p{9mm}|}\hline
+\rb{4}{6mm} & \rb{1}{6mm} \\\hline
+\rb{5}{6mm} & \rb{4}{6mm} \\\hline
+\end{tabular}
+\end{minipage}
+\end{center}
 
-\work{1.1cm}
-
-\textbf{(b)} At \emph{stride 2} the map is $2\times2$ (windows start at image rows/cols $1$ and $3$).
-Compute its \emph{bottom-right} cell (window top-left at image row $3$, column $3$): \rb{$4$}{1.6cm}
-
-\work{1.0cm}
+\work{1.5cm}
 
 \keybox{Overlay the filter, multiply, add --- with this filter each cell is just the sum of the four
-\emph{corners} and the \emph{centre} of the window.\\[3pt]
-(a) $(1,1)$: window rows 1--3, cols 1--3 $=\!\begin{smallmatrix}1&1&0\\0&1&1\\1&0&1\end{smallmatrix}$,
-corners+centre $=1+0+1+1+1=\mathbf{4}$.\;
-$(1,2)$: cols 2--4 $=\!\begin{smallmatrix}1&0&1\\1&1&0\\0&1&0\end{smallmatrix}$,
-$=1+1+0+0+1=\mathbf{3}$.\;
-$(1,3)$: cols 3--5 $=\!\begin{smallmatrix}0&1&0\\1&0&1\\1&0&0\end{smallmatrix}$,
-$=0+0+1+0+0=\mathbf{1}$.\\[3pt]
-(b) Bottom-right stride-2 cell: window rows 3--5, cols 3--5
-$=\!\begin{smallmatrix}1&0&0\\0&1&1\\1&0&1\end{smallmatrix}$, corners+centre $=1+0+1+1+1=\mathbf{4}$.
-\emph{Stride 2 just samples every other window, so its cells are a subset of the stride-1 map's
-values.}}
+\emph{corners} and the \emph{centre} of the window, i.e.\ cell$(r,c) = I_{r,c}+I_{r,c+2}+I_{r+2,c}+
+I_{r+2,c+2}+I_{r+1,c+1}$.\\[3pt]
+(a) Row 1: $(1,1)=1{+}0{+}1{+}1{+}1=\mathbf{4}$;\; $(1,2)=1{+}1{+}0{+}0{+}1=\mathbf{3}$;\;
+$(1,3)=0{+}0{+}1{+}0{+}0=\mathbf{1}$.\;
+Row 2: $(2,1)=0{+}1{+}0{+}0{+}0=\mathbf{1}$;\; $(2,2)=1{+}0{+}1{+}1{+}1=\mathbf{4}$;\;
+$(2,3)=1{+}1{+}0{+}1{+}0=\mathbf{3}$.\;
+Row 3: $(3,1)=1{+}1{+}1{+}1{+}1=\mathbf{5}$;\; $(3,2)=0{+}0{+}0{+}0{+}0=\mathbf{0}$;\;
+$(3,3)=1{+}0{+}1{+}1{+}1=\mathbf{4}$.\;
+Stride-1 map $=\left(\begin{smallmatrix}4&3&1\\1&4&3\\5&0&4\end{smallmatrix}\right)$.\\[3pt]
+(b) Stride 2 keeps only the windows starting at rows/cols 1 and 3, i.e.\ output positions $(1,1)$,
+$(1,3)$, $(3,1)$, $(3,3)$ of part (a): stride-2 map
+$=\left(\begin{smallmatrix}4&1\\5&4\end{smallmatrix}\right)$.
+\emph{Nothing new to compute --- stride 2 just samples every other window, so its map is the four
+corners of the stride-1 map. That is why stride is a cost/resolution dial: a quarter of the outputs,
+same nine weights.}}
 
 \vspace{2pt}\hrule\vspace{5pt}
 
@@ -220,8 +242,84 @@ more false ones (lower specificity/precision)} --- the same threshold trade-off 
 the confidence \emph{score} is the dial you turn. (Peak review = deciding \emph{where} a peak is and
 \emph{whether} it is genuine is exactly the detection problem PeakOnly (2020) solves.)}
 
+\vspace{2pt}\hrule\vspace{5pt}
+
+% =========================== Q5 ===========================
+\textbf{5. Channels --- several in, several out.}\; {\small \emph{The rules:} one filter carries
+\emph{one slice per input channel} --- convolve each channel's window with that channel's slice and
+\emph{add} the partial sums, so $c_{\text{in}}$ channels in still give ONE map out. A layer runs one
+filter per output map, so its whole kernel tensor is
+$c_{\text{out}}\times c_{\text{in}}\times k\times k$, plus one bias per filter.}
+
+\vspace{4pt}
+\begin{center}
+\begin{minipage}[t]{0.24\linewidth}\centering
+{\small input \textbf{channel 1}}\\[3pt]
+\gr\begin{tabular}{|W|W|G|}\hline
+1 & 2 & 0 \\\hline
+0 & 3 & 1 \\\hline
+\multicolumn{1}{|G|}{2} & \multicolumn{1}{G|}{1} & 0 \\\hline
+\end{tabular}
+\end{minipage}%
+\begin{minipage}[t]{0.20\linewidth}\centering
+{\small \textcolor{teal}{kernel \textbf{slice 1}}}\\[3pt]
+{\color{teal}\gr\begin{tabular}{|G|G|}\hline
+1 & 2 \\\hline
+0 & 1 \\\hline
+\end{tabular}}
+\end{minipage}%
+\begin{minipage}[t]{0.24\linewidth}\centering
+{\small input \textbf{channel 2}}\\[3pt]
+\gr\begin{tabular}{|W|W|G|}\hline
+2 & 1 & 1 \\\hline
+1 & 0 & 2 \\\hline
+\multicolumn{1}{|G|}{0} & \multicolumn{1}{G|}{1} & 3 \\\hline
+\end{tabular}
+\end{minipage}%
+\begin{minipage}[t]{0.20\linewidth}\centering
+{\small \textcolor{teal}{kernel \textbf{slice 2}}}\\[3pt]
+{\color{teal}\gr\begin{tabular}{|G|G|}\hline
+0 & 1 \\\hline
+2 & 0 \\\hline
+\end{tabular}}
+\end{minipage}
+\end{center}
+
+\vspace{2pt}
+\textbf{(a)} The shaded $2\times2$ window is the \emph{same} position in both channels. Work out each
+channel's partial sum, then add them to get the \emph{top-left cell} of the output map:
+
+\vspace{2pt}
+\quad channel 1 $=$ \rb{$8$}{1.5cm} \hfill $+$ \hfill channel 2 $=$ \rb{$3$}{1.5cm} \hfill $=$ \hfill
+output cell $=$ \rb{$11$}{1.5cm} \hspace*{0.6cm}
+
+\work{1.3cm}
+
+\textbf{(b)} A conv layer takes $c_{\text{in}}=2$ input channels and runs \emph{five} $3\times3$
+filters. Weights $=$ \rb{$90$}{1.5cm} \; biases $=$ \rb{$5$}{1.1cm} \; output channels $=$
+\rb{$5$}{1.1cm} \; so the next layer needs \texttt{in\_channels} $=$ \rb{$5$}{1.1cm}
+
+\work{0.9cm}
+
+\textbf{(c)} You feed a 1D CNN the three MRM transitions of one analyte (three traces, one shared
+retention-time axis). \texttt{in\_channels} $=$ \rb{$3$}{1.1cm}
+
+\work{0.6cm}
+
+\keybox{(a) Each channel's window times its own slice, then \emph{add}:
+channel 1 $= 1\!\cdot\!1 + 2\!\cdot\!2 + 0\!\cdot\!0 + 3\!\cdot\!1 = \mathbf{8}$;
+channel 2 $= 2\!\cdot\!0 + 1\!\cdot\!1 + 1\!\cdot\!2 + 0\!\cdot\!0 = \mathbf{3}$;
+output cell $= 8 + 3 = \mathbf{11}$. The sum across channels happens \emph{inside every cell} --- the
+filter is one $2\times2\times2$ block of 8 weights, not two separate filters.\\[3pt]
+(b) Kernel tensor $c_{\text{out}}\times c_{\text{in}}\times k\times k = 5\times2\times3\times3 =
+\mathbf{90}$ weights, one bias per filter $=\mathbf{5}$ (95 parameters), and five filters make
+\textbf{5} output maps --- so the next layer must declare \texttt{in\_channels}$=\mathbf{5}$.\\[3pt]
+(c) \textbf{3} --- three co-recorded traces on one axis are three input channels, so one filter can
+use all three transitions at once. (\texttt{out\_channels} stays your choice: it is just how many
+filters you run.)}
+
 \vspace{4pt}\hrule\vspace{3pt}
-{\small\itshape \ifsolution Answer key.\else Keep this sheet --- the convolution, pooling, and
-output-size drills are your Lab 2 cheat-sheet.\fi}
+{\small\itshape \ifsolution Answer key.\else Keep this sheet --- the convolution, channel, pooling
+and output-size drills are your Lab 2 cheat-sheet.\fi}
 
 \end{document}

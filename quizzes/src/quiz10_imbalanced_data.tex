@@ -101,13 +101,13 @@ truth):}
 \end{center}
 
 \vspace{2pt}
-\textbf{(a)} recall (sensitivity) $=\ \dfrac{16}{16+4} =\ $ \rb{$16/20 = 0.80$ \,(80\%)}{3.4cm}
+\textbf{(a)} recall (sensitivity) $=$ \rb{$16/20 = 0.80$ \,(80\%)}{3.4cm}
 \work{0.3cm}
 
-\textbf{(b)} specificity $=\ \dfrac{448}{448+32} =\ $ \rb{$448/480 = 0.93$ \,(93\%)}{3.4cm}
+\textbf{(b)} specificity $=$ \rb{$448/480 = 0.93$ \,(93\%)}{3.4cm}
 \work{0.3cm}
 
-\textbf{(c)} precision $=\ \dfrac{16}{16+32} =\ $ \rb{$16/48 = 0.33$ \,(33\%)}{3.4cm}
+\textbf{(c)} precision $=$ \rb{$16/48 = 0.33$ \,(33\%)}{3.4cm}
 \work{0.3cm}
 
 \textbf{(d)} A model that ALWAYS calls ``susceptible'' scores accuracy $= 480/500 = 96\%$. The lab must not miss
@@ -160,7 +160,8 @@ invariant to the class ratio; AUPRC collapses toward the prevalence, so it stays
 \;$\cdot$\; \textbf{curriculum}. Each is used once.}
 
 \vspace{2pt}
-\textbf{(a)} Many mislabeled and junk runs contaminate the training set. $\rightarrow$\ \rb{curation}{5cm}
+\textbf{(a)} Junk runs and mislabeled spectra contaminate the training set --- and the same isolate
+appears three times. $\rightarrow$\ \rb{curation}{5cm}
 \work{0.25cm}
 \textbf{(b)} Only 41 real resistant spectra; the model just predicts ``susceptible''. $\rightarrow$\
 \rb{class weights / SMOTE / oversample}{5cm}
@@ -176,7 +177,9 @@ invariant to the class ratio; AUPRC collapses toward the prevalence, so it stays
 \work{0.9cm}
 \ifsolution\else\blk{\linewidth}\par\fi
 
-\keybox{(a) \textbf{curation} --- clean the labels before anything fancier. (b) \textbf{class weights / SMOTE /
+\keybox{(a) \textbf{curation} --- clean the labels and drop the junk before anything fancier, then
+\emph{deduplicate}: embed every spectrum (the CNN's last hidden layer) and treat $\cos \geq 0.99$ as the
+same isolate, keeping one --- repeats split across train and test are leakage. (b) \textbf{class weights / SMOTE /
 oversample} --- make the rare class count. (c) \textbf{focal loss} --- up-weight the hard, low-confidence cases.
 (d) \textbf{curriculum} --- order easy$\to$hard, or class-balanced$\to$true prevalence. (e) \textbf{None of them.}
 Every move re-uses the same 41 resistant spectra (reweighting shouts them louder, SMOTE interpolates between them,

@@ -1,7 +1,7 @@
 % =====================================================================
 %  MSACL DS301 Deep Learning · Lab 3 · Code Hint Sheet
 %  Multiple-choice code options for the three fill-in cells.
-%  Style matches labs/handouts/lab01_hints.tex and lab02_hints.tex.
+%  Style matches labs/handouts/lab02_hints.tex.
 % =====================================================================
 \documentclass[11pt]{article}
 
@@ -28,76 +28,78 @@
 
 \begin{center}
 {\Large \textbf{Lab 3 --- Code Hint Sheet}}\\[2pt]
-{\normalsize Fine-Tuning a Pretrained Transformer}
+{\normalsize Transfer Learning by Fine-Tuning --- Teach a Pretrained Generator YOUR Symbol}
 \end{center}
 
 \vspace{-2pt}
 \begin{center}
 \fbox{\parbox{0.92\textwidth}{\small
-Stuck on a \textbf{YOUR TURN} cell? Each blank you need is below with a few options.
-Pick one, type it in, and \textbf{run the cell} --- the built-in \texttt{assert} checks will tell you
-whether it is right. Only the three marked cells need editing; run everything else as-is.
-\texttt{CHECKPOINT}, \texttt{NUM\_LABELS} (=5), and \texttt{SCRATCH\_LR} are already defined for you.
+Stuck on a \textbf{YOUR TURN} cell? Each of the three blanks is below with a few options.
+Pick one, type it in, and \textbf{run the cell} --- the built-in \texttt{assert} checks (and the
+before/after pictures) will tell you whether it is right. Only the three marked cells need
+editing; run everything else as-is.
 }}
 \end{center}
 
 \vspace{2pt}\hrule\vspace{4pt}
 
-\textbf{Step 3 --- attach a fresh classification head.}\; {\small Load DistilBERT \emph{and} bolt a
-brand-new 5-class head on top (one head per disease class). This is the whole idea of transfer
-learning: keep the pretrained body, swap the head (Lecture 8).}
+\textbf{Step 2 --- invent your symbol.}\; {\small Edit the ASCII grid so \texttt{'\#'} is ink and
+\texttt{'.'} is blank. Every row must stay the \textbf{same length}, and you want a \textbf{bold,
+centered} shape (roughly 10--40\% ink) --- thin one-pixel lines are too faint to learn.}
 
-\textbf{Blank 1 --- build \texttt{model}.}
+\textbf{Blank 1 --- \texttt{SYMBOL} (the drawing).}
 \begin{itemize}
-  \item[(a)] \opt{model = AutoModelForSequenceClassification.from\_pretrained(} \opt{CHECKPOINT, num\_labels=NUM\_LABELS, attn\_implementation=ATTN)}
-  \item[(b)] \opt{model = AutoModel.from\_pretrained(CHECKPOINT)}
-  \item[(c)] \opt{model = AutoModelForSequenceClassification.from\_pretrained(CHECKPOINT)}
+  \item[(a)] A bold, centered shape --- e.g. a heart with two round lobes on top and a point at the
+    bottom, its widest rows a solid run of about a dozen \opt{'\#'}. Any heart / star / letter /
+    initial drawn this boldly passes.
+  \item[(b)] A single thin line (one \opt{'\#'} per row) --- too little ink (fails the
+    \opt{0.03 < ink < 0.6} check, and too faint to learn).
+  \item[(c)] Every cell set to \opt{'\#'} (the whole grid filled) --- too much ink (fails the same
+    check; a solid block has no shape to recognize).
 \end{itemize}
-{\small (a) loads the body \emph{and} a new 5-way head. (b) is the body only --- no classifier, so it
-cannot output class scores. (c) forgets \opt{num\_labels}, so it defaults to a \textbf{2}-class head and
-the shape check fails (it wants \opt{[batch, 5]}). The \opt{attn\_implementation=ATTN} argument (already
-defined for you as \opt{"eager"}) picks an attention kernel that runs on a Colab GPU, an Apple-silicon
-Mac (MPS), and plain CPU alike --- the fast default kernel cannot apply attention dropout while training
-on MPS.}
+{\small (a) is the goal. (b) and (c) trip the ink-amount \texttt{assert}; rows of unequal length
+also error when the grid is parsed.}
 
 \vspace{3pt}\hrule\vspace{4pt}
 
-\textbf{Step 3 --- the ``frozen body'' run.}\; {\small For the head-only comparison, freeze every weight
-in the DistilBERT \emph{body} so only the new head learns. The body is \opt{model.distilbert}; the head
-is \opt{model.classifier}.}
+\textbf{Step 3 --- the diffusion training objective.}\; {\small The model was handed a noisy image
+and guessed the noise (\texttt{noise\_pred}); the truth is \texttt{noise}. Score how far the guess
+is from the truth with \textbf{mean-squared error} and store it in \texttt{loss}.}
 
-\textbf{Blank 2 --- freeze the body.}
+\textbf{Blank 2 --- the loss line.}
 \begin{itemize}
-  \item[(a)] \opt{for param in model.distilbert.parameters():}\; \opt{param.requires\_grad = False}
-  \item[(b)] \opt{for param in model.parameters():}\; \opt{param.requires\_grad = False}
-  \item[(c)] \opt{for param in model.classifier.parameters():}\; \opt{param.requires\_grad = False}
+  \item[(a)] \opt{loss = F.mse\_loss(noise\_pred, noise)}
+  \item[(b)] \opt{loss = F.mse\_loss(noise\_pred, noisy)}
+  \item[(c)] \opt{loss = F.cross\_entropy(noise\_pred, noise)}
 \end{itemize}
-{\small (a) freezes only the body $\Rightarrow$ the check sees exactly \textbf{594{,}437} trainable head
-params. (b) freezes \emph{everything} --- nothing can learn. (c) freezes the head and leaves the body
-trainable --- the opposite of what ``head-only'' means.}
+{\small (a) is right --- diffusion training makes the \emph{predicted noise} match the \emph{real
+noise} you added. (b) compares the guess to the noisy \emph{image}, not the noise --- wrong target.
+(c) cross-entropy is for class \emph{labels}, not for matching two continuous noise images — the
+wrong tool. It does not error (same-shape float targets are read as probabilities), so the scalar/
+finite/$\geq 0$ self-checks still pass; you only see it fail \emph{visually} at Step 6, where the
+AFTER grid never becomes your symbol.}
 
 \vspace{3pt}\hrule\vspace{4pt}
 
-\textbf{Step 4 --- the fine-tuning learning rate.}\; {\small When you start from pretrained weights you
-nudge them \emph{gently} --- a large step would erase what the model already knows. Fine-tuning uses a
-much smaller rate than the from-scratch run (\opt{SCRATCH\_LR = 5e-4}). Lecture 4: the learning rate is
-the single most important knob.}
+\textbf{Step 4 --- the fine-tune learning rate.}\; {\small You are \emph{nudging} a model that
+already knows how to draw, not training from scratch --- so use a rate \textbf{much smaller} than a
+from-scratch rate. The check is \opt{0 < FINETUNE\_LR < 1e-2}.}
 
 \textbf{Blank 3 --- \texttt{FINETUNE\_LR}.}
 \begin{itemize}
-  \item[(a)] \opt{FINETUNE\_LR = 2e-5}
-  \item[(b)] \opt{FINETUNE\_LR = 5e-4}
-  \item[(c)] \opt{FINETUNE\_LR = 0.1}
+  \item[(a)] \opt{FINETUNE\_LR = 1e-4}
+  \item[(b)] \opt{FINETUNE\_LR = 1e-1}
+  \item[(c)] \opt{FINETUNE\_LR = 1e-6}
 \end{itemize}
-{\small (a) is the usual transformer fine-tuning rate --- small, so the pretrained knowledge survives.
-(b) equals the \emph{from-scratch} rate; the check wants fine-tuning to step more gently than that.
-(c) is enormous for a pretrained model and blows the weights apart.}
+{\small (a) is the sweet spot --- big enough to pick up your symbol in $\sim$100 steps, small enough
+not to wreck the pretrained model. (b) is far too big: it blows the model apart and the AFTER grid is
+garbage (and it exceeds the \opt{< 1e-2} check). (c) is so tiny the model barely moves --- the AFTER
+samples still look like digits instead of your symbol.}
 
 \vspace{4pt}\hrule\vspace{3pt}
-{\small\itshape Answers self-check in the notebook: if the \texttt{assert} cells pass --- the head emits
-\texttt{[batch, 5]}, the frozen run trains exactly \texttt{594,437} params while the body's
-\texttt{requires\_grad} is off, and \texttt{FINETUNE\_LR < SCRATCH\_LR} --- you chose right. Then watch
-the three-way bar plot: from-scratch stalls near the \textbf{$\sim$33\%} majority floor while the
-fine-tuned model reaches the \textbf{$\sim$60s\%} --- that gap is the whole point of the lab.}
+{\small\itshape Answers self-check in the notebook: the symbol cell prints its ink \% and shape; the
+objective cell prints a probe loss; and the learning-rate cell prints its value. Step 6 is a
+\textbf{visual} before-vs-after: watch the \textbf{AFTER row} --- it should unmistakably show the
+symbol \emph{you} drew, while the BEFORE row still shows the pretrained digits.}
 
 \end{document}

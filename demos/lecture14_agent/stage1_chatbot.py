@@ -9,6 +9,7 @@ can't remember the run we just named, because nothing carries over between turns
     python3 stage1_chatbot.py
 """
 from llm import claude
+from ui import banner, bot, user
 
 SYSTEM = ("You are a mass-spec QC lab assistant. Answer the user's questions "
           "directly and concisely.")
@@ -20,11 +21,12 @@ QUESTIONS = [
     "What is QC-04's mass error, and does it pass QC?",
 ]
 
+banner(1, "A BARE CHATBOT", "no memory, no tools — watch Q2 forget the run")
+
 for q in QUESTIONS:
-    print(f"\nyou > {q}")
+    user(q)
     messages = [                                   # rebuilt every turn => NO memory
         {"role": "system", "content": SYSTEM},
         {"role": "user", "content": q},
     ]
-    reply = claude(messages)
-    print(f"bot > {reply}")
+    bot(claude(messages))

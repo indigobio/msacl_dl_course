@@ -20,7 +20,7 @@ import urllib.request
 def claude(messages, retries=4):
     base = os.environ.get("ANTHROPIC_BASE_URL", "https://api.anthropic.com").rstrip("/")
     key = os.environ.get("ANTHROPIC_API_KEY", "")
-    model = os.environ.get("ANTHROPIC_MODEL", "claude-3-5-haiku-latest")
+    model = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-5")
     if not key:
         raise SystemExit("Set ANTHROPIC_API_KEY (and optionally ANTHROPIC_MODEL / ANTHROPIC_BASE_URL).")
 
@@ -32,7 +32,6 @@ def claude(messages, retries=4):
         "model": model,
         "max_tokens": 1024,
         "messages": convo,
-        "temperature": 0,
         "stop_sequences": ["Observation:"],   # let OUR loop supply the observation (stage 3)
     }
     if system:

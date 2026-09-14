@@ -15,6 +15,9 @@ live in tools.py.
 """
 from llm import claude
 from tools import REACT_SYSTEM, has_action, parse_action, run_tool
+from ui import agent_step, answer, banner, note, obs, user
+
+MAX_STEPS = 6          # a live demo must never spin forever on a confused model
 
 QUESTIONS = [
     "We're starting morning QC and the run in question is QC-04. "
@@ -26,17 +29,26 @@ QUESTIONS = [
 messages = [{"role": "system", "content": REACT_SYSTEM}]   # tools + format described here
 state = {}                                                 # the tools' scratchpad
 
+banner(3, "+ TOOLS (ReAct)", "think -> act -> observe, until it can answer from real data")
+
 for q in QUESTIONS:
-    print(f"\nyou > {q}")
+    user(q)
     messages.append({"role": "user", "content": q})
     reply = claude(messages)
-    while has_action(reply):                # the ReAct loop: think -> act -> observe
-        print(reply)
+    steps = 0
+    while has_action(reply):            # the ReAct loop: think -> act -> observe
+        if steps >= MAX_STEPS:
+            note(f"stopped after {MAX_STEPS} tool calls without an Answer.")
+            break
+        steps += 1
+        agent_step(reply)
         messages.append({"role": "assistant", "content": reply})
         name, arg = parse_action(reply)
-        obs = run_tool(name, arg, state)
-        messages.append({"role": "user", "content": "Observation: " + obs})
-        print("obs > " + obs.splitlines()[0] + (" ..." if "\n" in obs else ""))
+        result = run_tool(name, arg, state)          # never raises: see tools.py
+        messages.append({"role": "user", "content": "Observation: " + result})
+        obs(result)
+        if result.startswith("ERROR:"):
+            note("the tool errored — watch it read that and try again")
         reply = claude(messages)
     messages.append({"role": "assistant", "content": reply})
-    print(f"bot > {reply}")
+    answer(reply)

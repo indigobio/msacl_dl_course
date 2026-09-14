@@ -10,6 +10,7 @@ that is actually out of spec). Memory is not knowledge.
     python3 stage2_memory.py
 """
 from llm import claude
+from ui import banner, bot, user
 
 SYSTEM = ("You are a mass-spec QC lab assistant. Answer the user's questions "
           "directly and concisely.")
@@ -23,9 +24,11 @@ QUESTIONS = [
 
 messages = [{"role": "system", "content": SYSTEM}]     # ONE running history
 
+banner(2, "+ MEMORY", "Q2 works now — but Q3 shows memory is not knowledge")
+
 for q in QUESTIONS:
-    print(f"\nyou > {q}")
+    user(q)
     messages.append({"role": "user", "content": q})
     reply = claude(messages)
     messages.append({"role": "assistant", "content": reply})   # remember it
-    print(f"bot > {reply}")
+    bot(reply)

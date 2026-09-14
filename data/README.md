@@ -73,7 +73,9 @@ in Phase 2 before a lab is built on it.
   release asset for fast Colab download (CC0 allows it).
 - Reference loaders: BorgwardtLab/maldi-learn (id-CSV parsing, S/I/R cleaning),
   BorgwardtLab/maldi_amr (paper's task definitions), gdewael/maldi-nn.
-- Used in: lab02 (1D CNN), lab04 (VAE), lab05 tracks A/C; Lecture 10 shift example.
+- Used in: lab02 (1D CNN), lab05 tracks A/C; Lecture 10 shift example.
+  (Lab 4 no longer uses DRIAMS — it moved to FashionMNIST/MNIST via torchvision;
+  see the torchvision entry below.)
 - **Lab 5 capstone reuse (Tracks A & C), built & run-verified (2026-08-31):**
   `lab05_capstone.ipynb` reuses both local DRIAMS-C slices. **Track A (beat the baseline)**
   trains the Lab 2 `BaselineCNN` on `driams_c_saureus_oxacillin.npz` (738 spectra, 697 S / 41 R)
@@ -85,74 +87,65 @@ in Phase 2 before a lab is built on it.
   bare accuracy. All asserts are structural (logits `(N,1)`; leakage-free disjoint split;
   improved-vs-baseline param counts differ; frozen-body param count == body params, trainable ==
   head; metrics in `[0,1]`) so a shrunk CPU smoke run passes.
-- **Lab 4 reuse (VAE QC / anomaly / generation), built & run-verified (2026-08-31):**
-  `lab04_vae_spectra.ipynb` reuses the local `driams_c_saureus_oxacillin.npz` slice
-  (738 spectra, 6000-dim, TIC-normalized; 697 susceptible / 41 resistant). The
-  **susceptible** spectra are treated as *normal*: a small VAE trains on an 80% split
-  of them (557), then held-out normal (140) + all resistant (41) are scored by
-  **reconstruction-error** (per-spectrum MSE) and flagged above a 95th-percentile
-  threshold. Honest framing: recon-error is **novelty/QC detection**, not an R-vs-S
-  classifier (the histograms overlap on purpose) — the teaching point is the method
-  and the threshold as a sensitivity/specificity choice (Lecture 10 callback). Three
-  blanks (`LATENT_DIM = 2`; `loss = recon_loss + BETA*kl_loss`; `THRESHOLD =
-  np.percentile(train_errors, 95)`); all asserts are structural (latent shape `(n,2)`,
-  loss a finite scalar with `KL>=0` and `loss==recon+BETA*KL`, threshold inside the
-  training-error range, one recon error per scored spectrum, decoded length 6000,
-  interpolation returns `(7,6000)`) so a shrunk CPU smoke run still passes. Verified
-  end-to-end on CPU (`jupyter nbconvert --execute`): full solution ran all 11 code
-  cells in ~15 s with 0 errors; a reduced smoke copy (`/tmp/lab04_smoke.ipynb`, 120
-  normal-train / 3 epochs, forced CPU) also ran 11/11 cells, 0 errors, every assert
-  printed its success line.
+### FashionMNIST — via torchvision (Lab 4, redesigned 2026-09-01)
+- Source: `torchvision.datasets.FashionMNIST` (`download=True`), fetched from the
+  torchvision mirrors at runtime — **public, no credentials/login**. 28×28
+  grayscale, values in `[0, 1]` after dividing by 255 (`transforms.ToTensor()`).
+- License: FashionMNIST is MIT (Zalando Research); the torchvision loaders are
+  BSD-licensed.
+- Size: ~30 MB, cached under a **gitignored** `torchvision_data/` dir (see
+  `.gitignore`); nothing is committed.
+- Role: **FashionMNIST** is the clothing family the VAE learns; **MNIST digits**
+  are also loaded as unseen anomaly "impostors" for the reconstruction-error
+  detector in Step 8. No DRIAMS slice and no hosted file are involved.
+- **Lab 4 rebuild (Fashion-VAE latent playground + impostor detector), built &
+  run-verified (2026-09-01):** `lab04_vae_fashion.ipynb` trains a small
+  2-D-latent MLP VAE (784→256→64→(mu,logvar); dec 2→64→256→784 sigmoid) on
+  12,000 FashionMNIST images (Adam 1e-3, batch 128, ~12 epochs) and scores
+  held-out MNIST digits as impostors. The model, training loop, and every plot
+  are read-and-run; participants fill **four blanks**: **Blank 1** the VAE loss
+  `loss = recon_loss + beta * kl_loss` (Step 2); **Blank 2** one KL value by hand
+  `kl_by_hand = 0.5` for mu=[1,0], logvar=[0,0] (Step 3); **Blank 3** the impostor
+  `THRESHOLD = np.percentile(normal_errors, 90)` plus a prediction
+  `expected_false_alarms = round(0.10 * len(normal_errors))` (Step 8); **Blank 4**
+  the creative ASCII `DOODLE` impostor (Step 9). It plots the VAE latent vs. a
+  plain-AE latent (Lecture 11 picture), morphs a sneaker→ankle-boot, generates
+  clothes from random z ~ N(0, I), and flags impostor digits by reconstruction
+  error (AUROC > 0.85). Verified end-to-end (`jupyter nbconvert --execute`): all
+  code cells ran with **0 errors** and all **16 asserts** pass (incl. cached
+  downloads).
 
-### Lab 3 — transformer fine-tuning: DistilBERT + medical_abstracts (core), ESM-2 bonus
-- Core model: `distilbert/distilbert-base-uncased` (268 MB safetensors,
-  Apache-2.0, no auth token). Core dataset: `TimSchopf/medical_abstracts` on
-  Hugging Face — 11,550 train / 2,888 test abstracts, 5 disease classes,
-  9.6 MB parquet, **CC-BY-SA-3.0** (the only cleanly licensed option found).
-- Lab plan: subsample ~4,000 train / 1,000 eval, `max_length=256`, batch 32,
-  **`fp16=True` (mandatory on T4 — 4–8× slower without it)**, 3 epochs. Three
-  runs: full fine-tune vs. frozen-encoder head-only vs. from-scratch — total
-  6–9 min on a T4. From-scratch lands near the ~33% majority floor while
-  fine-tuned reaches ~62–68%, so the "pretraining is the game-changer" lesson
-  is unmissable.
-- Notebook gotchas (verified): labels are **1–5, not 0–4** (remap `label - 1`
-  or CUDA throws an opaque index error); class names live in a separate config
-  (`load_dataset("TimSchopf/medical_abstracts", "labels")`).
-- **Bonus demo cell (the on-theme payoff):** `facebook/esm2_t6_8M_UR50D`
-  (31 MB, MIT) fine-tuned on ~3,000 peptides in ~30 s — "DistilBERT read 3B
-  words of English the way ESM-2 read 250M protein sequences; same move,
-  different alphabet." Demo-only, not graded: peptide AMP tasks are largely
-  solvable from composition, so the from-scratch gap is small there, and the
-  candidate peptide datasets have licensing issues (TzRain/AMPs: no license or
-  provenance; AMPBench-MT: non-commercial-only — acceptable for a read-only
-  demo, not for the graded core).
-- Fallback if 5-class ~65% accuracy demotivates in dry runs:
-  `armanc/pubmed-rct20k` (sentence-role classification, `max_length=64`, ~4×
-  faster, ~80%+ accuracy; license unspecified).
-- **Built & run-verified (2026-08-30):** `labs/solutions/lab03_finetuning.ipynb`
-  authored to Colab/T4 sizes (4,000 train / 1,000 eval, `max_length=256`, 3 epochs,
-  `fp16` auto-on with CUDA). Three blanks (attach head `num_labels=5`; freeze
-  `model.distilbert.parameters()`; `FINETUNE_LR = 2e-5`); all `assert`s are
-  structural (logits `[batch,5]`, labels 0..4, frozen-run trainable count == 594,437
-  head params, from-scratch embeddings ≠ pretrained, three-result comparison) so a
-  reduced smoke run still passes without asserting accuracy magnitudes. Verified via
-  a shrunk CPU copy (`/tmp/lab03_smoke.ipynb`: 200/100, 1 epoch, peptides 600): all 13
-  code cells ran with saved execution counts + outputs, 0 error outputs, every assert
-  passed — the frozen-run trainable count printed exactly 594,437 (`jupyter nbconvert
-  --to notebook --execute --output /tmp/lab03_smoke.ipynb`, exit 0).
-  Verified in transformers 5.x: `TrainingArguments` uses `eval_strategy` (not
-  `evaluation_strategy`); metrics via `sklearn.metrics.accuracy_score` (the
-  `evaluate` library is not required).
-
-#### Synthetic peptide set (Lab 3 ESM-2 bonus) — SYNTHETIC, generated in-notebook
-- Source: **generated deterministically inside the notebook** (`np.random.default_rng(0)`);
-  no download, no external data, no license constraints — clean to redistribute.
-- Task: binary — a peptide is **class 1 ("cationic", AMP-like)** iff net charge
-  `(#K + #R) − (#D + #E) ≥ 3`, else class 0. Random peptides over the 20 standard
-  amino acids, length 12–25; drawn until **class-balanced** at `N_PEPTIDES` (3,000
-  full / 600 smoke, 50/50). Demo-only, not graded; fine-tunes `facebook/esm2_t6_8M_UR50D`
-  (8M params, MIT) in ~30 s to show the *same recipe, different alphabet*.
-- Used in: lab03 (bonus cell).
+### Lab 3 — transfer learning by fine-tuning: pretrained diffusion generator (redesigned 2026-09-01)
+- Model (not a dataset): **`balakrish181/ddpm-class-mnist-28`**, a real
+  **online-pretrained** ~4M-parameter 28×28 MNIST digit **diffusion UNet**,
+  fetched from the **Hugging Face Hub** via `diffusers`
+  `UNet2DModel.from_pretrained(...)` (~15 MB, **public, no credentials/login**).
+  Paired with a linear-beta `DDPMScheduler` to match the checkpoint. **No MNIST
+  dataset download** — only the pretrained model weights are fetched.
+- Training set: **synthetic from the student's own drawing** — the participant
+  edits a 16×16 ASCII grid into a symbol (heart / star / letter / initial); code
+  parses it to a 28×28 image and makes ~32 lightly jittered (small rotation +
+  shift) copies. Nothing to host, register, or license.
+- Lab concept: download the pretrained digit-generator, watch it draw digits,
+  then **few-shot fine-tune** it (~100 steps, `lr≈1e-4`, well under a minute) so
+  it draws the student's brand-new symbol. Transfer learning made visual and
+  generative; anchors the Lecture 8 fine-tuning outcome.
+- **No VAE/autoencoder/KL vocabulary** (VAEs are Lecture 11, a later segment):
+  the model is framed simply as a pretrained "digit-drawer" you fine-tune,
+  keeping the lab inside Lectures 1–8.
+- Three blanks: **Blank 1 (creative)** invent your symbol (edit the ASCII grid);
+  **Blank 2 (the heart of diffusion training)** the noise-MSE objective line
+  `loss = F.mse_loss(noise_pred, noise)`; **Blank 3** the fine-tune learning rate
+  `FINETUNE_LR ≈ 1e-4` (rule given, not the number). `assert`s: parsed symbol is
+  28×28 in [0,1] with a sensible ink amount; loss is a finite scalar ≥ 0;
+  and `0 < FINETUNE_LR < 1e-2`. The before-vs-after payoff (Step 6) is a **visual**
+  side-by-side: the same denoising loop draws digits BEFORE and the student's
+  symbol AFTER the fine-tune — there is no numeric similarity assert.
+- **Built & run-verified (2026-09-01):** `labs/solutions/lab03_generator_transfer.ipynb`
+  executed end-to-end via `jupyter nbconvert --to notebook --execute`
+  (`/tmp/lab03_executed.ipynb`): 0 error outputs, all **9 asserts** pass. The
+  100-step fine-tune runs in well under a minute on Apple MPS (similar or faster
+  on a T4) — comfortably under the 10-min budget.
 
 ### Lab 5 capstone — verified end-to-end (2026-08-31)
 - `labs/solutions/lab05_capstone.ipynb`: three self-contained tracks (set `TRACK='A'/'B'/'C'`)
