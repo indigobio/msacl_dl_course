@@ -998,3 +998,57 @@ chips and coloured gutters for YOU / BOT / OBS / THINK / ACT, `Action` +
 `Action Input` merged into one `tool(arg)` line, the final `Thought:`/`Answer:`
 protocol stripped so the answer reads as an answer. Colour auto-disables off-tty
 and honours `NO_COLOR` / `FORCE_COLOR`.
+
+
+## 2026-09-14 — Lecture 14: the live demo becomes a three-stage walkthrough
+
+Instructor request: turn the second half of `lecture14_agents.pptx` into a
+step-by-step walk-through of the three-stage demo under `demos/lecture14_agent/`.
+
+**Why the change earns its slides.** The demo stop was budgeted 18 minutes but
+had only two slides — a five-beat storyboard of one finished assistant, and a
+flag→draft panel. That framing hides the actual lesson, which lives in the
+**diff between the three scripts**: each adds exactly one idea, and each fails in
+a new way until the last. Replaced with six slides (deck 17 → 21):
+
+| slide | what the room sees |
+|---|---|
+| 1 OF 6 · the plan | the three scripts against the same three questions — Q1 a concept, Q2 memory, Q3 the data |
+| 2 OF 6 · stage 1 | `messages` rebuilt every turn → cannot name the run it was given one turn ago |
+| 3 OF 6 · stage 2 | the one-line diff that *is* memory; Q2 works; then a 💬 predict beat before Q3 |
+| 4 OF 6 · stage 3 | the ReAct loop executing: THINK → ACT → OBS → answer, grounded |
+| 5 OF 6 · the payoff | `draft_summary` names QC-04, its three out-of-range values, and defers to a human |
+| 6 OF 6 · what made it work | the script owns the tools; the agent only knows what its context says |
+
+**The pedagogical spine is that the failures get WORSE before they get better.**
+Stage 1's failure announces itself — the assistant says it does not know. Stage
+2's does not: it is fluent, uses the right units and the right limit, and is
+fabricated, because the model has never seen `qc_runs.csv`. It passes QC-04, the
+one run in the table that breaks all three limits. "Memory is not knowledge" is
+the sentence the block is built to earn, and it lands straight back onto Lecture
+13's hallucination guardrails.
+
+**Stage 2 carries the interactive beat** (rule 8): a 💬 *predict* prompt before
+Q3 is run — what will it say QC-04's mass error is? Someone always says it cannot
+know; then they watch it answer anyway.
+
+**Two transferable rules close the block**, and they are what turn the demo into
+motivation for the guardrails section that follows rather than a trick:
+1. *The script owns the tools.* The model only ever emits the string
+   `Action: check_limits`; ordinary Python decides whether to honour it. So
+   "restricted tools" is enforceable — the agent cannot do anything you did not
+   write a function for.
+2. *An agent only knows what its context says exists.* Told as the true story of
+   this demo's own `FileNotFoundError` on `QC-04` (logged 2026-09-14): the prompt
+   listed tools but never named a file, so the model had nothing to pass but the
+   run id. An agent that has to guess will guess.
+
+**Figures.** Five new panels (`fig_demo_plan`, `fig_demo_stage1/2/3`,
+`fig_demo_why`); `fig_demo_flag` is reused for the payoff and `fig_demo_storyboard`
+is retired. The transcript panels deliberately reuse the demo's own terminal
+chips — YOU / BOT / OBS / THINK / ACT in the same colours `ui.py` prints — so the
+slide and the projector show the same thing.
+
+**Checks:** overlap 0 fail across all 10 decks; text overflow 0 for lecture 14;
+figure overflow PASS across 169 renders; md5 audit confirms every embedded image
+matches its source file.
