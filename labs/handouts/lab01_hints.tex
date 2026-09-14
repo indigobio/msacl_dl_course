@@ -82,7 +82,27 @@ whether it is right. Only the two marked cells need editing; run everything else
 
 \vspace{3pt}\hrule\vspace{4pt}
 
-\textbf{Step 6 --- evaluate on the test set.}\; {\small Predict without learning, threshold at 0.5,
+\textbf{Step 6 --- the learning rate: pick a too-big value, then read the curves.}\; {\small You are
+given \opt{lr\_ok = 0.01}. Choose a rate that is clearly \emph{too big} so the loss climbs, run both,
+then decide which one diverged.}
+
+\textbf{1. A learning rate that is clearly TOO BIG.}
+\begin{itemize}
+  \item[(a)] \opt{lr\_too\_big = 5.0}\quad{\small (huge step $\Rightarrow$ overshoots, loss rises)}
+  \item[(b)] \opt{lr\_too\_big = 0.001}\quad{\small (smaller than \opt{lr\_ok} --- trains fine, doesn't diverge)}
+  \item[(c)] \opt{lr\_too\_big = 0.01}\quad{\small (equal to \opt{lr\_ok} --- no contrast at all)}
+\end{itemize}
+
+\textbf{2. Which run diverged? (read it off the two-curve plot).}
+\begin{itemize}
+  \item[(a)] \opt{which\_diverged = "too\_big"}\quad{\small (its loss went UP, not down)}
+  \item[(b)] \opt{which\_diverged = "ok"}\quad{\small (no --- the sensible rate fell smoothly)}
+  \item[(c)] \opt{which\_diverged = "both"}\quad{\small (no --- only the too-big curve rose)}
+\end{itemize}
+
+\vspace{3pt}\hrule\vspace{4pt}
+
+\textbf{Step 7 --- evaluate on the test set.}\; {\small Predict without learning, threshold at 0.5,
 then measure the fraction correct.}
 
 \textbf{1. Predict without gradients.}
@@ -106,9 +126,32 @@ then measure the fraction correct.}
   \item[(c)] \opt{test\_acc = accuracy(predicted, y\_test)}
 \end{itemize}
 
+\vspace{4pt}\hrule\vspace{4pt}
+
+\textbf{Step 8 --- did it overfit? compute the training accuracy the same way.}\; {\small Mirror the
+Step 7 evaluation, but on \opt{X\_train}/\opt{y\_train}, then compare to \opt{test\_acc}.}
+
+\textbf{1. Training accuracy (same recipe as Step 7, on the training data).}
+\begin{itemize}
+  \item[(a)] {\small\opt{with torch.no\_grad():}\; \opt{probs\_train = model(X\_train)}\; then}\\
+        \hspace*{1.2em}\opt{predicted\_train = (probs\_train > 0.5).float()}\\
+        \hspace*{1.2em}\opt{train\_acc = (predicted\_train == y\_train).float().mean().item()}
+  \item[(b)] \opt{train\_acc = (model(X\_test) == y\_test).float().mean()}\quad{\small (that's the \emph{test} set, not train)}
+  \item[(c)] \opt{train\_acc = loss\_history[-1]}\quad{\small (that's a loss, not an accuracy)}
+\end{itemize}
+
+\textbf{2. Overfitting means the model scores HIGHER on data it has seen. Fill the comparison.}
+\begin{itemize}
+  \item[(a)] \opt{overfitting = train\_acc > test\_acc}\quad{\small (train beats test $\Rightarrow$ overfit)}
+  \item[(b)] \opt{overfitting = train\_acc < test\_acc}\quad{\small (backwards --- and the assert will fail)}
+  \item[(c)] \opt{overfitting = train\_acc == test\_acc}\quad{\small (they're not equal here)}
+\end{itemize}
+
 \vspace{4pt}\hrule\vspace{3pt}
 {\small\itshape Answers self-check in the notebook: if the \texttt{assert} cells print their success
-message, you chose right. The loss should fall steeply and then flatten, and test accuracy should
-land around \textbf{0.72--0.77} (coin-flip baseline is 0.50).}
+message, you chose right. The loss should fall steeply and then flatten; the too-big learning rate
+makes the loss \emph{rise} instead; test accuracy should land around \textbf{0.72--0.77} (coin-flip
+baseline is 0.50); and training accuracy should be clearly higher than test accuracy (a train/test
+gap of roughly \textbf{0.20--0.25}) --- that gap is overfitting.}
 
 \end{document}
