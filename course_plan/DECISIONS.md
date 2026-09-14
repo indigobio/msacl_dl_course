@@ -2,6 +2,308 @@
 
 Newest entries at the top. Every entry: date, decision, rationale.
 
+## 2026-09-09 — Lecture 10 Part B: every treatment gets its own examples (instructor)
+
+**Problem.** The treatment menu named four moves, but only two of them (SMOTE,
+focal loss) had a slide. Curation — the highest-value move for a clinical lab —
+was one card, and class weights, the thing everyone actually types, appeared
+only as three words on that card. "Match the move to the symptom" (Quiz 10 Q3)
+was being asked of moves the room had never seen worked.
+
+**Decision — two new slides, and examples everywhere else:**
+
+- **Part B · 1 · Curation** (new): a real pass on our own 738 spectra —
+  −22 runs that failed acceptance, −8 whose S/R label the two AST methods
+  disagree on, −12 replicate shots grouped by isolate (leakage) → 696 spectra,
+  **35 R / 661 S**. The punchline is exact and counter-intuitive: six fewer
+  resistant examples and a better model, because three of the 41 were labelled
+  wrong. Four example cards make each action concrete (failed runs, discordant
+  labels, replicate spectra, wrong target).
+- **Part B · 2 · Make the rare class count** (new, do-it-together): balanced
+  weights w = N/(K·n_c) worked on the real split — **9.00** vs **0.53**, a ratio
+  of exactly 17 because 697/41 = 17 — beside its three siblings with what each
+  means on spectra: oversample (draw the 41 ~17×/epoch), undersample (throws
+  away 656 real spectra), augment (m/z jitter ±0.1%, intensity ±10% — Lab 2's
+  move, and the physically honest one). Plus the calibration warning: weighting
+  changes the effective prevalence, so recalibrate before quoting a probability.
+- **Menu**: cards are numbered 1–4 and each carries an example.
+- **Focal loss**: the hard cases are now named — MICs on the breakpoint,
+  heteroresistant subpopulations, low-biomass spectra — on the figure and in
+  the callout.
+- **Curriculum**: each stage carries a lab example — clean high-biomass from
+  one site → low-biomass and borderline MICs → every site at the true ~6%.
+
+**Timing.** Part B 18 → 22 min, paid for from Part A's opening (13 → 12), the
+curve block (17 → 16) and the debrief (7 → 5).
+
+**Noticed while editing:** the instructor removed the two you-do slides (Part A
+Q2, Part B Q3/Q4) from the deck earlier the same day. The notes that pointed
+"next slide" at them now point at the quiz sheet instead. Quiz 10 still carries
+all four items, but Q2–Q4 no longer have a slide that hands the room the pen —
+worth a decision before the dry run.
+
+**Propagated.** `slides/pptx/lecture10_imbalanced_data.pptx` (new slides 13–14,
+re-embedded menu/focal/curriculum figures, focal + curriculum callouts, agenda,
+notes); `curation_pass()` and `class_weight_family()` plus the enriched
+`treatment_menu()`, `focal_loss_volume()` and `curriculum_learning()` in
+`tools/make_slide_figures.py` (figure key `treatments`); `Learning_outcomes.md`
+Lecture 10 outcomes and timing.
+
+## 2026-09-09 — Lecture 10 BUILDS the ROC and PR curves before comparing them (instructor)
+
+**Problem.** The hour went straight from one confusion matrix to "AUROC
+flatters, trust AUPRC" — a verdict about two metrics the deck had never
+introduced. Nowhere did it say that a classifier emits a *score*, that each
+threshold gives its own confusion matrix, or that AUROC/AUPRC are the *areas*
+under the resulting curves. Quiz 10 Q2 then asked the room to compute an ROC
+point and a PR point and decide between the two areas.
+
+**Decision — three new slides (7–9), built on one threshold sweep of the same
+DRIAMS 41 R / 697 S data:**
+
+1. **From one point to a curve (do-it-together)** — score histograms for the
+   two classes with three thresholds marked, and a table: strict t = 0.9
+   (TP 18, FP 10), default t = 0.5 (TP 30, FP 60 — *the matrix already worked
+   by hand*), loose t = 0.2 (TP 38, FP 210). The room fills the t = 0.9 row:
+   recall 0.44, FPR 0.014, precision 0.64.
+2. **The ROC curve · I-do** — the three dots plus the two free endpoints,
+   joined; **AUROC ≈ 0.90** is literally the shaded area; chance is the 0.5
+   diagonal, perfect is the top-left corner.
+3. **The PR curve · I-do** — the same dots as precision vs. recall;
+   **AUPRC ≈ 0.48**; and the point that matters, its chance line is the
+   **prevalence** (41/738 = 0.056), not 0.5, so the bar moves with your class
+   balance.
+
+The existing "why AUROC flatters" slide is now a comparison rather than an
+introduction, and it plots the *same* sweep (its old figure used invented
+curves that merely passed near the operating point; both areas are now computed
+from the counts by trapezoid, so every number on the three slides is
+reproducible).
+
+**No new quiz item.** Quiz 10 Q2 already asks for the ROC point, the PR point,
+the prevalence baseline and the AUROC-vs-AUPRC decision — the you-do that
+follows these slides is unchanged and now assesses content the deck actually
+taught.
+
+**Timing.** +5 min: the curve block is 12 → 17 min on the agenda, paid for out
+of the closing debrief (12 → 7), since Quiz 10 is filled across the hour and
+the last block is only the pair debrief and collection.
+
+**Propagated.** `slides/pptx/lecture10_imbalanced_data.pptx` (new slides 7–9,
+agenda, the comparison slide's figure/callout/notes, the outcomes recap);
+figures `fig_threshold_sweep / fig_roc_intro / fig_pr_intro` and a rebuilt
+`fig_roc_pr` from `score_threshold_sweep()`, `roc_curve_intro()`,
+`pr_curve_intro()` and the shared `SWEEP` table in
+`tools/make_slide_figures.py` (figure key `roc_intro`); `Learning_outcomes.md`
+Lecture 10 outcomes and timing.
+
+## 2026-09-09 — Lecture 8 points at the NEW Lab 3, and gains a diffusion primer (instructor)
+
+**Problem.** Lecture 8 still sold the retired Lab 3: DistilBERT text
+classification, an ESM-2 bonus cell, and a three-way race (full fine-tune vs.
+frozen head vs. from scratch). The shipped Lab 3 fine-tunes a pretrained
+**diffusion generator** (`balakrish181/ddpm-class-mnist-28`) on ~32 copies of a
+symbol the student draws, and two of its three blanks are the diffusion loss
+and the fine-tune learning rate. A student who met "diffusion" for the first
+time in the notebook would be typing a line they had never seen.
+
+**Decision.** Every Lab 3 reference now describes the real lab, and the hour
+ends with a **three-slide diffusion primer** (slides 21–23) so the lab's blank
+is something they have already computed by hand:
+
+1. *The idea* — the canonical two-arrow picture on a real MNIST digit and the
+   lab's own linear schedule (β 1e-4 → 0.02, 1000 steps): forward adds noise by
+   a FIXED recipe (nothing learned), reverse is a network peeling a little
+   noise off at each step (the only learned part).
+2. *How it trains (I-do)* — worked on a 4-pixel patch: x_t = 0.8·x₀ + 0.6·ε
+   gives (1.1, −0.3, −0.2, 0.4), the model guesses the noise, and MSE =
+   (0.04+0.01+0.04+0.01)/4 = **0.025**. The slide carries the one code line,
+   `loss = F.mse_loss(noise_pred, noise)` — Lab 3's Blank 2 verbatim.
+3. *You-do → new **Quiz 8 Q5*** — same two steps, new numbers: x_t = (0.8,
+   −0.5, 0.1, 0.6), MSE = **0.045**, plus "which half is learned?" (removing
+   the noise; the forward recipe has no weights).
+
+**Scope guards.** No probability, no ELBO, no VAE vocabulary — Lecture 11 still
+owns latents and the probabilistic story. The primer stays tied to the hour by
+naming DiT (swap the UNet denoiser for a transformer) and is anchored for this
+room in the notes only (generative molecule/spectrum design, topping up a rare
+class).
+
+**Timing (worth the instructor's eye).** The primer costs ~5 min: the agenda now
+reads six stops with positional encoding 12 → 10, assembly 15 → 14 and transfer
+learning 13 → 11. Six bullets also needed the agenda type at 21 pt.
+
+**Propagated.** `slides/pptx/lecture08_transformer.pptx` — slide 2 (agenda +
+notes), 10, 13, 17 and 19 (stale DistilBERT / ESM-2 / three-way-race
+references), new slides 21–23, recap 24 and the Lab 3 bridge 25 rewritten;
+figures `fig_diffusion_idea / _train / _youdo` from `diffusion_strip()` and
+`diffusion_objective()` in `tools/make_slide_figures.py` (figure key
+`diffusion`; the digit is read straight from the MNIST idx file already in the
+repo, public domain); `quizzes/src/quiz08_transformer.tex` Q5 + rebuilt PDFs;
+`Learning_outcomes.md` Lecture 8 outcomes, timing and assessment.
+
+## 2026-09-09 — Lecture 7 runs on LANGUAGE examples; peptides become applications (instructor)
+
+**Decision, and it is a deliberate exception to style rule 2 ("mass spec
+first").** In Lecture 7 the examples we tokenize, embed, and read heat maps on
+are now **sentences**. Peptides, spectra and QC traces stay in the hour, but
+only as named applications — never as the thing being computed.
+
+**Why the instructor called it.** Attention was invented for language, every
+published attention picture is language, and coreference ("it" → "cat") is
+checkable by everyone in the room in one second. The peptide-as-sentence
+analogy asked the room to hold a chemistry claim and a new mechanic at the same
+time, and the old Q1 answer ("K attends to E") rested on a plausible-but-
+unverifiable salt-bridge story. Lecture 8 already carries the real MS payoff
+(Casanovo, spectrum → tokens), so nothing is lost.
+
+**What changed.**
+- *Order matters* (slide 3): "the dog bit the man" vs. "the man bit the dog" —
+  identical words, opposite meaning. The QC-drift trace stays as the
+  application panel.
+- *Tokens* (slide 6): "the cat drank the milk" → word tokens with IDs (the
+  repeated "the" reuses id 2), plus an unknown word split into sub-words
+  (chroma / ##to / ##graphy). Pair prompt is now "HbA1c", "New York", a
+  hyphenated name — then "what is the vocabulary for YOUR sequences?"
+- *Embeddings* (slide 7): word clusters (animals / royalty / drinks / verbs)
+  instead of residue clusters; the residue version is one application line.
+- *Self-attention* (slides 8, 10): the clause **cat · drank · milk · because ·
+  it**, with the full 5×5 query×key heat map and the "it" row read as
+  coreference (0.55 on "cat").
+- *You-do → Quiz 7 Q1* (slide 11): the sentence "the farmer fed the chickens
+  because they were hungry"; query "they" over farmer 0.10, fed 0.05, chickens
+  0.60, because 0.10, they 0.15. (a) chickens; (b) coreference, and **number
+  agreement** rules out the singular "farmer" — a checkable linguistic reason
+  where the old item had a hand-wave.
+- Multi-head, "why attention won", and the recap now speak of coreference and
+  agreement, with charge complementarity as the "train it on residues instead"
+  aside. Q2 (the full attention head) is pure arithmetic and is unchanged.
+
+**Propagated.** `slides/pptx/lecture07_attention.pptx` (slides 1–3, 5–8, 10, 11,
+15–17: figures, titles, callouts, notes); the six regenerated figures
+`fig_seq_order / fig_tokenize / fig_embedding / fig_selfattn_alltoall /
+fig_attn_heatmap_ido / fig_attn_heatmap_youdo` from `seq_order_matters()`,
+`tokenize_sentence()` (was `tokenize_peptide`), `embedding_space()`,
+`selfattn_all_to_all()` and `attention_heatmap()` in
+`tools/make_slide_figures.py`, with the shared token/weight tables
+`ATTN_SENTENCE`, `ATTN_SENTENCE_MAP`, `ATTN_QUIZ_TOKENS`, `ATTN_QUIZ_WEIGHTS`;
+`quizzes/src/quiz07_attention.tex` Q1 + rebuilt PDFs; `Learning_outcomes.md`
+Lecture 7 outcomes, timing and assessment lines.
+
+## 2026-09-09 — Lecture 5 teaches channels properly: c_in and c_out, on d2l §7.4's numbers (instructor)
+
+**Decision.** The deck had one qualitative channels slide ("every filter its
+own map"). It now has a four-slide arc — **CHANNELS · 1–4 OF 4**, slides 17–20:
+
+1. (existing) real filtered photos: many filters → many maps.
+2. **Multiple INPUT channels, worked by hand.** One filter carries *one slice
+   per input channel*; the same window is taken from every channel, each is
+   multiplied by its own slice, and the partial sums **add** into one cell:
+   19 + 37 = 56. Two channels in, still ONE map out.
+3. **Multiple OUTPUT channels.** The same input through three filters gives
+   three maps — [[56,72],[104,120]], [[76,100],[148,172]],
+   [[96,128],[192,224]] — i.e. a 3-channel output stack, with the two rules
+   (filter depth = c_in, filter count = c_out) and the weight count
+   c_out × c_in × k × k + c_out.
+4. **You-do → Quiz 5 Q5** (new item): add two per-channel partials into one
+   cell (8 + 3 = 11), count a 2→5-channel 3×3 layer (90 weights + 5 biases,
+   next layer in_channels = 5), and give in_channels for three MRM transitions.
+
+**Numbers come from d2l §7.4** (Zhang et al., *Dive into Deep Learning*,
+CC BY-SA 4.0, fig. 7.4.1 and the c_o × c_i × k_h × k_w section), redrawn in the
+course grid style rather than copied, and credited on both figures — so the
+canonical worked example a participant meets online is the one they did here.
+1×1 convolutions (d2l §7.4.3) are deliberately NOT taught; slide 19's notes
+carry a one-line answer if someone asks.
+
+**Why it was missing.** in_channels/out_channels appear as Conv1d arguments in
+the 1D slide and in Lab 2, and "a filter is one per channel" is the standard
+misconception; the deck asserted the depth axis without ever computing it.
+
+**MS anchor.** Channels are co-recorded traces on a shared axis: the three MRM
+transitions of one analyte (in_channels=3), sample + internal standard, or one
+channel per selected m/z image in imaging MS — while a single MALDI-TOF
+spectrum, i.e. Lab 2, is in_channels=1.
+
+**Timing (needs the instructor's eye).** The block costs ~5 min: the deck and
+`Learning_outcomes.md` now show the convolution stop at 31 min (was 26) and the
+closing stop at 11 min (was 16), which compresses the LeNet→VGG row to ~3 min
+and detection to 8. If that trade is wrong, the cheapest reversal is to drop
+slide 20 (the you-do) and set Quiz 5 Q5 as take-home.
+
+**Propagated.** Deck slides 2 (agenda), 17–20 (new arc), 25 and 35 (recap now
+lists Q5); new figures `fig_channels_in/out/youdo.png` from
+`channels_in()`/`channels_out()` in `tools/make_slide_figures.py` (figure key
+`channels`); `quizzes/src/quiz05_cnns.tex` Q5 + rebuilt PDFs;
+`Learning_outcomes.md` outcomes, timing and assessment lines.
+
+## 2026-09-09 — Quiz 5 Q1 asks for the WHOLE output map at both strides (instructor)
+
+**Decision.** Quiz 5's convolution item no longer asks for a sample of cells
+(three at stride 1, one at stride 2). It now asks the room to **derive the
+entire output matrix twice**: all nine cells of the stride-1 map and all four
+cells of the stride-2 map, each written into a printed answer grid.
+
+**Rationale.** Filling a whole map is where the mechanic actually lands — the
+window has to be re-placed nine times, so weight sharing stops being a claim
+and becomes something they did. It also makes the stride insight self-evident:
+the stride-2 map turns out to be the four corners of the stride-1 map, i.e. no
+new arithmetic at all, which is exactly the "stride is a cost/resolution dial"
+point from the I-do slides. Answer: stride 1 = [[4,3,1],[1,4,3],[5,0,4]],
+stride 2 = [[4,1],[5,4]] (filter = corners + centre, so each cell counts how
+many of those five window positions are 1).
+
+**Propagated.** `quizzes/src/quiz05_cnns.tex` (+ rebuilt student/key PDFs);
+Lecture 5 slide 13 (the you-do) — new figure `fig_conv_youdo.png` now shows
+two empty maps, `3×3` and `2×2`, via a new `conv_walk_two_strides()` in
+`tools/make_slide_figures.py` (figure key `conv_youdo`); slide 13 subtitle,
+callout and notes; slide 12's notes; `Learning_outcomes.md` Lecture 5
+assessment line.
+
+## 2026-09-08 — Slides go PPTX-first: decks are hand-edited, style lives in a real template (instructor)
+
+**Problem.** The YAML-spec → `spec2pptx.py` pipeline made every deck a build
+artifact: adding one paragraph or pasting a screenshot meant a YAML round-trip,
+and any direct PowerPoint edit was destroyed by the next `--all` rebuild. The
+root cause: decks carried NO slide master/theme — all styling was Python
+constants, so PowerPoint could offer no on-style way to add or edit a slide.
+
+**Decision (instructor-approved): flip ownership.**
+
+- **`slides/pptx/` decks are now the source of truth**, edited directly in
+  PowerPoint. The old "never hand-edit slides/pptx" rule is retired.
+- **Style lives in a real PowerPoint template** —
+  `slides/template/msacl_ds301.pptx`, generated by `tools/make_template.py`:
+  course palette as Office theme colors, Avenir Next/Menlo as theme fonts, a
+  styled master, and six layouts (Title Slide, Title and Body, Two Column,
+  Screenshot + Caption, Title Only, Blank), every one carrying the mono
+  eyebrow placeholder. New Slide → pick a layout → already on-style; pasting a
+  screenshot has a dedicated picture-placeholder layout.
+- **`tools/adopt_template.py`** spliced that master/theme into all existing
+  decks (slide content untouched — verified byte-identical text/notes/images;
+  old Office master removed). Re-run it after editing the template to
+  propagate a style change to every deck. Idempotent; skips decks PowerPoint
+  has open (lock file).
+- **`tools/spec2pptx.py` is demoted to a scaffolding tool.** It now builds
+  from the course template into `slides/scaffold/` (git-ignored, never touches
+  slides/pptx/) — used to generate new rule-6 numeric-walkthrough sequences,
+  which are then copy-pasted into the real deck ("Use Destination Theme" is an
+  exact match since both share the master). The ten shipped specs moved to
+  `slides/spec/archive/` as historical record; rebuilding them does NOT
+  reproduce hand edits made after this date.
+- **`tools/pptx2txt.py`** dumps every deck's text/tables/notes to
+  `slides/txt/lectureNN.txt` (committed alongside the .pptx) so deck edits
+  stay git-diffable and exercise-accuracy audits stay grep-able. Regenerate
+  after any deck edit.
+- The overlap/overflow checkers are unchanged and now serve as the lint for
+  hand edits.
+
+**Rationale.** The generator's one guarantee (regenerate everything from text)
+was costing more than it delivered once the decks existed; the natural
+lifecycle of course slides is scaffold once, hand-tune for years. Persistent
+cosmetics belong in the file format's own machinery (theme + master + layouts),
+where a palette change is a master edit that PowerPoint propagates natively.
+
 ## 2026-08-28 — Reproducible uv lab environment + shareable student pack (pyproject-only)
 
 - **Single source of truth = `pyproject.toml` (+ `uv.lock`).** No exported
@@ -348,3 +650,351 @@ of the other lectures. Quiz-numbering updated: only the Lab slots (3/6/9/12/15) 
 skip a quiz; Lecture 10 joins 1,2,4,5,7,8,11,13,14. Deck renamed
 lecture10_data_metrics.yaml → lecture10_imbalanced_data.yaml (18 → 16 slides).
 Learning_outcomes.md and CLAUDE.md updated accordingly.
+
+## 2026-09-10 — Lecture 13: the LLM demo runs on real language, not peptides
+
+Instructor decision, mirroring the 2026-09-09 call that put Lecture 7 on language
+examples: the "LLMs demystified" opening of Lecture 13 was teaching next-token
+prediction on an **amino-acid chain** (`A – C – D – E – ?`, candidates K / R / G).
+That is an analogy standing in for the real thing — a large language model is a
+model of **text** — so the two mechanics slides now use an ordinary English
+sentence out of a lab report:
+
+- **Slide 3 (the core idea, `fig_next_token.png`):** context
+  `"The internal standard was spiked into each ___"` → P(next word)
+  = sample 0.55, vial 0.20, tube 0.15, others 0.10; argmax → **"sample"**.
+- **Slide 4 (the do-it-together, `fig_softmax_next.png`):** the same clause
+  continued, three candidate next **words** "sample" / "vial" / "tube" with logits
+  2 / 1 / 0. **The arithmetic is unchanged** — e²=7.39, e¹=2.72, e⁰=1.00,
+  sum 11.11 → 0.665 / 0.245 / 0.090, argmax → "sample" — so figure, body text and
+  `notes:` still agree exactly (rule 3), and Quiz 13 needed no change (it never
+  referenced the token names).
+
+The MS anchor is kept by the sentence itself (rule 2: it is lab-report prose, not
+a generic corpus sentence), and slide 3's `notes:` now says explicitly that a
+peptide extended one residue at a time is the same game in another vocabulary,
+pointing forward to the landscape tour. **The landscape tour is untouched** —
+Casanovo, Prosit, DIA-NN, DRIAMS and AlphaFold stay peptide/spectrum work, which
+is the point of that block. Tokenization is a Lecture 7 callback, so the
+word-piece framing is already on the deck before this slide.
+
+## 2026-09-10 — Lecture 10 Part B: every treatment taught to depth
+
+Instructor review: the four treatment moves were named and illustrated, but none
+was explained *in depth* — curation asserted a replicate count without showing how
+you find replicates, SMOTE stayed a 2-D toy, focal loss was two points with no
+curve, and curriculum was three text cards. Four fixes, one per move.
+
+1. **Curation → deduplication in embedding space (NEW slide 14).** The curation
+   slide claims "−12 replicate spectra grouped"; this slide is the *mechanism*.
+   A trained CNN's last hidden layer turns each spectrum into a vector (Lecture 7's
+   embeddings, Lecture 5's feature maps), and repeat shots of one isolate land on
+   top of each other. Cosine is the ruler, and it is a **do-it-together**, exact by
+   hand: `cos(a,b) = (a·b)/(|a|·|b|)`; a = (3,4,0) vs b = (6,8,0) → 50/(5·10) =
+   **1.00** (same peak pattern, twice the TIC — a second shot), a vs c = (0,4,3) →
+   16/25 = **0.64** (keep both). Rule: cos ≥ 0.99 → keep one. Payoff: a duplicate
+   split across train/test is leakage, and on a 41-member class it moves the score.
+   Figure `fig_embed_dedup.png`.
+2. **SMOTE → the same blend drawn as real spectra.** The feature-space panel is
+   unchanged (A = (2,6), B = (4,10), λ = 0.5 → (3,8), so Quiz 10 Q4 is untouched),
+   but bin 1 and bin 2 are now named as m/z 2,700 and m/z 5,300 and a second panel
+   shows A, B and the blend AS SPECTRA. A carries a private peak of 7 at m/z 4,100,
+   B one of 5 at m/z 6,800 — and the blend keeps both at **half height** (3.5 and
+   2.5), hatched in red. The non-physical caveat stops being a warning and becomes
+   something the room can see.
+3. **Focal loss → the whole curve.** The left panel is now FL = (1−p)^γ·(−ln p)
+   plotted for **γ = 0 (plain cross-entropy), 1, 2, 5**, with an "already easy"
+   band over p > 0.8 and the two worked points marked on the γ = 0 and γ = 2
+   curves. The exact numbers are unchanged (0.105 → 0.001; 0.693 → 0.173; 6.6× →
+   165×), so figure, callout and notes still agree.
+4. **Curriculum → an actual schedule, with curves.** The three text cards become a
+   20-epoch **schedule**: the sampler anneals from 50% resistant per batch to the
+   true 6% (reaching it at epoch 12, so the model finishes *calibrated* — the fix
+   for the class-weights calibration warning), while hard/borderline spectra are
+   admitted 0% → 100% between epochs 5 and 14, over three named stage bands. A
+   second panel shows curriculum vs shuffled training, **labelled ILLUSTRATIVE on
+   the figure itself** — it is a shape, not measured data — with the footer that
+   both runs see the same 41 resistant spectra.
+
+**Assessment (rule 3).** Deduplication is new taught content, so Quiz 10 **Q3(a)**
+now reads "Junk runs and mislabeled spectra contaminate the training set — and the
+same isolate appears three times," and its key names the cos ≥ 0.99 embedding pass.
+The other three enrichments deepen mechanics already assessed (Q3 c/d, Q4); the
+dedup slide is itself a do-it-together, which rule 8 accepts without a quiz item.
+
+**Timing.** Part B 22 → 25 min for the extra slide and the two curve-reading beats;
+paid for one minute each by the Part A opener (12 → 11), the validation slide
+(5 → 4) and the closing debrief (5 → 4). Total still 60. Deck 20 → 21 slides.
+If running long, the two curve reads compress first — the numbers beside them
+carry the point alone.
+
+## 2026-09-11 — Lecture 13: reinforcement learning, properly (was "touched base")
+
+Instructor decision, overriding the original design (2026-08-30) that RL in
+Lecture 13 is "context and vocabulary, not the destination": the RL block goes
+from 3 slides + a you-do (12 min) to **8 slides (20 min)**, teaching the core
+mechanics. The constraints are unchanged — **no Markov decision processes, no
+policy-gradient math**; the only arithmetic added is one division and one square.
+
+**The four new slides**, in block order:
+- **2 OF 8 · THE ANATOMY** — the two words the loop omits. STATE = where you are;
+  POLICY = the rule mapping state → action, *and the network you are actually
+  training*. Walked on one collision-energy episode: 20 eV +5 → 7 confident ions;
+  25 eV +5 → 5; 30 eV −5 → 7. Punchline: nobody ever said "25 eV is correct" —
+  there is no label, only a reward, which is what separates RL from Lectures 1–11.
+  Deliberately **not** the LC-gradient scenario, which belongs to the Q2 you-do.
+  Figure `fig_rl_anatomy.png`.
+- **4 OF 8 · DELAYED REWARD · DO-IT-TOGETHER** — placed right after AlphaGo, whose
+  win lands 200 moves after the move that earned it. The credit-assignment problem
+  on three method-development cycles paying 0, 0, 1, then the fix: the discounted
+  return `G = r₁ + γ·r₂ + γ²·r₃`. At γ = 0.9, cycle 1 earns 0.9² = **0.81**; cycle
+  2, 0.90; cycle 3, 1.00. γ shown as a dial (0 → 0.00, 0.9 → 0.81, 0.99 → 0.98);
+  **γ = 0.5 is deliberately absent — it is the Q6 answer.** Figure
+  `fig_return_discount.png`.
+- **5 OF 8 · EXPLORE vs EXPLOIT · I-DO** — the choice made every cycle. Two
+  collision energies: A (25 eV) 20 tries / 140 ions → mean **7.0**; B (35 eV) ONE
+  try / 5 ions → mean **5.0**. ε-greedy stated on the slide (rule 3a): with
+  probability ε pick uniformly among K actions, else take the best average, so
+  `P(a specific non-greedy action) = ε/K`. With ε = 0.1, K = 2 → **0.05**, one
+  cycle in 20; over 200 cycles B is tried ~10 times and its true mean turns out to
+  be 8.0, which pure greed would never have found. Figure `fig_explore_ido.png`.
+- **6 OF 8 · YOUR TURN (YOU-DO = Q5)** — same rule, MALDI laser power: A (45%) 30
+  tries / 180 → 6.0, B (60%) 2 tries / 8 → 4.0, ε = 0.2 → P(B) = **0.10**.
+  Figure `fig_explore_youdo.png`.
+
+Existing eyebrows renumbered 1–8 OF 8; the Part Two divider, the agenda bullet,
+the "what you can do now" recap and the Lecture 14 bridge all updated.
+
+**Assessment (rule 3).** Quiz 13 grows from four items to **six**: **Q5** ε-greedy
+(greedy pick, P(B) = 0.2/2 = 0.10, and one sentence on why always-greedy fails)
+and **Q6** the return at γ = 0.5 → 0.25 plus what a small γ does. Both answers are
+exact and reproducible from rules printed on the deck before they are asked.
+
+**Timing — the hour deliberately runs long.** Instructor's call: rather than cut
+another stop, Lecture 13's taught content now runs **~8 minutes past 60**, and the
+instructor decides live what to drop. Every new slide's `notes:` opens with
+**OPTIONAL DEPTH** and the cut order is stated in three places (slide 1, slide 2,
+the divider): drop **explore/exploit + its you-do first** (~6 min, costs Q5), then
+**delayed reward** (~3 min, costs Q6), and **keep the anatomy slide** (~2 min) —
+the rest of the block leans on STATE and POLICY. Explicit instruction in the
+notes: do **not** buy the time out of the landscape tour, which is the payoff of
+the whole course. The quiz sheet itself says "Q5–Q6 go with the reinforcement-
+learning block; if we skip it, leave them blank."
+
+## 2026-09-11 (later) — Lecture 13: classic RL examples, the Markov requirement, cited tour papers, Quiz 13 reshaped
+
+Four instructor decisions, all applied together.
+
+**1 · RL is taught on the CLASSIC examples, not mass-spec ones.** The
+collision-energy tuning story introduced earlier the same day is gone. The
+mechanics now run on the canonical textbook examples, which keeps them from
+being entangled with chemistry:
+- **Gridworld** (3×3, sparse reward): agent starts middle-left, goal top-right,
+  reward 0 every step and **+1** on arrival. The three-move path ↑ → → pays 0, 0, 1
+  and is reused by the discounted-return slide, so one world carries two slides.
+- **Two-armed bandit** for explore vs exploit (the origin of the terms): A played
+  20 times, mean **7.0**; B played once, mean **5.0**; ε = 0.1, K = 2 →
+  P(B) = **0.05**; B's true mean is 8.0. The you-do is **two routes to work**
+  (A: 30 drives, mean 6.0; B: 2 drives, mean 4.0; ε = 0.2 → **0.10**).
+- **An aliased corridor** for the non-Markov counter-example (see the correction below).
+The MS anchor moves to where it belongs: the block's closing you-do, where the
+room formulates a decision from their **own** lab as RL.
+
+**2 · NEW slide — the Markov requirement (RL · 3 OF 9).** A state is Markov when
+the future depends only on it, not on the path that reached it. Gridworld as the
+good case (two routes into the same cell → identical futures); **perceptual
+aliasing** as the broken one. The transferable rule: **fix the STATE, not the
+algorithm**. Assessed in Quiz 13 Q1(f).
+RL block is now **9 slides / ~24 min**; the hour runs ~10 min long by design with
+the optional-depth cut order kept in the notes.
+
+**3 · Every landscape-tour stop now carries its paper.** Full citation with DOI
+on the slide and in the notes, plus that paper's **headline experimental result**
+as the slide figure:
+
+| Tool | Paper | Result on the slide |
+|---|---|---|
+| Casanovo | Yilmaz et al., *Nat Commun* **15**:6427 (2024), doi:10.1038/s41467-024-49731-x, **CC BY** | avg peptide-level precision on the nine-species benchmark: **0.81** vs PointNovo 0.74, DeepNovo 0.70, Novor 0.58; 30 M training spectra; 0.81 → 0.95 on MassIVE-KB |
+| Prosit | Gessulat et al., *Nat Methods* **16**:509–518 (2019), doi:10.1038/s41592-019-0426-7 | 550,000 peptides / 21 M spectra → more IDs at **>10× lower FDR** |
+| DIA-NN | Demichev et al., *Nat Methods* **17**:41–44 (2020), doi:10.1038/s41592-019-0638-x | the Fig. 1b experiment named, and **>35,000 precursors** from a 0.5 h gradient |
+| DRIAMS | Weis et al., *Nat Med* **28**:164–174 (2022), doi:10.1038/s41591-021-01619-9 | AUROC **0.80 / 0.74 / 0.74**; >300 k spectra, >750 k phenotypes, 4 sites; 63 patients → 9 treatments changed, **8 beneficial (89%)** |
+| AlphaFold | Jumper et al., *Nature* **596**:583–589 (2021), doi:10.1038/s41586-021-03819-2, **CC BY** | CASP14 median backbone **0.96 Å** r.m.s.d.₉₅ (95% CI 0.85–1.16) vs **2.8 Å** next best |
+
+**Why the figures are redrawn rather than lifted from the papers.** Licences were
+checked against Europe PMC on 2026-09-11: only Casanovo and AlphaFold are CC BY;
+Prosit and DRIAMS are subscription, and the DIA-NN deposit is free-to-read with
+no reuse licence — so three of the five could not lawfully be redistributed in a
+course deck at all. Rather than mix two journal figures with three substitutes,
+all five panels are **drawn by the course from numbers each paper states** (data
+are not copyrightable), each with a citation strip naming the source and its
+licence status. This also keeps them legible on a projector, which a 6-pt
+multi-panel journal figure is not. The AlphaFold slide's figcaption was updated
+accordingly; its CC0 structure render was displaced by the CASP14 chart. Nothing
+on a panel is invented — where a paper gives no plottable series (DIA-NN), the
+panel names what was measured and quotes the one number the text states.
+
+**4 · Quiz 13 reshaped: six items → five.**
+- **Removed** the old Q1 (place-a-tool-you've-never-seen transfer). Its slide
+  survives as a spoken **do-it-together** at the end of the tour — the reasoning
+  beat is too valuable to lose, it simply is no longer written on the sheet.
+- **Old Q2 → new Q1, now OPEN-ENDED**: formulate a repeated decision from your
+  own lab as RL — agent, actions, state, reward — and say whether the state is
+  Markov. The key marks reasoning, not a single answer, and names the three
+  failure modes to listen for: it is really supervised learning; the reward is
+  gameable (reward hacking); the state is not Markov.
+- Remaining items renumbered Q3→2, Q4→3, Q5→4, Q6→5, and every slide callout
+  that points at a quiz item was updated to match.
+- Q4 and Q5 restated on the classic examples (two routes to work; the gridworld
+  episode). Answers unchanged and still exact: **0.10** and **0.25**.
+
+**Repair note.** The "WHAT YOU CAN DO NOW" recap slide was lost during the
+slide-insert step and has been rebuilt from the deck's own closing-slide layout
+with refreshed content; deck is 31 slides. Overlap, text-overflow and
+figure-overflow checkers all pass.
+
+
+## 2026-09-12 — Lecture 13 corrections (instructor review)
+
+**1 · The non-Markov example was wrong and has been replaced.** The first
+version of the Markov slide used a **cart-pole snapshot** as the failure case.
+That is a bad example: cart-pole's state (position, velocity, angle, angular
+velocity) is *perfectly Markov* — the environment is deterministic physics — so
+presenting cart-pole as "not Markov" muddles a property of the **observation**
+with a property of the **world**. Replaced with the textbook failure,
+**perceptual aliasing**: a five-cell corridor with the goal in the middle, where
+an agent that senses only "wall left? wall right?" reads **cell 2 and cell 4
+identically as `open | open`** yet must go right from one and left from the
+other. No policy can be correct in both. The underlying cell *is* Markov; the
+impoverished observation is not — which makes the real teaching point explicit
+and is now the line along the bottom of the figure: **Markov is a property of
+the state you choose, not of the world.** The slide's speaker notes carry a
+standing instruction not to swap cart-pole back in, with the reason. Frame
+stacking (Atari DQN) is mentioned in the notes as the same fix, correctly framed
+as repairing a partial observation.
+
+**2 · Stale embedded figures — a process failure, now guarded.** Slides 11, 14,
+15 and 16 were still displaying the *old* collision-energy / MALDI-laser-power
+renders: the PNGs under `slides/assets/img/` had been regenerated, but
+regenerating a PNG does **not** update the copy embedded in the `.pptx`, and the
+pictures were never re-inserted. Caught by the instructor. All four re-embedded,
+plus `fig_use_llm_ido.png`. **Standing rule for scripted deck edits: after
+`make_slide_figures.py`, the affected pictures must be re-inserted with
+python-pptx — the text dump will not reveal this, because the dump only records
+`[image: Picture 4]`.** An md5 audit comparing every embedded image against the
+file on disk now exists as the check to run; it found and confirmed zero
+remaining mismatches across all 31 slides.
+
+Two further defects surfaced while fixing the above: the Markov slide's callout
+had been created with only its `MASS SPEC ·` tag run and no body text (the body
+was silently dropped when a two-run template was written into a one-run
+placeholder), and the tag itself was wrong for a gridworld/corridor slide. Both
+fixed; a sweep confirmed no other callout or notes field on the deck is
+truncated.
+
+**3 · Prompting / RAG / fine-tuning now carries one concrete example each**
+(instructor request). The comparison chart gains a fourth column:
+- **Prompting** — "Rewrite this method section in plain English for patients."
+  Nothing to build; the task needs no private data.
+- **RAG** — "What is *today's* acceptance criterion for the cortisol assay?"
+  The retriever pulls the current SOP chunk and the answer cites it, so the
+  answer tracks the SOP without retraining.
+- **Fine-tuning** — "Turn this instrument error log into a plain-language
+  cause", learned from 4,000 past logs: a new *skill*, baked into the weights.
+
+The fine-tuning example is deliberately **not** the house-report-style task —
+that is the Quiz 13 Q2 answer and must stay unseen, so the you-do still forces a
+real discrimination rather than a pattern-match. Footer states the decision
+rule: try prompting first, reach for RAG when the answer must be current or
+private, fine-tune last.
+
+
+## 2026-09-14 — Lecture 13: RLHF gets two more slides
+
+Instructor request: 1–2 slides on RLHF immediately after the RL slides. Added
+**two**, placed directly after the existing `RL · BACK TO LLMS` mapping slide and
+before the block's closing you-do, so the arc reads *RL mechanics → RLHF (map →
+machinery → honest limits) → formulate your own*. RL block renumbered **N OF 11**
+(was N OF 9); deck is 33 slides.
+
+**`RL · 9 OF 11 · RLHF, OPENED UP` — how it is actually built.** The previous
+slide leaves an obvious objection hanging — surely nobody grades every answer by
+hand? This one answers it in three steps, all on one clinical prompt (*"QC failed
+on this run — report the cortisol result?"*):
+1. **Collect preferences** — two sampled answers, a human picks the better one.
+   The teaching point is what the rater does *not* do: no ideal answer written,
+   no score out of ten. Comparisons are easier and far more consistent than
+   absolute scores, which is why RLHF is built on them.
+2. **Train a reward model** — a second network maps (prompt, answer) → one
+   number, trained on those pairs, so it learns only an **ordering**
+   (`score(A) > score(B)`), never an absolute "correct" score. This is what makes
+   the reward **automatic** — no human in the loop per answer.
+3. **Tune the policy** — the LLM *is* the policy (deliberate callback to the
+   anatomy slide's vocabulary): write → score → nudge, repeated. Plus **the
+   leash**: penalise drifting from the starting model, or the policy finds a
+   quirk of the reward model and rides it until it stops writing English.
+
+**`RL · 10 OF 11 · RLHF, HONESTLY` — what it buys and what it breaks.** Left, the
+before/after that makes stages 2–3 concrete: asked for a cortisol reference
+interval, a **base** model merely *continues the text* (it writes more questions
+of the same shape, because continuing text is all it was ever trained to do),
+while the tuned model answers, hedges on collection time and assay, and defers to
+the local range. Right, three failure modes that follow directly from the
+mechanism: **reward hacking** (it optimises what scores well, not what is true —
+hence long, confident, agreeable answers), **sycophancy** (it folds when told it
+is wrong, which is dangerous when a confident colleague misremembers a cutoff),
+and **it does not fix hallucination** (raters reward answers that *look* good, so
+a fluent fabrication can out-score an honest "I don't know" — RLHF can make
+hallucination *more* confident). Closes by restating the unchanged guardrails:
+ground in your documents, require sign-off. Carries a 💬 pair prompt — where
+would a sycophantic assistant be dangerous in your workflow?
+
+**Assessment (rule 3).** No new quiz item. Reward hacking is already the second
+pitfall in the **Q1** key (the open-ended RL formulation), and "preference tuning
+does not fix hallucination" is exactly **Q3**; both slides now name those items
+explicitly so the linkage is live rather than implied. The 💬 prompt is the
+interactive beat.
+
+**Timing — revised cut order.** The RL stop is now ~30 min and the hour runs
+**~16 minutes long by design**. The cut order in the notes (slide 1, the agenda,
+the divider) is now: **first** explore/exploit + its you-do (~6 min, costs Q4),
+**second** delayed reward (~3 min, costs Q5), **third** `RLHF, opened up` (~3
+min). Keep `RLHF, honestly` even when cutting the other RLHF slide — reward
+hacking, sycophancy and the hallucination point are what this audience actually
+has to know, and they close the loop on the hallucination guardrail from the
+first stop. Always keep the anatomy and Markov slides. Still do not buy time out
+of the landscape tour.
+
+
+## 2026-09-14 — Lecture 14 demo: the agent is told what data exists
+
+Bug from a live run: `stage3_react.py` died with
+`FileNotFoundError: .../demos/lecture14_agent/QC-04`.
+
+**Root cause (instructor's diagnosis, and the right one): the agent was never
+told where the data was.** The ReAct system prompt listed the three tools but
+never named a single file, so when asked about run QC-04 the model had nothing to
+put in `Action Input` except the run id, and `load_csv` tried to open a file
+called `QC-04`. The model was not misbehaving — the context was incomplete.
+
+**Fix:** `REACT_SYSTEM` now carries a **data inventory** ahead of the tool list —
+every CSV next to the scripts, with its row count and columns — generated by
+`data_inventory()` reading the directory, so it cannot drift from what is on
+disk. The `load_csv` description names its default. Deliberately *not* included:
+the spec limits or any values, which would let the model reason without calling
+`check_limits` and would undercut the whole point of stage 3.
+
+This is now a teaching beat rather than just a fix — "an agent only knows what
+its context says exists; one that has to guess will guess" is exactly the lesson
+Lecture 14 wants, and the README says so.
+
+**Defence in depth** behind it, so a live demo cannot die mid-sentence: a
+non-existent `load_csv` argument falls back to `qc_runs.csv` and says so in the
+observation; `run_tool` returns `ERROR: ...` for any exception or unknown tool
+name instead of raising (the model then reads the error and retries, which is
+worth narrating); and the ReAct loop caps at `MAX_STEPS = 6`.
+
+**Also:** new `ui.py` gives the demo projector-grade contrast — reverse-video
+chips and coloured gutters for YOU / BOT / OBS / THINK / ACT, `Action` +
+`Action Input` merged into one `tool(arg)` line, the final `Thought:`/`Answer:`
+protocol stripped so the answer reads as an answer. Colour auto-disables off-tty
+and honours `NO_COLOR` / `FORCE_COLOR`.
