@@ -42,3 +42,5 @@ __pycache__/
 .pi/npm/
 ~$*
 *.tmp
+slides/scaffold/
+quizzes/src/*.pdf

@@ -94,11 +94,19 @@ segment ending in a Colab lab.
 ```
 Learning_outcomes.md      Master lecture-by-lecture spec (outcomes + assessments)
 course_plan/DECISIONS.md  Dated log of every course-design decision
-slides/spec/              Slide decks, authored as compact YAML specs (source of truth)
+slides/pptx/              SOURCE OF TRUTH: the decks, edited directly in PowerPoint
+                          (or with python-pptx for scripted/bulk edits)
+slides/template/          Course template msacl_ds301.pptx — the single home of
+                          deck style (theme colors/fonts, master, 6 layouts)
+slides/txt/               Generated text dump of every deck (pptx2txt.py) so deck
+                          edits stay git-diffable and grep-able; commit with the deck
+slides/spec/              YAML specs for SCAFFOLDING new slide sequences;
+                          archive/ holds the shipped decks' historical specs
+slides/scaffold/          Generated scratch decks from specs (git-ignored) —
+                          copy the slides you want into the real deck
 slides/assets/            Shared images for decks (slides/assets/img/)
-slides/pptx/              Generated NATIVE, editable PowerPoint files (never hand-edit)
 slides/html/              DEPRECATED legacy HTML decks; kept only until each
-                          lecture is ported to a YAML spec, then deleted
+                          lecture is ported, then deleted
 labs/solutions/           Authoritative notebooks WITH solutions (author here)
 labs/student/             Generated fill-in-the-blank copies (never hand-edit)
 quizzes/src/              Quiz + answer-key HTML sources
@@ -116,24 +124,39 @@ tools/                    Build scripts (see Toolchain)
 - **Labs:** PyTorch on Google Colab, free tier. Every notebook must run end to
   end in under ~10 minutes on a T4 (or CPU where feasible) and must not require
   sign-ups or credentials to fetch data.
-- **Slides:** authored as a compact **YAML deck spec** (`slides/spec/lectureNN_topic.yaml`)
-  and built to **native, editable PowerPoint** with `tools/spec2pptx.py`
-  (python-pptx). Titles, body, bullets, callouts, pipeline boxes, and numeric
-  grids become real, editable PowerPoint objects — not screenshots. Look is
-  driven by a native theme inside the builder (mirrors the course palette), so
-  there is no CSS and nothing web-like. Slide types: `title`, `bullets`,
-  `two-col`, `image`, `pipeline`, `grid`. Real licensed images live under
-  `slides/assets/img/` and are placed with `image:`; images may carry amber
-  annotation `boxes:` (fractions of the image). Hand-drawn SVG→PNG is used only
-  where rule 6 (numeric mechanics) truly needs richer visuals than a native grid.
-  The old HTML→screenshot pipeline (tools/html2pptx.py) is **retired**.
+- **Slides — PPTX-first (DECISIONS.md 2026-09-08):** the decks in `slides/pptx/`
+  are the **source of truth**, edited directly in PowerPoint; the YAML→rebuild
+  pipeline is retired as owner of the decks. The look lives in a real
+  PowerPoint template, `slides/template/msacl_ds301.pptx` (course palette as
+  theme colors, Avenir Next/Menlo theme fonts, styled master, six layouts:
+  Title Slide, Title and Body, Two Column, Screenshot + Caption, Title Only,
+  Blank — all with the mono eyebrow placeholder). New slides are added in
+  PowerPoint via New Slide → layout and are on-style automatically. To change
+  the style: edit the template (regenerate with `tools/make_template.py` or
+  tweak its master in PowerPoint), then run `tools/adopt_template.py --all` to
+  propagate the master/theme into every deck (slide content is untouched;
+  decks open in PowerPoint are skipped). **After any deck edit, regenerate its
+  text dump with `tools/pptx2txt.py` and commit the `.txt` with the `.pptx`** —
+  that dump is what makes deck changes reviewable and grep-able (rule 3
+  audits). Scripted/bulk edits to decks are done with python-pptx directly.
+  `tools/spec2pptx.py` remains as a **scaffolding tool**: it builds a YAML spec
+  (slide types `title`, `bullets`, `two-col`, `image`, `pipeline`, `grid`)
+  into a scratch deck in `slides/scaffold/` on the same course master — use it
+  to generate new rule-6 numeric-walkthrough sequences, then copy those slides
+  into the real deck ("Use Destination Theme" keeps them exact). It never
+  writes `slides/pptx/`. Real licensed images live under `slides/assets/img/`.
+  Everything stays real, editable PowerPoint objects — never screenshots. The
+  overlap/overflow checkers below are the lint for hand-edited decks.
 - **Quizzes:** HTML source printed to letter-size PDF.
 
 ### Commands
 
 ```
 python tools/strip_solutions.py --all      # regenerate labs/student/ from labs/solutions/
-python tools/spec2pptx.py --all            # regenerate slides/pptx/ from slides/spec/*.yaml
+python tools/pptx2txt.py --all             # regenerate slides/txt/ dumps (run after ANY deck edit)
+python tools/make_template.py              # rebuild slides/template/msacl_ds301.pptx (the style)
+python tools/adopt_template.py --all       # propagate the template's master/theme into every deck
+python tools/spec2pptx.py <spec.yaml>      # scaffold a spec into slides/scaffold/ (never slides/pptx/)
 python tools/check_pptx_overlap.py --all   # sanity-check decks for box overlaps / off-slide content
 python tools/check_text_overflow.py --all  # sanity-check decks for text flowing outside a pptx box
 python tools/check_figure_overflow.py      # sanity-check figures for text flowing outside a drawn box
@@ -154,9 +177,12 @@ pip install -r tools/requirements.txt      # one-time setup
   `labs/handouts/lab02_hints.tex`, and explains why the wrong options fail. A
   lab is not done until its hint sheet exists and compiles. Options must match
   the notebook's actual blanks and its `assert` checks exactly.
-- Slides: `lectureNN_topic.yaml` in `slides/spec/`. Build to native pptx with
-  `tools/spec2pptx.py`; never hand-edit `slides/pptx/`. Title-slide eyebrow
-  template: `MSACL · DS301 Deep Learning · Segment <n> · Lecture <n>`.
+- Slides: `lectureNN_topic.pptx` in `slides/pptx/` is the deck itself — edit it
+  (PowerPoint or python-pptx), never regenerate it from a spec. Keep every
+  slide on the course master's layouts; keep `slides/txt/` in sync
+  (`tools/pptx2txt.py --all`) and run the overlap/overflow checkers after
+  scripted edits. Title-slide eyebrow template:
+  `MSACL · DS301 Deep Learning · Segment <n> · Lecture <n>`.
 - Write "Lecture <n>", never the "L<n>" shorthand ("L2" the regularization
   term is the exception).
 - Quizzes: `quizNN_topic.tex` (source of truth) plus compiled `quizzes/pdf/quizNN_topic.pdf` and `..._key.pdf`. **NN is the lecture number it belongs to, never a sequential count** — e.g. Lecture 7's quiz is `quiz07_...`, "Quiz 7" inside. Only the Lab slots (3/6/9/12/15) have no quiz — numbers are skipped, not renumbered. (Lecture 10 has `quiz10_imbalanced_data.tex`.)
