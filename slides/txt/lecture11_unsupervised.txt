@@ -38,12 +38,12 @@ NOTES:
 --- slide 5 · layout: Title and Body ---
 Autoencoder - Applications
 Dense Autoencoder for denoising
-cc https://www.geeksforgeeks.org/machine-learning/denoising-autoencoders-in-machine-learning/
+source: GeeksforGeeks, “Denoising Autoencoders in Machine Learning” · © GeeksforGeeks; all rights reserved, not for redistribution
 
 --- slide 6 · layout: Title and Body ---
-AUtoencoder
-Denoising Results on NMINST
-cc https://www.geeksforgeeks.org/machine-learning/denoising-autoencoders-in-machine-learning/
+Autoencoder
+Denoising Results on MNIST
+source: GeeksforGeeks, “Denoising Autoencoders in Machine Learning” · © GeeksforGeeks; all rights reserved, not for redistribution
 
 --- slide 7 · layout: Blank ---
 AUTOENCODERS · APPLICATIONS
@@ -191,6 +191,7 @@ NOTES:
 SELF-SUPERVISED · DINO
 DINO: a student learns to match a teacher
 [image: Picture 4]
+source: Caron et al., “Emerging Properties in Self-Supervised Vision Transformers” (ICCV 2021, Meta AI) — Algorithm 1 pseudocode and the DINO self-attention video (github.com/facebookresearch/dino) · © the authors; all rights reserved, not for redistribution
 NOTES:
   The third self-supervised flavor and the one with the striking visual: DINO (self-DIstillation with NO labels, Caron et al. 2021). It runs on the same "two views must agree" principle as contrastive learning, packaged as a student and a teacher. Two augmented views of one input are fed to a STUDENT network and a TEACHER network; the student is trained so its output distribution MATCHES the teacher's on the same input. Where does the teacher come from with no labels? It IS the student — a slow moving average of the student's own weights — so the model teaches itself, which is why it's called self-distillation. The famous, almost eerie payoff (right panel): after this label-free pretraining, the model's ATTENTION spontaneously highlights the main object in an image — unsupervised segmentation, no masks or boxes ever provided. For us the message is the through-line of the whole self-supervised section: augmentation-invariance — make different views of the same thing agree — plus scale is enough to learn powerful, general features without labels, which is how modern foundation models pretrain (forward to Lecture 13). Next slide the room decides WHICH augmentation would corrupt this agreement — a spot-the-break DECIDE, not a definition restated (Quiz 11 Q4).
 

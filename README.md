@@ -10,12 +10,12 @@ Colab lab closing every half-day segment.
 | Path | Contents |
 |---|---|
 | `Learning_outcomes.md` | Master lecture-by-lecture outcomes and assessment map |
-| `slides/` | HTML slide decks (source) and generated PowerPoint files |
+| `slides/` | PowerPoint decks (`pptx/`, the source of truth), their reviewable text dumps (`txt/`), figures and the course template |
 | `labs/` | Colab notebooks — instructor solutions and generated student versions |
 | `quizzes/` | Printable handout quizzes and answer keys |
 | `data/` | Dataset registry and preparation scripts (raw data is not committed) |
 | `references/` | Reading list of landmark deep-learning-in-MS papers |
-| `tools/` | Build scripts (strip solutions, HTML→PPTX, quiz→PDF) |
+| `tools/` | Build scripts (strip solutions, deck text dumps, quiz→PDF, slide figures, deck linters) |
 | `course_plan/` | Design decisions log |
 
 ## Building course materials
@@ -24,16 +24,20 @@ One-time setup:
 
 ```bash
 pip install -r tools/requirements.txt
-playwright install chromium
 ```
 
 Then:
 
 ```bash
 python tools/strip_solutions.py --all   # solution notebooks → student notebooks
-python tools/html2pptx.py --all         # HTML decks → PowerPoint
-python tools/make_quiz_pdf.py --all     # quiz HTML → printable PDFs
+python tools/pptx2txt.py --all          # decks → reviewable text dumps
+tools/build.sh quizzes                  # quiz LaTeX → printable PDFs + answer keys
 ```
 
-Generated outputs (`labs/student/`, `slides/pptx/`, `quizzes/pdf/`) are never
-hand-edited — always edit the source and rebuild.
+The decks in `slides/pptx/` are the SOURCE OF TRUTH: edit them directly in
+PowerPoint (or with python-pptx) and commit the regenerated `slides/txt/` dump
+alongside each one. `slides/spec/` is scaffolding only — `tools/spec2pptx.py`
+writes to `slides/scaffold/`, never to `slides/pptx/`.
+
+Generated outputs (`labs/student/`, `quizzes/pdf/`) are never hand-edited —
+always edit the source and rebuild. See `CLAUDE.md` for the full toolchain.

@@ -28,7 +28,7 @@ COLOUR = _colour_enabled()
 WIDTH = min(shutil.get_terminal_size((100, 24)).columns, 100)
 
 # 256-colour codes, chosen to stay legible on both light and dark terminals.
-BLUE, GREEN, AMBER, PURPLE, GREY, RED = 39, 41, 214, 177, 245, 203
+BLUE, GREEN, AMBER, PURPLE, GREY = 39, 41, 214, 177, 245
 PAPER = 231  # near-white, for chip text
 
 
@@ -79,7 +79,7 @@ def user(text):
 
 
 def bot(text):
-    _block("BOT", RED, text, (1,))
+    _block("BOT", GREEN, text, (1,))
 
 
 def obs(text):

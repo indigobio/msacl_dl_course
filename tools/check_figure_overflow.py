@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sanity-check the figure toolkit for text that overflows a hand-drawn box.
+r"""Sanity-check the figure toolkit for text that overflows a hand-drawn box.
 
 This is a DIFFERENT bug from the PowerPoint-box overflow checked by
 tools/check_text_overflow.py. Here the offending text is baked INTO a matplotlib

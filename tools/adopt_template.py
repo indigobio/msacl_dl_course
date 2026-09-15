@@ -178,8 +178,14 @@ def adopt(deck_path: Path) -> bool:
         id_lst.remove(e)
         pres_part.rels.pop(e_rId)
 
-    prs.save(str(deck_path))
-    verify(deck_path, before)
+    staged = deck_path.with_suffix(deck_path.suffix + ".adopting")
+    try:
+        prs.save(str(staged))
+        verify(staged, before)
+    except BaseException:
+        staged.unlink(missing_ok=True)
+        raise
+    staged.replace(deck_path)
     print(f"adopted {deck_path.name}: {len(before)} slides -> master "
           f"'{MASTER_NAME}' ({len(by_name)} layouts)")
     return True

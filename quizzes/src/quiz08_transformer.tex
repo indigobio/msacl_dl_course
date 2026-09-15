@@ -178,54 +178,54 @@ scratch} --- it would overfit or collapse toward the majority class --- whereas 
 already learned general spectral features from the 2 million spectra}, so you only need to fit a small head,
 which 800 labels can do well. (Either reason earns full credit.)}
 
-% % =========================== Q5 ===========================
-% \textbf{5. Diffusion: add the noise, then predict it.}\; {\small A diffusion model is trained by
-% adding a \emph{known} amount of noise to a real image and asking the model to predict exactly that
-% noise. \emph{The rules:} at this noise level the noisy image is
-% $x_t = 0.8\,x_0 + 0.6\,\varepsilon$, element by element; the score is mean-squared error,
-% $\text{MSE} = \text{mean of }(\hat{\varepsilon}-\varepsilon)^2$. Here is one 4-pixel patch:}
+% =========================== Q5 ===========================
+\textbf{5. Diffusion: add the noise, then predict it.}\; {\small A diffusion model is trained by
+adding a \emph{known} amount of noise to a real image and asking the model to predict exactly that
+noise. \emph{The rules:} at this noise level the noisy image is
+$x_t = 0.8\,x_0 + 0.6\,\varepsilon$, element by element; the score is mean-squared error,
+$\text{MSE} = \text{mean of }(\hat{\varepsilon}-\varepsilon)^2$. Here is one 4-pixel patch:}
 
-% \vspace{4pt}
-% \begin{center}
-% \gr\begin{tabular}{r|G|G|G|G|}
-% \cline{2-5}
-% clean patch $x_0$ & 1 & $-1$ & 0.5 & 0 \\\cline{2-5}
-% noise added $\varepsilon$ & 0 & 0.5 & $-0.5$ & 1 \\\cline{2-5}
-% model's guess $\hat{\varepsilon}$ & 0.2 & 0.4 & $-0.3$ & 0.7 \\\cline{2-5}
-% \end{tabular}
-% \end{center}
+\vspace{4pt}
+\begin{center}
+\gr\begin{tabular}{r|G|G|G|G|}
+\cline{2-5}
+clean patch $x_0$ & 1 & $-1$ & 0.5 & 0 \\\cline{2-5}
+noise added $\varepsilon$ & 0 & 0.5 & $-0.5$ & 1 \\\cline{2-5}
+model's guess $\hat{\varepsilon}$ & 0.2 & 0.4 & $-0.3$ & 0.7 \\\cline{2-5}
+\end{tabular}
+\end{center}
 
-% \vspace{3pt}
-% \textbf{(a)} Fill in the noisy patch $x_t = 0.8\,x_0 + 0.6\,\varepsilon$:
+\vspace{3pt}
+\textbf{(a)} Fill in the noisy patch $x_t = 0.8\,x_0 + 0.6\,\varepsilon$:
 
-% \vspace{2pt}
-% \quad $x_t = ($ \rb{$0.8$}{1.3cm} , \rb{$-0.5$}{1.3cm} , \rb{$0.1$}{1.3cm} , \rb{$0.6$}{1.3cm} $)$
+\vspace{2pt}
+\quad $x_t = ($ \rb{$0.8$}{1.3cm} , \rb{$-0.5$}{1.3cm} , \rb{$0.1$}{1.3cm} , \rb{$0.6$}{1.3cm} $)$
 
-% \work{1.2cm}
+\work{1.2cm}
 
-% \textbf{(b)} Score the model's guess: $\text{MSE} = $ \rb{$0.045$}{2cm}
+\textbf{(b)} Score the model's guess: $\text{MSE} = $ \rb{$0.045$}{2cm}
 
-% \work{1.2cm}
+\work{1.2cm}
 
-% \textbf{(c)} In one line: which half of diffusion is \emph{learned} --- adding the noise, or removing it?
+\textbf{(c)} In one line: which half of diffusion is \emph{learned} --- adding the noise, or removing it?
 
-% \work{0.8cm}
-% \ifsolution\else\blk{\linewidth}\fi
+\work{0.8cm}
+\ifsolution\else\blk{\linewidth}\fi
 
-% \keybox{(a) Element by element, $0.8x_0 + 0.6\varepsilon$: $0.8(1)+0.6(0)=\mathbf{0.8}$;\;
-% $0.8(-1)+0.6(0.5)=-0.8+0.3=\mathbf{-0.5}$;\; $0.8(0.5)+0.6(-0.5)=0.4-0.3=\mathbf{0.1}$;\;
-% $0.8(0)+0.6(1)=\mathbf{0.6}$.\\[3pt]
-% (b) Errors $\hat{\varepsilon}-\varepsilon = (0.2,\,-0.1,\,0.2,\,-0.3)$; squares
-% $0.04,\ 0.01,\ 0.04,\ 0.09$; sum $0.18$, so $\text{MSE} = 0.18/4 = \mathbf{0.045}$. In code that whole
-% line is \texttt{loss = F.mse\_loss(noise\_pred, noise)} --- your Lab 3 blank.\\[3pt]
-% (c) \textbf{Removing} it. Adding noise is a fixed recipe with no weights in it at all --- we can do it
-% with a formula --- so the network's only job is to predict (and therefore subtract) the noise. Run that
-% learned step from pure static, over and over, and a brand-new image appears: that is generation. And
-% because we \emph{added} the noise ourselves, we already know the right answer --- no human labels
-% needed.}
+\keybox{(a) Element by element, $0.8x_0 + 0.6\varepsilon$: $0.8(1)+0.6(0)=\mathbf{0.8}$;\;
+$0.8(-1)+0.6(0.5)=-0.8+0.3=\mathbf{-0.5}$;\; $0.8(0.5)+0.6(-0.5)=0.4-0.3=\mathbf{0.1}$;\;
+$0.8(0)+0.6(1)=\mathbf{0.6}$.\\[3pt]
+(b) Errors $\hat{\varepsilon}-\varepsilon = (0.2,\,-0.1,\,0.2,\,-0.3)$; squares
+$0.04,\ 0.01,\ 0.04,\ 0.09$; sum $0.18$, so $\text{MSE} = 0.18/4 = \mathbf{0.045}$. In code that whole
+line is \texttt{loss = F.mse\_loss(noise\_pred, noise)} --- your Lab 3 blank.\\[3pt]
+(c) \textbf{Removing} it. Adding noise is a fixed recipe with no weights in it at all --- we can do it
+with a formula --- so the network's only job is to predict (and therefore subtract) the noise. Run that
+learned step from pure static, over and over, and a brand-new image appears: that is generation. And
+because we \emph{added} the noise ourselves, we already know the right answer --- no human labels
+needed.}
 
-% \vspace{4pt}\hrule\vspace{3pt}
-% {\small\itshape \ifsolution Answer key.\else Keep this sheet --- Lab 3 fine-tunes a real pretrained
-% generator, and your Q5 line is the lab's own training objective.\fi}
+\vspace{4pt}\hrule\vspace{3pt}
+{\small\itshape \ifsolution Answer key.\else Keep this sheet --- Lab 3 fine-tunes a real pretrained
+generator, and your Q5 line is the lab's own training objective.\fi}
 
 \end{document}

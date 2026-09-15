@@ -97,7 +97,9 @@ course_plan/DECISIONS.md  Dated log of every course-design decision
 slides/pptx/              SOURCE OF TRUTH: the decks, edited directly in PowerPoint
                           (or with python-pptx for scripted/bulk edits)
 slides/template/          Course template msacl_ds301.pptx — the single home of
-                          deck style (theme colors/fonts, master, 6 layouts)
+                          deck style (theme colors/fonts, master, 6 layouts);
+                          layout_preview.pptx is a hand-kept visual reference of
+                          all six layouts, not a build artifact
 slides/txt/               Generated text dump of every deck (pptx2txt.py) so deck
                           edits stay git-diffable and grep-able; commit with the deck
 slides/spec/              YAML specs for SCAFFOLDING new slide sequences;
@@ -109,7 +111,8 @@ slides/html/              DEPRECATED legacy HTML decks; kept only until each
                           lecture is ported, then deleted
 labs/solutions/           Authoritative notebooks WITH solutions (author here)
 labs/student/             Generated fill-in-the-blank copies (never hand-edit)
-quizzes/src/              Quiz + answer-key HTML sources
+quizzes/src/              Quiz LaTeX sources (one .tex per quiz; the answer key
+                          is the same file built with \showsolutions)
 quizzes/pdf/              Generated printable PDFs (never hand-edit)
 data/README.md            Dataset registry: source, license, size, prep notes
 data/prep/                Scripts that slice raw datasets into Colab-sized files
@@ -147,7 +150,8 @@ tools/                    Build scripts (see Toolchain)
   writes `slides/pptx/`. Real licensed images live under `slides/assets/img/`.
   Everything stays real, editable PowerPoint objects — never screenshots. The
   overlap/overflow checkers below are the lint for hand-edited decks.
-- **Quizzes:** HTML source printed to letter-size PDF.
+- **Quizzes:** one LaTeX source per quiz, built to a letter-size student PDF and
+  an answer key by `tools/build.sh`.
 
 ### Commands
 
@@ -160,7 +164,9 @@ python tools/spec2pptx.py <spec.yaml>      # scaffold a spec into slides/scaffol
 python tools/check_pptx_overlap.py --all   # sanity-check decks for box overlaps / off-slide content
 python tools/check_text_overflow.py --all  # sanity-check decks for text flowing outside a pptx box
 python tools/check_figure_overflow.py      # sanity-check figures for text flowing outside a drawn box
-python tools/make_quiz_pdf.py --all        # regenerate quizzes/pdf/ from quizzes/src/
+tools/build.sh quizzes                     # regenerate quizzes/pdf/ from quizzes/src/*.tex
+tools/build.sh handouts                    # compile labs/handouts/*.tex
+tools/build.sh pack                        # regenerate the student_pack
 pip install -r tools/requirements.txt      # one-time setup
 ```
 

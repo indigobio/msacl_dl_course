@@ -88,14 +88,14 @@ NOTES:
 --- slide 11 · layout: Title and Body ---
 Self-Attention - QKV
 Generating QKV
-cc https://jalammar.github.io/illustrated-transformer/
+source: Jay Alammar, “The Illustrated Transformer” (jalammar.github.io) · © the author; all rights reserved, not for redistribution
 
 --- slide 12 · layout: Title and Body ---
-Self-Attention - Heap Map
+Self-Attention - Heat Map
 Compute Similarity (dot product)
 
 --- slide 13 · layout: Title and Body ---
-Self-Attention - Heap Map
+Self-Attention - Heat Map
 Compute Similarity (dot product)
 [image: Picture 6]
 

@@ -17,7 +17,13 @@ import urllib.error
 import urllib.request
 
 
-def claude(messages, retries=4):
+# An empty assistant turn would be appended to the running history and rejected
+# with HTTP 400 on the NEXT call, killing the demo mid-room, so claude() never
+# returns one.
+NO_REPLY = "(no reply from the model — moving on)"
+
+
+def claude(messages, retries=4, stop=None):
     base = os.environ.get("ANTHROPIC_BASE_URL", "https://api.anthropic.com").rstrip("/")
     key = os.environ.get("ANTHROPIC_API_KEY", "")
     model = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-5")
@@ -28,12 +34,11 @@ def claude(messages, retries=4):
     system = "".join(m["content"] for m in messages if m["role"] == "system")
     convo = [{"role": m["role"], "content": m["content"]}
              for m in messages if m["role"] != "system"]
-    payload = {
-        "model": model,
-        "max_tokens": 1024,
-        "messages": convo,
-        "stop_sequences": ["Observation:"],   # let OUR loop supply the observation (stage 3)
-    }
+
+    # claude-sonnet-5 rejects a temperature argument, so none is sent.
+    payload = {"model": model, "max_tokens": 1024, "messages": convo}
+    if stop:
+        payload["stop_sequences"] = stop
     if system:
         payload["system"] = system
     req = urllib.request.Request(
@@ -46,7 +51,7 @@ def claude(messages, retries=4):
         try:
             with urllib.request.urlopen(req, timeout=60) as resp:
                 data = json.loads(resp.read())
-                return "".join(b.get("text", "") for b in data["content"]).strip()
+                return "".join(b.get("text", "") for b in data["content"]).strip() or NO_REPLY
         except urllib.error.HTTPError as e:
             detail = e.read().decode(errors="replace")[:300]
             # 429 = rate limit / no credit; 500/503/529 = transient. Back off and retry.
