@@ -1052,3 +1052,47 @@ slide and the projector show the same thing.
 **Checks:** overlap 0 fail across all 10 decks; text overflow 0 for lecture 14;
 figure overflow PASS across 169 renders; md5 audit confirms every embedded image
 matches its source file.
+
+
+## 2026-09-16 — Lecture 10: data augmentation gets its own slide, after curation
+
+Instructor request. Augmentation had been three words on the class-weights slide
+("oversampling repeats those 41, augmentation makes new VIEWS of them"). It is
+now `PART B · 2 · AUGMENTATION · DO-IT-TOGETHER`, placed directly after the two
+curation slides; the rest of Part B renumbers to 3–6.
+
+**Why there.** Curation and augmentation are the two moves that work on the DATA
+rather than on the training, so they belong together. More importantly the slide
+establishes the **validity rule** — a transform is legitimate only if (1) the
+instrument could have produced it and (2) it does not change the label — which is
+exactly what SMOTE breaks two slides later. Teaching the rule first makes the
+SMOTE caveat land as a violation of something the room already owns, rather than
+as an isolated warning.
+
+**The figure** shows one real resistant spectrum and four views of it — m/z
+jitter ±0.1%, intensity ×0.9, added baseline and noise — each captioned with the
+physical reason it is plausible. The jitter is drawn exaggerated so it reads from
+the back, and the caption says so rather than implying ±0.1% looks like that.
+
+**The do-it-together arithmetic is exact:** 41 resistant spectra × 8 views = 328,
+so the batch imbalance moves from 697:41 ≈ 17:1 to 697:328 ≈ 2.1:1 — the largest
+single change to effective imbalance anywhere in Part B, at no data cost. Two
+limits stated on the slide: augment **after** the split (views of one isolate
+scattered across train and test is precisely the leakage the embedding-dedup pass
+removes — a direct callback), and it is still 41 isolates, so the confidence
+interval is set by the 41 and not the 328.
+
+**Corrected a false claim while here.** The class-weights notes told the
+instructor that augmentation "is exactly Lab 2's move". It is not — `grep` over
+`labs/solutions/` finds no augmentation in Lab 2 at all. It is **Lab 5 Track A,
+Blank A2** (`augment`, an m/z-jitter function whose asserts check it keeps the
+shape and changes the values). Fixed, and that lab checkpoint is the new slide's
+rule-3 assessment, so no Quiz 10 item was added — consistent with the earlier
+decision to leave Quiz 10's coverage alone.
+
+Agenda updated (Part B 25 → 29 min); the reweighting slide drops its augmentation
+sentence and back-references the new slide instead of re-explaining it.
+
+**Checks:** overlap 0 fail across all 10 decks; text overflow 0 for lecture 10;
+figure overflow PASS across 170 renders; md5 audit confirms every embedded image
+matches its source.

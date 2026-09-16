@@ -5114,6 +5114,108 @@ def embedding_dedup(name="fig_embed_dedup.png"):
     _save(fig, name)
 
 
+# ---- Lecture 10: data augmentation, after curation (instructor, 2026-09-16) -
+# Augmentation was only a phrase on the class-weights slide. It now gets its own
+# beat, placed with curation because it is the other move that works on the DATA
+# rather than on the training. The validity rule is what makes it MS-specific:
+# a transform is legitimate only if the INSTRUMENT could have produced the
+# result and the LABEL is unchanged — which is exactly what separates it from
+# SMOTE two slides later. Numbers are exact: 41 x 8 = 328, and 697/328 = 2.1.
+AUG_MZ = [2700, 4100, 5300, 6800]
+AUG_BASE = [2.0, 7.0, 6.0, 3.0]
+AUG_N_VIEWS = 8
+AUG_N_RES, AUG_N_SUS = 41, 697
+
+
+def augmentation(name="fig_augmentation.png"):
+    """Four views of ONE resistant spectrum, each a transform an instrument
+    could plausibly have produced, beside the rule that makes a transform
+    legitimate and the do-it-together arithmetic (41 x 8 = 328 views, still 41
+    isolates, imbalance 17:1 -> 2.1:1)."""
+    fig, (axl, axr) = plt.subplots(1, 2, figsize=(13.2, 5.4),
+                                   gridspec_kw={"width_ratios": [1.12, 1]})
+    axl.set_xlim(0, 10); axl.set_ylim(0, 10); axl.axis("off")
+    axl.text(5.0, 9.62, "one real resistant spectrum → four views of it",
+             ha="center", color=INK, fontsize=12.5, fontweight="bold")
+
+    rows = [
+        ("the original", AUG_BASE, 0, 0.0, TEAL, "the isolate you actually ran"),
+        ("m/z jitter  ±0.1%", AUG_BASE, 90, 0.0, AMBER,
+         "the mass axis drifts run to run  ·  shift shown exaggerated"),
+        ("intensity ×0.9", [v * 0.9 for v in AUG_BASE], 0, 0.0, AMBER,
+         "ionisation efficiency varies"),
+        ("+ baseline & noise", AUG_BASE, -60, 0.55, AMBER,
+         "a noisier acquisition of the same colony"),
+    ]
+    rng = np.random.default_rng(3)
+    for k, (lab, vals, shift, base, col, why) in enumerate(rows):
+        y0 = 7.55 - k * 1.92
+        axl.text(0.15, y0 + 0.92, lab, ha="left", va="center",
+                 color=col if col is TEAL else ROI_INK, fontsize=10.4,
+                 fontweight="bold")
+        axl.text(9.85, y0 + 0.92, why, ha="right", va="center", color=MUTED,
+                 fontsize=8.6, style="italic")
+        axl.plot([2.1, 9.85], [y0, y0], color=HAIRLINE, lw=1.2)
+        if base:                                   # a raised, wobbling baseline
+            xs = np.linspace(2.1, 9.85, 140)
+            axl.plot(xs, y0 + base * 0.10 + 0.035 * rng.normal(size=xs.size),
+                     color=MUTED, lw=0.9)
+        for mz, v in zip(AUG_MZ, vals):
+            x = 2.1 + (mz + shift - 2400) / 4800 * 7.6
+            axl.vlines(x, y0 + base * 0.10, y0 + base * 0.10 + v * 0.115,
+                       color=col, lw=3.4, zorder=3)
+    axl.text(5.9, 0.28, "m/z  →", ha="center", color=MUTED, fontsize=9.5)
+    axl.text(0.15, 0.28, "every view is still\nsomething the instrument\n"
+             "could have produced", ha="left", va="center", color=TEAL,
+             fontsize=9.0, fontweight="bold", linespacing=1.45)
+
+    axr.set_xlim(0, 10); axr.set_ylim(0, 10); axr.axis("off")
+    axr.add_patch(FancyBboxPatch((0.2, 7.55), 9.6, 2.15,
+                  boxstyle="round,pad=0.05,rounding_size=0.1",
+                  facecolor=TEAL_SOFT, edgecolor=TEAL, lw=2.4))
+    axr.text(5.0, 9.28, "a transform is legitimate only if", ha="center",
+             va="center", color=TEAL, fontsize=11.2, fontweight="bold")
+    axr.text(5.0, 8.30,
+             "1.  the INSTRUMENT could have produced it, and\n"
+             "2.  it does not change the LABEL",
+             ha="center", va="center", color=INK, fontsize=10.2,
+             linespacing=1.7)
+
+    axr.text(5.0, 6.95, "do it together — what does that buy?", ha="center",
+             color=INK, fontsize=11.2, fontweight="bold")
+    lines = [("resistant spectra you have", f"{AUG_N_RES}", INK),
+             (f"× {AUG_N_VIEWS} augmented views each",
+              f"= {AUG_N_RES * AUG_N_VIEWS}", TEAL),
+             ("imbalance in the batch",
+              f"{AUG_N_SUS} : {AUG_N_RES * AUG_N_VIEWS}  ≈  2.1 : 1", TEAL)]
+    y = 6.15
+    for lab, val, col in lines:
+        axr.add_patch(FancyBboxPatch((0.2, y - 0.56), 9.6, 1.02,
+                      boxstyle="round,pad=0.03,rounding_size=0.08",
+                      facecolor=WHITE, edgecolor=col if col is TEAL else HAIRLINE,
+                      lw=2.0 if col is TEAL else 1.4))
+        axr.text(0.6, y - 0.05, lab, ha="left", va="center", color=INK,
+                 fontsize=10)
+        axr.text(9.4, y - 0.05, val, ha="right", va="center", color=col,
+                 fontsize=11.5, fontweight="bold")
+        y -= 1.18
+    axr.text(5.0, 2.62, "(was 697 : 41 ≈ 17 : 1)", ha="center", color=MUTED,
+             fontsize=9.4, style="italic")
+
+    axr.add_patch(FancyBboxPatch((0.2, 0.18), 9.6, 2.02,
+                  boxstyle="round,pad=0.05,rounding_size=0.1",
+                  facecolor="#F9EDEC", edgecolor=RED, lw=2.4))
+    axr.text(5.0, 1.82, "augment AFTER the split — never before",
+             ha="center", va="center", color=RED, fontsize=11, fontweight="bold")
+    axr.text(5.0, 0.90,
+             "views of one isolate landing in train AND test is the\n"
+             "same leakage curation just removed — and it still\n"
+             "counts 41 isolates, not 328. No new biology.",
+             ha="center", va="center", color=INK, fontsize=9.4,
+             linespacing=1.6)
+    fig.subplots_adjust(wspace=0.14)
+    _save(fig, name)
+
 def class_weight_family(name="fig_class_weights.png"):
     """Make the rare class count, worked: balanced class weights on the real
     DRIAMS split (w = N/(K·n_c) → 9.00 and 0.53, a ratio of exactly 17), then
@@ -5317,6 +5419,7 @@ def _lecture10_figures():
     treatment_menu()
     curation_pass()
     embedding_dedup()
+    augmentation()
     class_weight_family()
     smote_interpolation("ido", "fig_smote.png")
     focal_loss_volume()
@@ -9047,6 +9150,7 @@ FUNCS = {
                                "ido", "fig_smote.png"),
                            focal_loss_volume(), curriculum_learning()),
     "embed_dedup": embedding_dedup,
+    "augmentation": augmentation,
     "roc_intro": lambda: (score_threshold_sweep(), roc_curve_intro(),
                           pr_curve_intro(), roc_pr_curves()),
     # ---- Lecture 5 ----
