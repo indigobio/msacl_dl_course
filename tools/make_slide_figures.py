@@ -5114,106 +5114,130 @@ def embedding_dedup(name="fig_embed_dedup.png"):
     _save(fig, name)
 
 
-# ---- Lecture 10: data augmentation, after curation (instructor, 2026-09-16) -
-# Augmentation was only a phrase on the class-weights slide. It now gets its own
-# beat, placed with curation because it is the other move that works on the DATA
-# rather than on the training. The validity rule is what makes it MS-specific:
-# a transform is legitimate only if the INSTRUMENT could have produced the
-# result and the LABEL is unchanged — which is exactly what separates it from
-# SMOTE two slides later. Numbers are exact: 41 x 8 = 328, and 697/328 = 2.1.
-AUG_MZ = [2700, 4100, 5300, 6800]
-AUG_BASE = [2.0, 7.0, 6.0, 3.0]
+# ---- Lecture 10: augmentation, taught on a PICTURE (instructor, 2026-09-16) -
+# The first version illustrated augmentation on a stem spectrum and the
+# instructor was right that it does not read: a 2% m/z shift looks like nothing
+# from the back of a room. Augmentation is a fundamentally VISUAL idea, so the
+# concept is now carried by a real microscopy image where every transform is
+# unmistakable and the label ("a band neutrophil") is obviously preserved — and
+# where one over-aggressive crop obviously destroys it. The MS transfer (m/z
+# jitter, intensity, baseline) is stated in one line and the arithmetic stays on
+# the real DRIAMS split, so the generic picture is the bridge, not the payload
+# (rule 2).
+SMEAR_SRC = "img_blood_smear.jpg"
+SMEAR_CREDIT = ("blood smear · Bobjgalindo, “Band neutrophil”, Wikimedia "
+                "Commons, CC BY-SA 4.0 — transforms applied by the course")
 AUG_N_VIEWS = 8
 AUG_N_RES, AUG_N_SUS = 41, 697
 
 
+def _smear_views(px=230):
+    """The original plus five transforms, all cropped from a larger source so a
+    rotation never leaves black corners. Returns (label, image, ok) triples."""
+    from PIL import Image, ImageEnhance
+    src = Image.open(IMG / SMEAR_SRC).convert("RGB")
+    n = src.size[0]
+    m = int(px * 1.05)                       # centre-crop window on the source
+
+    def centre(im, side=m):
+        w, h = im.size
+        l, t = (w - side) // 2, (h - side) // 2
+        return im.crop((l, t, l + side, t + side)).resize((px, px), Image.LANCZOS)
+
+    original = centre(src)
+    flipped = centre(src.transpose(Image.FLIP_LEFT_RIGHT))
+    rotated = centre(src.rotate(35, resample=Image.BICUBIC))
+    zoomed = centre(src.crop((n // 4, n // 4, 3 * n // 4, 3 * n // 4)))
+    dim = centre(ImageEnhance.Brightness(ImageEnhance.Color(src).enhance(0.6))
+                 .enhance(0.72))
+    dim = Image.fromarray(np.clip(np.asarray(dim).astype(float)
+                                  + np.random.default_rng(2).normal(0, 11, (px, px, 3)),
+                                  0, 255).astype("uint8"))
+    # the counter-example: crop a corner that contains no neutrophil at all
+    corner = src.crop((0, 0, int(n * 0.30), int(n * 0.30))).resize((px, px),
+                                                                   Image.LANCZOS)
+    return [("the original", original, True),
+            ("flip", flipped, True),
+            ("rotate 35°", rotated, True),
+            ("zoom / crop", zoomed, True),
+            ("dim + noise", dim, True),
+            ("crop too hard", corner, False)]
+
+
 def augmentation(name="fig_augmentation.png"):
-    """Four views of ONE resistant spectrum, each a transform an instrument
-    could plausibly have produced, beside the rule that makes a transform
-    legitimate and the do-it-together arithmetic (41 x 8 = 328 views, still 41
-    isolates, imbalance 17:1 -> 2.1:1)."""
-    fig, (axl, axr) = plt.subplots(1, 2, figsize=(13.2, 5.4),
-                                   gridspec_kw={"width_ratios": [1.12, 1]})
-    axl.set_xlim(0, 10); axl.set_ylim(0, 10); axl.axis("off")
-    axl.text(5.0, 9.62, "one real resistant spectrum → four views of it",
+    """Augmentation on a real microscopy image: five transforms that all keep
+    the label ('a band neutrophil') and one that destroys it, beside the rule,
+    the transfer to spectra, and the exact do-it-together arithmetic."""
+    views = _smear_views()
+    fig = plt.figure(figsize=(13.4, 5.6))
+    gsL = fig.add_gridspec(2, 3, left=0.035, right=0.545, top=0.87, bottom=0.185,
+                           wspace=0.07, hspace=0.46)
+    for k, (lab, im, ok) in enumerate(views):
+        ax = fig.add_subplot(gsL[k // 3, k % 3])
+        ax.imshow(im)
+        ax.set_xticks([]); ax.set_yticks([])
+        for sp in ax.spines.values():
+            sp.set_edgecolor(TEAL if ok else RED)
+            sp.set_linewidth(2.6 if k == 0 or not ok else 1.8)
+        ax.set_title(lab, fontsize=9.4, color=INK if ok else RED,
+                     fontweight="bold", pad=3.5)
+        ax.text(0.5, -0.11, "✓ still a band neutrophil" if ok
+                else "✗ the cell is gone — label destroyed",
+                transform=ax.transAxes, ha="center", va="top",
+                color=TEAL if ok else RED, fontsize=7.8,
+                fontweight="bold" if not ok else "normal")
+    fig.text(0.29, 0.925, "one labelled image → five more of it",
              ha="center", color=INK, fontsize=12.5, fontweight="bold")
+    fig.text(0.29, 0.035, SMEAR_CREDIT, ha="center", color=MUTED, fontsize=6.8)
 
-    rows = [
-        ("the original", AUG_BASE, 0, 0.0, TEAL, "the isolate you actually ran"),
-        ("m/z jitter  ±0.1%", AUG_BASE, 90, 0.0, AMBER,
-         "the mass axis drifts run to run  ·  shift shown exaggerated"),
-        ("intensity ×0.9", [v * 0.9 for v in AUG_BASE], 0, 0.0, AMBER,
-         "ionisation efficiency varies"),
-        ("+ baseline & noise", AUG_BASE, -60, 0.55, AMBER,
-         "a noisier acquisition of the same colony"),
-    ]
-    rng = np.random.default_rng(3)
-    for k, (lab, vals, shift, base, col, why) in enumerate(rows):
-        y0 = 7.55 - k * 1.92
-        axl.text(0.15, y0 + 0.92, lab, ha="left", va="center",
-                 color=col if col is TEAL else ROI_INK, fontsize=10.4,
-                 fontweight="bold")
-        axl.text(9.85, y0 + 0.92, why, ha="right", va="center", color=MUTED,
-                 fontsize=8.6, style="italic")
-        axl.plot([2.1, 9.85], [y0, y0], color=HAIRLINE, lw=1.2)
-        if base:                                   # a raised, wobbling baseline
-            xs = np.linspace(2.1, 9.85, 140)
-            axl.plot(xs, y0 + base * 0.10 + 0.035 * rng.normal(size=xs.size),
-                     color=MUTED, lw=0.9)
-        for mz, v in zip(AUG_MZ, vals):
-            x = 2.1 + (mz + shift - 2400) / 4800 * 7.6
-            axl.vlines(x, y0 + base * 0.10, y0 + base * 0.10 + v * 0.115,
-                       color=col, lw=3.4, zorder=3)
-    axl.text(5.9, 0.28, "m/z  →", ha="center", color=MUTED, fontsize=9.5)
-    axl.text(0.15, 0.28, "every view is still\nsomething the instrument\n"
-             "could have produced", ha="left", va="center", color=TEAL,
-             fontsize=9.0, fontweight="bold", linespacing=1.45)
-
+    axr = fig.add_axes([0.575, 0.05, 0.405, 0.90])
     axr.set_xlim(0, 10); axr.set_ylim(0, 10); axr.axis("off")
-    axr.add_patch(FancyBboxPatch((0.2, 7.55), 9.6, 2.15,
+    axr.add_patch(FancyBboxPatch((0.15, 7.75), 9.7, 2.05,
                   boxstyle="round,pad=0.05,rounding_size=0.1",
                   facecolor=TEAL_SOFT, edgecolor=TEAL, lw=2.4))
-    axr.text(5.0, 9.28, "a transform is legitimate only if", ha="center",
+    axr.text(5.0, 9.40, "a transform is legitimate only if", ha="center",
              va="center", color=TEAL, fontsize=11.2, fontweight="bold")
-    axr.text(5.0, 8.30,
-             "1.  the INSTRUMENT could have produced it, and\n"
+    axr.text(5.0, 8.48,
+             "1.  your instrument could have produced it, and\n"
              "2.  it does not change the LABEL",
-             ha="center", va="center", color=INK, fontsize=10.2,
-             linespacing=1.7)
+             ha="center", va="center", color=INK, fontsize=10, linespacing=1.7)
+    axr.text(5.0, 7.15,
+             "on spectra that means m/z jitter ±0.1%, intensity ×0.9,\n"
+             "baseline and noise — never a left–right flip",
+             ha="center", va="center", color=INK_SOFT, fontsize=9.4,
+             style="italic", linespacing=1.6)
 
-    axr.text(5.0, 6.95, "do it together — what does that buy?", ha="center",
+    axr.text(5.0, 6.05, "do it together — what does that buy?", ha="center",
              color=INK, fontsize=11.2, fontweight="bold")
     lines = [("resistant spectra you have", f"{AUG_N_RES}", INK),
              (f"× {AUG_N_VIEWS} augmented views each",
               f"= {AUG_N_RES * AUG_N_VIEWS}", TEAL),
              ("imbalance in the batch",
               f"{AUG_N_SUS} : {AUG_N_RES * AUG_N_VIEWS}  ≈  2.1 : 1", TEAL)]
-    y = 6.15
+    y = 5.30
     for lab, val, col in lines:
-        axr.add_patch(FancyBboxPatch((0.2, y - 0.56), 9.6, 1.02,
+        axr.add_patch(FancyBboxPatch((0.15, y - 0.52), 9.7, 0.96,
                       boxstyle="round,pad=0.03,rounding_size=0.08",
-                      facecolor=WHITE, edgecolor=col if col is TEAL else HAIRLINE,
+                      facecolor=WHITE,
+                      edgecolor=col if col is TEAL else HAIRLINE,
                       lw=2.0 if col is TEAL else 1.4))
-        axr.text(0.6, y - 0.05, lab, ha="left", va="center", color=INK,
-                 fontsize=10)
-        axr.text(9.4, y - 0.05, val, ha="right", va="center", color=col,
-                 fontsize=11.5, fontweight="bold")
-        y -= 1.18
-    axr.text(5.0, 2.62, "(was 697 : 41 ≈ 17 : 1)", ha="center", color=MUTED,
-             fontsize=9.4, style="italic")
-
-    axr.add_patch(FancyBboxPatch((0.2, 0.18), 9.6, 2.02,
+        axr.text(0.55, y - 0.04, lab, ha="left", va="center", color=INK,
+                 fontsize=9.8)
+        axr.text(9.45, y - 0.04, val, ha="right", va="center", color=col,
+                 fontsize=11.2, fontweight="bold")
+        y -= 1.10
+    axr.text(5.0, 1.95, "(was 697 : 41 ≈ 17 : 1)", ha="center", color=MUTED,
+             fontsize=9.2, style="italic")
+    axr.add_patch(FancyBboxPatch((0.15, 0.10), 9.7, 1.45,
                   boxstyle="round,pad=0.05,rounding_size=0.1",
                   facecolor="#F9EDEC", edgecolor=RED, lw=2.4))
-    axr.text(5.0, 1.82, "augment AFTER the split — never before",
-             ha="center", va="center", color=RED, fontsize=11, fontweight="bold")
-    axr.text(5.0, 0.90,
-             "views of one isolate landing in train AND test is the\n"
-             "same leakage curation just removed — and it still\n"
-             "counts 41 isolates, not 328. No new biology.",
-             ha="center", va="center", color=INK, fontsize=9.4,
+    axr.text(5.0, 1.16, "augment AFTER the split — never before", ha="center",
+             va="center", color=RED, fontsize=10.6, fontweight="bold")
+    axr.text(5.0, 0.55,
+             "views of one isolate in train AND test is the leakage curation\n"
+             "just removed — and it is still 41 isolates, not 328.",
+             ha="center", va="center", color=INK, fontsize=9.0,
              linespacing=1.6)
-    fig.subplots_adjust(wspace=0.14)
     _save(fig, name)
 
 def class_weight_family(name="fig_class_weights.png"):
