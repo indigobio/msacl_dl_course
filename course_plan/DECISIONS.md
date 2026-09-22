@@ -1112,3 +1112,42 @@ sentence and back-references the new slide instead of re-explaining it.
 **Checks:** overlap 0 fail across all 10 decks; text overflow 0 for lecture 10;
 figure overflow PASS across 170 renders; md5 audit confirms every embedded image
 matches its source.
+
+
+## 2026-09-22 — Lab 1 ships a Colab setup sheet with real, regenerable screenshots
+
+Instructor request: step-by-step Colab setup guidance for Lab 1, with
+screenshots. New printable handout `labs/handouts/lab01_colab_setup.tex` (2
+pages), pointed at from the notebook's own "Running this notebook in Colab" cell.
+
+**Why a paper sheet and not notebook cells.** Setup instructions that live inside
+the notebook are useless to someone who cannot yet open the notebook. The repo
+convention is already paper-first for this audience, so this follows the hint
+sheets.
+
+**The screenshots are real and they are generated, not pasted.** Colab's whole
+interface renders **signed out**, so `tools/make_colab_shots.py` drives headless
+Chrome over the DevTools protocol against the actual course notebook
+(`colab.research.google.com/github/indigobio/msacl_dl_course/...`), clicks the
+File and Runtime menus so they are captured open, crops five views and draws the
+numbered callouts. No account, no credentials, nothing typed into a sign-in form.
+Re-runnable whenever Google restyles Colab — which is the real hazard for a
+screenshot-based handout — and verified to reproduce the committed figures
+byte-for-placement from a clean state. Each Chrome instance gets its own port and
+profile; sharing either makes the second capture attach to the first, dying
+browser.
+
+**What the sheet covers**, each with its own cropped strip rather than one busy
+screenshot: open the notebook (check the filename, Sign in, Connect); **save your
+own copy first** (the link is read-only — the commonest way a participant loses
+an hour's work); run a cell (Shift+Enter, in order, top to bottom); the Runtime
+menu as the fix for almost everything (Run all / Restart session and run all /
+Change runtime type, noting Lab 1 needs no GPU); and the fallback route if the
+link fails. Plus a troubleshooting table keyed on what the participant actually
+sees — including that some institutional Google accounts block Colab, which is
+the failure most likely to strand someone in the first five minutes.
+
+Figures are credited on the sheet as the Google Colab interface with the capture
+date, and the sheet notes that if a button has moved the menu path in the text
+still holds. `tools/build.sh handouts` globs `*.tex`, so it picked the new sheet
+up with no change.

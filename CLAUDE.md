@@ -166,6 +166,7 @@ python tools/check_text_overflow.py --all  # sanity-check decks for text flowing
 python tools/check_figure_overflow.py      # sanity-check figures for text flowing outside a drawn box
 tools/build.sh quizzes                     # regenerate quizzes/pdf/ from quizzes/src/*.tex
 tools/build.sh handouts                    # compile labs/handouts/*.tex
+python tools/make_colab_shots.py           # re-capture the annotated Colab screenshots (Lab 1 setup sheet)
 tools/build.sh pack                        # regenerate the student_pack
 pip install -r tools/requirements.txt      # one-time setup
 ```
@@ -178,7 +179,13 @@ pip install -r tools/requirements.txt      # one-time setup
   copies with the strip tool.
 - **Every lab ships a paper hint sheet** at `labs/handouts/labNN_hints.tex` (+
   compiled `.pdf`), because most attendees are clinical chemists / physicians
-  with a weak coding background. The hint sheet gives multiple-choice code
+  with a weak coding background. Lab 1 additionally ships
+  `lab01_colab_setup.tex` — a step-by-step Colab sheet with annotated
+  screenshots of the real interface. Those figures live in `labs/handouts/img/`
+  and are **generated, not pasted**: `tools/make_colab_shots.py` drives headless
+  Chrome over the signed-out Colab UI, opens the File/Runtime menus, crops each
+  view and draws the callout numbers, so the sheet can be refreshed whenever
+  Google restyles Colab. The hint sheet gives multiple-choice code
   options (one correct) for each marked blank, in the style of
   `labs/handouts/lab02_hints.tex`, and explains why the wrong options fail. A
   lab is not done until its hint sheet exists and compiles. Options must match
