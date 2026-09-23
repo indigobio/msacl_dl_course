@@ -23,8 +23,16 @@ student_pack/
 
 Colab is a free notebook that runs in your web browser, with a GPU included.
 
-1. **Open the notebook in Colab** from the link your instructor gives you, e.g.
-   Lab 1: https://colab.research.google.com/github/indigobio/msacl_dl_course/blob/main/student_pack/labs/lab01_training_loop.ipynb
+1. **Open the lab in Colab** — one link per lab, nothing to clone or download:
+
+| Lab | | Runtime |
+|---|---|---|
+| **Lab 1** · Your first network: the training loop | [Open in Colab](https://colab.research.google.com/github/indigobio/msacl_dl_course/blob/main/student_pack/labs/lab01_training_loop.ipynb) | CPU is fine |
+| **Lab 2** · A 1D CNN on real clinical spectra | [Open in Colab](https://colab.research.google.com/github/indigobio/msacl_dl_course/blob/main/student_pack/labs/lab02_cnn_spectra.ipynb) | T4 GPU |
+| **Lab 3** · Transfer learning: teach a generator your symbol | [Open in Colab](https://colab.research.google.com/github/indigobio/msacl_dl_course/blob/main/student_pack/labs/lab03_generator_transfer.ipynb) | T4 GPU |
+| **Lab 4** · The Fashion VAE: latent playground + impostor detector | [Open in Colab](https://colab.research.google.com/github/indigobio/msacl_dl_course/blob/main/student_pack/labs/lab04_vae_fashion.ipynb) | CPU is fine |
+| **Lab 5** · Capstone: an end-to-end MS mini-project | [Open in Colab](https://colab.research.google.com/github/indigobio/msacl_dl_course/blob/main/student_pack/labs/lab05_capstone.ipynb) | T4 GPU |
+
 2. **File → Save a copy in Drive**, and work in the copy.
 3. **Run the first code cell, "⚙️ Setup"** (Shift + Enter). You never download or
    copy anything by hand — that cell:
@@ -35,7 +43,7 @@ Colab is a free notebook that runs in your web browser, with a GPU included.
    - ends with `✓ labNN is ready`.
 4. **Run the rest** top to bottom, filling in the blanks marked **YOUR TURN ✏️**.
 
-Labs 2 and 5 want a GPU: **Runtime → Change runtime type → T4 GPU** before step 3.
+For the labs marked **T4 GPU**: **Runtime → Change runtime type → T4 GPU** before step 3.
 
 > **Big datasets:** `msacl.setup("labNN", mount_drive=True)` asks Google for permission
 > to keep the data in your Drive (`MyDrive/msacl_ds301_data/`), so it downloads once

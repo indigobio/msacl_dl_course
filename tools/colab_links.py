@@ -21,8 +21,8 @@ LABS = ROOT / "student_pack" / "labs"
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--org", default=os.environ.get("ORG", "<ORG>"))
-    ap.add_argument("--repo", default=os.environ.get("REPO", "<REPO>"))
+    ap.add_argument("--org", default=os.environ.get("ORG", "indigobio"))
+    ap.add_argument("--repo", default=os.environ.get("REPO", "msacl_dl_course"))
     ap.add_argument("--branch", default=os.environ.get("BRANCH", "main"))
     a = ap.parse_args()
 

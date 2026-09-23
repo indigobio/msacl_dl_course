@@ -177,6 +177,7 @@ tools/build.sh handouts                    # compile labs/handouts/*.tex
 python tools/make_colab_shots.py           # re-capture the annotated Colab screenshots (Lab 1 setup sheet)
 tools/build.sh pack                        # regenerate the student_pack
 python tools/build_colab_bootstrap.py      # regenerate Colab pins + data manifest; stage build/hf_upload/
+python tools/make_course_page.py           # rebuild the student lab-links page (labs/handouts/msacl_ds301_labs.html)
 pip install -r tools/requirements.txt      # one-time setup
 ```
 

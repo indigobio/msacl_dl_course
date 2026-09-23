@@ -1201,6 +1201,13 @@ provided**, and the notebook itself stays tiny.
 - Fixed on the way: Labs 2 and 5 still carried a `<ORG>/<REPO>` placeholder and
   read git-ignored slices, so they could not have run on Colab at all.
 
+- **One page for all five labs:** `labs/handouts/msacl_ds301_labs.html` (built by
+  `tools/make_course_page.py`, which reads the lab list and `datasets.json` so links
+  and download sizes cannot drift) gives each lab an Open-in-Colab button, its
+  runtime and what it downloads; the same links are a table in
+  `student_pack/README.md`. Students' only per-lab manual step is File → Save a copy
+  in Drive, which keeps their work.
+
 **Verified:** `msacl.py` unit checks (download, resume, cache, corrupted cache,
 fingerprint rejection, optional dataset, install skip/restart paths); all five
 solution notebooks executed end to end in the locked environment (pandas 3.0.5,
