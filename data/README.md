@@ -78,8 +78,8 @@ in Phase 2 before a lab is built on it.
 - Reference loaders: BorgwardtLab/maldi-learn (id-CSV parsing, S/I/R cleaning),
   BorgwardtLab/maldi_amr (paper's task definitions), gdewael/maldi-nn.
 - Used in: lab02 (1D CNN), lab05 tracks A/C; Lecture 10 shift example.
-  (Lab 4 no longer uses DRIAMS — it moved to FashionMNIST/MNIST via torchvision;
-  see the torchvision entry below.)
+  (Lab 4 no longer uses DRIAMS — it moved to FashionMNIST/MNIST;
+  see the Lab 4 slice entry below.)
 - **Lab 5 capstone reuse (Tracks A & C), built & run-verified (2026-08-31):**
   `lab05_capstone.ipynb` reuses both local DRIAMS-C slices. **Track A (beat the baseline)**
   trains the Lab 2 `BaselineCNN` on `driams_c_saureus_oxacillin.npz` (738 spectra, 697 S / 41 R)
@@ -91,17 +91,19 @@ in Phase 2 before a lab is built on it.
   bare accuracy. All asserts are structural (logits `(N,1)`; leakage-free disjoint split;
   improved-vs-baseline param counts differ; frozen-body param count == body params, trainable ==
   head; metrics in `[0,1]`) so a shrunk CPU smoke run passes.
-### FashionMNIST — via torchvision (Lab 4, redesigned 2026-09-01)
-- Source: `torchvision.datasets.FashionMNIST` (`download=True`), fetched from the
-  torchvision mirrors at runtime — **public, no credentials/login**. 28×28
-  grayscale, values in `[0, 1]` after dividing by 255 (`transforms.ToTensor()`).
-- License: FashionMNIST is MIT (Zalando Research); the torchvision loaders are
-  BSD-licensed.
-- Size: ~30 MB, cached under a **gitignored** `torchvision_data/` dir (see
-  `.gitignore`); nothing is committed.
+### FashionMNIST + MNIST — Lab 4 slice (redesigned 2026-09-01; rehosted 2026-09-23)
+- Source: FashionMNIST (Xiao, Rasul & Vollgraf 2017, Zalando Research) and MNIST
+  (LeCun, Cortes & Burges), downloaded once through `torchvision.datasets`.
+- License: FashionMNIST **MIT**; MNIST **CC BY-SA 3.0** — both allow rehosting.
+- Prep script: `data/prep/prepare_fashion_mnist.py` keeps exactly the images the lab
+  uses — first 12,000 FashionMNIST train, first 2,000 FashionMNIST test, first 2,000
+  MNIST test, as raw uint8 pixels + labels — in `data/slices/fashion_mnist_vae.npz`
+  (6.5 MB, vs ~40 MB of torchvision downloads).
+- Hosted slice for Colab download: Hugging Face `jaztsong88/msacl-ds301`, fetched by
+  `msacl.setup("lab04")`. The lab no longer depends on torchvision's mirrors at run
+  time; its outputs are identical to the torchvision version.
 - Role: **FashionMNIST** is the clothing family the VAE learns; **MNIST digits**
-  are also loaded as unseen anomaly "impostors" for the reconstruction-error
-  detector in Step 8. No DRIAMS slice and no hosted file are involved.
+  are unseen anomaly "impostors" for the reconstruction-error detector in Step 8.
 - **Lab 4 rebuild (Fashion-VAE latent playground + impostor detector), built &
   run-verified (2026-09-01):** `lab04_vae_fashion.ipynb` trains a small
   2-D-latent MLP VAE (784→256→64→(mu,logvar); dec 2→64→256→784 sigmoid) on

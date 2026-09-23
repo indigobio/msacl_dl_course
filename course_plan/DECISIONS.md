@@ -1192,6 +1192,12 @@ provided**, and the notebook itself stays tiny.
   `MTBLS90.xlsx` stays fetched from the CIMCB repo (no LICENSE file).
   `peakonly_roi_qc.npz` is held (annotations unlicensed) and marked optional, so
   Lab 5 Tracks A and C run without it.
+- **Lab 4 moved onto the same path:** it called torchvision's downloaders at run
+  time, which depend on torchvision's mirrors (MNIST's have gone down before).
+  `data/prep/prepare_fashion_mnist.py` now keeps exactly the 16,000 images it uses
+  in one 6.5 MB npz (FashionMNIST MIT, MNIST CC BY-SA 3.0), rehosted with the rest;
+  outputs are identical. Every lab's data now comes through `msacl.setup()`
+  (Lab 3's pretrained model still loads from the Hugging Face Hub directly).
 - Fixed on the way: Labs 2 and 5 still carried a `<ORG>/<REPO>` placeholder and
   read git-ignored slices, so they could not have run on Colab at all.
 

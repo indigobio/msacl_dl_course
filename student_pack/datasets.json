@@ -58,6 +58,20 @@
       "publish": true,
       "optional": false
     },
+    "fashion_mnist_vae.npz": {
+      "urls": [
+        "https://huggingface.co/datasets/jaztsong88/msacl-ds301/resolve/main/fashion_mnist_vae.npz"
+      ],
+      "bytes": 6481222,
+      "sha256": "77d23ad701e78ee7380f1c426cb03d387acd6b5eed5f81188759f459aa0b84e7",
+      "labs": [
+        "lab04"
+      ],
+      "license": "FashionMNIST: MIT (Zalando Research); MNIST: CC BY-SA 3.0",
+      "source": "FashionMNIST (Xiao, Rasul & Vollgraf 2017) + MNIST (LeCun, Cortes & Burges); first 12k/2k/2k images, built by data/prep/prepare_fashion_mnist.py",
+      "publish": true,
+      "optional": false
+    },
     "peakonly_roi_qc.npz": {
       "urls": [
         "https://huggingface.co/datasets/jaztsong88/msacl-ds301/resolve/main/peakonly_roi_qc.npz"

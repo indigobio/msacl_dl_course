@@ -64,6 +64,11 @@ DATASETS = {
         publish=True, license="CC0-1.0",
         source="DRIAMS-C (Weis et al. 2022), Zenodo record 5640517 — "
                "prepared but not currently used by any lab"),
+    "fashion_mnist_vae.npz": dict(
+        urls=[HF + "fashion_mnist_vae.npz"], labs=["lab04"], publish=True,
+        license="FashionMNIST: MIT (Zalando Research); MNIST: CC BY-SA 3.0",
+        source="FashionMNIST (Xiao, Rasul & Vollgraf 2017) + MNIST (LeCun, Cortes & "
+               "Burges); first 12k/2k/2k images, built by data/prep/prepare_fashion_mnist.py"),
     "peakonly_roi_qc.npz": dict(
         urls=[HF + "peakonly_roi_qc.npz"], labs=["lab05"], publish=False,
         optional=True,           # Track B only — must not block Tracks A and C
