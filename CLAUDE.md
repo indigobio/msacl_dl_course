@@ -154,7 +154,7 @@ tools/                    Build scripts (see Toolchain)
   `student_pack/msacl.py` (`msacl.setup("labNN")`), which installs
   `requirements-colab.txt` (top-level deps pinned from `uv.lock`, torch excluded)
   and downloads the lab's data listed in `student_pack/datasets.json`, verified by
-  SHA-256. Data is hosted on the Hugging Face dataset repo `indigobio/msacl-ds301`
+  SHA-256. Data is hosted on the Hugging Face dataset repo `jaztsong88/msacl-ds301`
   (only licence-cleared files, `publish=True`). Notebooks read data as
   `DATA["file_name"]` — never a hardcoded URL or path. Both generated files come
   from `tools/build_colab_bootstrap.py`; never hand-edit them.

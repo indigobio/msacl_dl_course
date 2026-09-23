@@ -22,7 +22,7 @@ Three outputs, all derived — never hand-edit them:
 
     python3 tools/build_colab_bootstrap.py
     # then, once, with your own Hugging Face login (never commit a token):
-    huggingface-cli upload indigobio/msacl-ds301 build/hf_upload . --repo-type dataset
+    huggingface-cli upload jaztsong88/msacl-ds301 build/hf_upload . --repo-type dataset
 """
 import hashlib
 import json
@@ -37,7 +37,7 @@ PACK = ROOT / "student_pack"
 SLICES = ROOT / "data" / "slices"
 STAGE = ROOT / "build" / "hf_upload"
 
-HF_REPO = "indigobio/msacl-ds301"
+HF_REPO = "jaztsong88/msacl-ds301"
 HF = f"https://huggingface.co/datasets/{HF_REPO}/resolve/main/"
 CIMCB = ("https://raw.githubusercontent.com/CIMCB/MetabComparisonBinaryML/"
          "master/notebooks/data/MTBLS90.xlsx")

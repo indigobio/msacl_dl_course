@@ -1178,7 +1178,8 @@ provided**, and the notebook itself stays tiny.
   Skipped when already satisfied; if it upgrades a module the kernel had already
   imported (Colab preloads pandas) it stops with "Restart session, then run this
   cell again", because a half-upgraded kernel fails in baffling ways later.
-- **Data:** hosted on the Hugging Face dataset repo `indigobio/msacl-ds301` —
+- **Data:** hosted on the Hugging Face dataset repo `jaztsong88/msacl-ds301` (the
+  instructor's account; the GitHub code stays under `indigobio`) —
   chosen over GitHub release assets (2 GB/file cap, awkward for growing data) and
   Drive links (quota/virus-scan interstitials break scripted downloads). HF serves
   large files over a CDN with range requests, needs no login to read, and

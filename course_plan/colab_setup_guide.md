@@ -44,12 +44,12 @@ Run locally, the same cell finds `msacl.py` in the course folder, installs nothi
 
 ## Part 1 — one-time publishing
 
-1. **Hugging Face dataset repo.** Create `indigobio/msacl-ds301` (type: dataset,
+1. **Hugging Face dataset repo.** Create `jaztsong88/msacl-ds301` (type: dataset,
    public) on huggingface.co. Then, with your own login (`huggingface-cli login`;
    never commit a token):
    ```
    python tools/build_colab_bootstrap.py
-   huggingface-cli upload indigobio/msacl-ds301 build/hf_upload . --repo-type dataset
+   huggingface-cli upload jaztsong88/msacl-ds301 build/hf_upload . --repo-type dataset
    ```
    Only files whose entry in `DATASETS` says `publish=True` are staged — that flag
    records the licence decision. Currently staged: the three DRIAMS-C slices (CC0).

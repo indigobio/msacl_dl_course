@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "generated_by": "tools/build_colab_bootstrap.py",
-  "hf_repo": "indigobio/msacl-ds301",
+  "hf_repo": "jaztsong88/msacl-ds301",
   "datasets": {
     "MTBLS90.xlsx": {
       "urls": [
@@ -19,7 +19,7 @@
     },
     "driams_c_saureus_oxacillin.npz": {
       "urls": [
-        "https://huggingface.co/datasets/indigobio/msacl-ds301/resolve/main/driams_c_saureus_oxacillin.npz"
+        "https://huggingface.co/datasets/jaztsong88/msacl-ds301/resolve/main/driams_c_saureus_oxacillin.npz"
       ],
       "bytes": 7609865,
       "sha256": "0d50989d1c3bdc8c02f438c42e4c53e5a35da9dda17deaa7c0b250566ee669c0",
@@ -34,7 +34,7 @@
     },
     "driams_c_ecoli_ceftriaxone.npz": {
       "urls": [
-        "https://huggingface.co/datasets/indigobio/msacl-ds301/resolve/main/driams_c_ecoli_ceftriaxone.npz"
+        "https://huggingface.co/datasets/jaztsong88/msacl-ds301/resolve/main/driams_c_ecoli_ceftriaxone.npz"
       ],
       "bytes": 9428163,
       "sha256": "f99bdd58bc3cde16093762ffed40fd9dab3a829a5f1fc1f6775274db983364e1",
@@ -48,7 +48,7 @@
     },
     "driams_c_kpneumoniae_ceftriaxone.npz": {
       "urls": [
-        "https://huggingface.co/datasets/indigobio/msacl-ds301/resolve/main/driams_c_kpneumoniae_ceftriaxone.npz"
+        "https://huggingface.co/datasets/jaztsong88/msacl-ds301/resolve/main/driams_c_kpneumoniae_ceftriaxone.npz"
       ],
       "bytes": 3780453,
       "sha256": "65453c10c15c8fccc31068a7e573f70e0a93cff93cc28784110b523dddda14b6",
@@ -60,7 +60,7 @@
     },
     "peakonly_roi_qc.npz": {
       "urls": [
-        "https://huggingface.co/datasets/indigobio/msacl-ds301/resolve/main/peakonly_roi_qc.npz"
+        "https://huggingface.co/datasets/jaztsong88/msacl-ds301/resolve/main/peakonly_roi_qc.npz"
       ],
       "bytes": 3787233,
       "sha256": "321dc4674e6765ebeb72be003d7b03cf3e48bee27385dea09d5a95365b0b258f",
