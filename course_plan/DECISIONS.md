@@ -1112,3 +1112,97 @@ sentence and back-references the new slide instead of re-explaining it.
 **Checks:** overlap 0 fail across all 10 decks; text overflow 0 for lecture 10;
 figure overflow PASS across 170 renders; md5 audit confirms every embedded image
 matches its source.
+
+
+## 2026-09-22 — Lab 1 ships a Colab setup sheet with real, regenerable screenshots
+
+Instructor request: step-by-step Colab setup guidance for Lab 1, with
+screenshots. New printable handout `labs/handouts/lab01_colab_setup.tex` (2
+pages), pointed at from the notebook's own "Running this notebook in Colab" cell.
+
+**Why a paper sheet and not notebook cells.** Setup instructions that live inside
+the notebook are useless to someone who cannot yet open the notebook. The repo
+convention is already paper-first for this audience, so this follows the hint
+sheets.
+
+**The screenshots are real and they are generated, not pasted.** Colab's whole
+interface renders **signed out**, so `tools/make_colab_shots.py` drives headless
+Chrome over the DevTools protocol against the actual course notebook
+(`colab.research.google.com/github/indigobio/msacl_dl_course/...`), clicks the
+File and Runtime menus so they are captured open, crops five views and draws the
+numbered callouts. No account, no credentials, nothing typed into a sign-in form.
+Re-runnable whenever Google restyles Colab — which is the real hazard for a
+screenshot-based handout — and verified to reproduce the committed figures
+byte-for-placement from a clean state. Each Chrome instance gets its own port and
+profile; sharing either makes the second capture attach to the first, dying
+browser.
+
+**What the sheet covers**, each with its own cropped strip rather than one busy
+screenshot: open the notebook (check the filename, Sign in, Connect); **save your
+own copy first** (the link is read-only — the commonest way a participant loses
+an hour's work); run a cell (Shift+Enter, in order, top to bottom); the Runtime
+menu as the fix for almost everything (Run all / Restart session and run all /
+Change runtime type, noting Lab 1 needs no GPU); and the fallback route if the
+link fails. Plus a troubleshooting table keyed on what the participant actually
+sees — including that some institutional Google accounts block Colab, which is
+the failure most likely to strand someone in the first five minutes.
+
+Figures are credited on the sheet as the Google Colab interface with the capture
+date, and the sheet notes that if a button has moved the menu path in the text
+still holds. `tools/build.sh handouts` globs `*.tex`, so it picked the new sheet
+up with no change.
+
+## 2026-09-23 — Labs bootstrap themselves on Colab: pinned env + hosted, fingerprinted data
+
+**Asked for:** students "fork the entire student pack" into Colab — code *and*
+offline data — so nobody downloads or copies individual labs; a solution that
+scales to later labs with much larger data; and the uv environment carried into
+Colab.
+
+**Why not a literal fork:** a Colab link opens one notebook on an empty,
+ephemeral machine; only Google Drive persists. There is no Colab object that
+holds a folder. So each lab's **first cell rebuilds what the folder would have
+provided**, and the notebook itself stays tiny.
+
+**Design:**
+- `student_pack/msacl.py` (standard library only — it runs before anything is
+  installed). The setup cell downloads it from `main` and calls
+  `msacl.setup("labNN")`, returning `DATA = {file name: local path}`. Notebooks
+  read data only as `DATA["…"]`; no URLs or paths in lab code. Run locally, the
+  same cell uses `data/slices/` and installs nothing.
+- **Environment:** `requirements-colab.txt`, generated from `uv.lock` by
+  `tools/build_colab_bootstrap.py` — the 7 top-level deps pinned with the lock's
+  environment markers, torch excluded so Colab keeps its GPU build, installed with
+  `uv pip install --system`. Chosen over pinning the full lock (would churn
+  dozens of Colab system packages) and over unpinned installs (non-reproducible).
+  Skipped when already satisfied; if it upgrades a module the kernel had already
+  imported (Colab preloads pandas) it stops with "Restart session, then run this
+  cell again", because a half-upgraded kernel fails in baffling ways later.
+- **Data:** hosted on the Hugging Face dataset repo `jaztsong88/msacl-ds301` (the
+  instructor's account; the GitHub code stays under `indigobio`) —
+  chosen over GitHub release assets (2 GB/file cap, awkward for growing data) and
+  Drive links (quota/virus-scan interstitials break scripted downloads). HF serves
+  large files over a CDN with range requests, needs no login to read, and
+  versions the data. `datasets.json` records per file: URLs, bytes, SHA-256,
+  licence, source, labs, `optional`. Downloads resume; a fingerprint mismatch
+  deletes the file and fails loudly. `mount_drive=True` caches in
+  `MyDrive/msacl_ds301_data/` so big data downloads once per course.
+- **Licence gate:** only `publish=True` files are staged for upload
+  (`build/hf_upload/`, git-ignored). DRIAMS slices are CC0 → published.
+  `MTBLS90.xlsx` stays fetched from the CIMCB repo (no LICENSE file).
+  `peakonly_roi_qc.npz` is held (annotations unlicensed) and marked optional, so
+  Lab 5 Tracks A and C run without it.
+- **Lab 4 moved onto the same path:** it called torchvision's downloaders at run
+  time, which depend on torchvision's mirrors (MNIST's have gone down before).
+  `data/prep/prepare_fashion_mnist.py` now keeps exactly the 16,000 images it uses
+  in one 6.5 MB npz (FashionMNIST MIT, MNIST CC BY-SA 3.0), rehosted with the rest;
+  outputs are identical. Every lab's data now comes through `msacl.setup()`
+  (Lab 3's pretrained model still loads from the Hugging Face Hub directly).
+- Fixed on the way: Labs 2 and 5 still carried a `<ORG>/<REPO>` placeholder and
+  read git-ignored slices, so they could not have run on Colab at all.
+
+**Verified:** `msacl.py` unit checks (download, resume, cache, corrupted cache,
+fingerprint rejection, optional dataset, install skip/restart paths); all five
+solution notebooks executed end to end in the locked environment (pandas 3.0.5,
+numpy 2.5.2). **Still needs a live Colab rehearsal** after the HF upload and the
+merge to `main`.

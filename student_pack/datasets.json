@@ -1,0 +1,90 @@
+{
+  "schema": 1,
+  "generated_by": "tools/build_colab_bootstrap.py",
+  "hf_repo": "jaztsong88/msacl-ds301",
+  "datasets": {
+    "MTBLS90.xlsx": {
+      "urls": [
+        "https://raw.githubusercontent.com/CIMCB/MetabComparisonBinaryML/master/notebooks/data/MTBLS90.xlsx"
+      ],
+      "bytes": 2371375,
+      "sha256": "61c87e373944eec8e4598b496b72db983be898620854a2a47f9790a8c186501e",
+      "labs": [
+        "lab01"
+      ],
+      "license": "Open access at EMBL-EBI MetaboLights; the CIMCB tidy copy has no LICENSE file, so it is fetched from source and NOT rehosted",
+      "source": "MetaboLights MTBLS90 via CIMCB/MetabComparisonBinaryML (Mendez, Reinke & Broadhurst 2019)",
+      "publish": false,
+      "optional": false
+    },
+    "driams_c_saureus_oxacillin.npz": {
+      "urls": [
+        "https://huggingface.co/datasets/jaztsong88/msacl-ds301/resolve/main/driams_c_saureus_oxacillin.npz"
+      ],
+      "bytes": 7609865,
+      "sha256": "0d50989d1c3bdc8c02f438c42e4c53e5a35da9dda17deaa7c0b250566ee669c0",
+      "labs": [
+        "lab02",
+        "lab05"
+      ],
+      "license": "CC0-1.0",
+      "source": "DRIAMS-C (Weis et al. 2022), Zenodo record 5640517",
+      "publish": true,
+      "optional": false
+    },
+    "driams_c_ecoli_ceftriaxone.npz": {
+      "urls": [
+        "https://huggingface.co/datasets/jaztsong88/msacl-ds301/resolve/main/driams_c_ecoli_ceftriaxone.npz"
+      ],
+      "bytes": 9428163,
+      "sha256": "f99bdd58bc3cde16093762ffed40fd9dab3a829a5f1fc1f6775274db983364e1",
+      "labs": [
+        "lab05"
+      ],
+      "license": "CC0-1.0",
+      "source": "DRIAMS-C (Weis et al. 2022), Zenodo record 5640517",
+      "publish": true,
+      "optional": false
+    },
+    "driams_c_kpneumoniae_ceftriaxone.npz": {
+      "urls": [
+        "https://huggingface.co/datasets/jaztsong88/msacl-ds301/resolve/main/driams_c_kpneumoniae_ceftriaxone.npz"
+      ],
+      "bytes": 3780453,
+      "sha256": "65453c10c15c8fccc31068a7e573f70e0a93cff93cc28784110b523dddda14b6",
+      "labs": [],
+      "license": "CC0-1.0",
+      "source": "DRIAMS-C (Weis et al. 2022), Zenodo record 5640517 \u2014 prepared but not currently used by any lab",
+      "publish": true,
+      "optional": false
+    },
+    "fashion_mnist_vae.npz": {
+      "urls": [
+        "https://huggingface.co/datasets/jaztsong88/msacl-ds301/resolve/main/fashion_mnist_vae.npz"
+      ],
+      "bytes": 6481222,
+      "sha256": "77d23ad701e78ee7380f1c426cb03d387acd6b5eed5f81188759f459aa0b84e7",
+      "labs": [
+        "lab04"
+      ],
+      "license": "FashionMNIST: MIT (Zalando Research); MNIST: CC BY-SA 3.0",
+      "source": "FashionMNIST (Xiao, Rasul & Vollgraf 2017) + MNIST (LeCun, Cortes & Burges); first 12k/2k/2k images, built by data/prep/prepare_fashion_mnist.py",
+      "publish": true,
+      "optional": false
+    },
+    "peakonly_roi_qc.npz": {
+      "urls": [
+        "https://huggingface.co/datasets/jaztsong88/msacl-ds301/resolve/main/peakonly_roi_qc.npz"
+      ],
+      "bytes": 3787233,
+      "sha256": "321dc4674e6765ebeb72be003d7b03cf3e48bee27385dea09d5a95365b0b258f",
+      "labs": [
+        "lab05"
+      ],
+      "license": "UNVERIFIED \u2014 peakonly's code is MIT but its annotation zip carries no licence; do not rehost publicly until that is cleared",
+      "source": "peakonly annotated ROIs (Melnikov et al., Anal Chem 2020)",
+      "publish": false,
+      "optional": true
+    }
+  }
+}

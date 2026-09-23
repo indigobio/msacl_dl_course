@@ -150,6 +150,14 @@ tools/                    Build scripts (see Toolchain)
   writes `slides/pptx/`. Real licensed images live under `slides/assets/img/`.
   Everything stays real, editable PowerPoint objects — never screenshots. The
   overlap/overflow checkers below are the lint for hand-edited decks.
+- **Colab bootstrap (DECISIONS.md 2026-09-23):** every lab's first cell runs
+  `student_pack/msacl.py` (`msacl.setup("labNN")`), which installs
+  `requirements-colab.txt` (top-level deps pinned from `uv.lock`, torch excluded)
+  and downloads the lab's data listed in `student_pack/datasets.json`, verified by
+  SHA-256. Data is hosted on the Hugging Face dataset repo `jaztsong88/msacl-ds301`
+  (only licence-cleared files, `publish=True`). Notebooks read data as
+  `DATA["file_name"]` — never a hardcoded URL or path. Both generated files come
+  from `tools/build_colab_bootstrap.py`; never hand-edit them.
 - **Quizzes:** one LaTeX source per quiz, built to a letter-size student PDF and
   an answer key by `tools/build.sh`.
 
@@ -166,7 +174,9 @@ python tools/check_text_overflow.py --all  # sanity-check decks for text flowing
 python tools/check_figure_overflow.py      # sanity-check figures for text flowing outside a drawn box
 tools/build.sh quizzes                     # regenerate quizzes/pdf/ from quizzes/src/*.tex
 tools/build.sh handouts                    # compile labs/handouts/*.tex
+python tools/make_colab_shots.py           # re-capture the annotated Colab screenshots (Lab 1 setup sheet)
 tools/build.sh pack                        # regenerate the student_pack
+python tools/build_colab_bootstrap.py      # regenerate Colab pins + data manifest; stage build/hf_upload/
 pip install -r tools/requirements.txt      # one-time setup
 ```
 
@@ -178,7 +188,13 @@ pip install -r tools/requirements.txt      # one-time setup
   copies with the strip tool.
 - **Every lab ships a paper hint sheet** at `labs/handouts/labNN_hints.tex` (+
   compiled `.pdf`), because most attendees are clinical chemists / physicians
-  with a weak coding background. The hint sheet gives multiple-choice code
+  with a weak coding background. Lab 1 additionally ships
+  `lab01_colab_setup.tex` — a step-by-step Colab sheet with annotated
+  screenshots of the real interface. Those figures live in `labs/handouts/img/`
+  and are **generated, not pasted**: `tools/make_colab_shots.py` drives headless
+  Chrome over the signed-out Colab UI, opens the File/Runtime menus, crops each
+  view and draws the callout numbers, so the sheet can be refreshed whenever
+  Google restyles Colab. The hint sheet gives multiple-choice code
   options (one correct) for each marked blank, in the style of
   `labs/handouts/lab02_hints.tex`, and explains why the wrong options fail. A
   lab is not done until its hint sheet exists and compiles. Options must match

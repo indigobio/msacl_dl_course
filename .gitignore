@@ -8,6 +8,8 @@ labs/student/
 # straight from GitHub in Colab.
 
 # Data is registered in data/README.md, never committed
+# build/hf_upload/ is the staged Hugging Face upload (tools/build_colab_bootstrap.py)
+build/
 data/raw/
 data/slices/
 *.mzML
