@@ -64,8 +64,9 @@ computers; your laptop only shows the page.
 Click the Lab 1 link (on the course page, or type it in). It opens Colab with the
 notebook already loaded --- there is nothing to download first.
 
-{\footnotesize\texttt{https://colab.research.google.com/github/indigobio/msacl\_dl\_course/}\\
-\texttt{\phantom{https://}blob/main/student\_pack/labs/lab01\_training\_loop.ipynb}}
+\newcommand{\nburl}{https://colab.research.google.com/github/indigobio/msacl_dl_course/blob/main/student_pack/labs/lab01_training_loop.ipynb}
+{\footnotesize\href{\nburl}{\color{teal}\texttt{https://colab.research.google.com/github/indigobio/msacl\_dl\_course/}\\
+\phantom{xx}\texttt{blob/main/student\_pack/labs/lab01\_training\_loop.ipynb}}}
 
 \vspace{3pt}
 \includegraphics[width=\textwidth]{img/colab_step1_chrome.png}
@@ -84,7 +85,7 @@ Colab opens the copy in a new tab, named \texttt{Copy of lab01\_training\_loop.i
 \textbf{that is the tab you want to work in}.
 
 \vspace{3pt}
-\begin{center}\includegraphics[width=0.62\textwidth]{img/colab_step2_savecopy.png}\end{center}
+\begin{center}\includegraphics[width=0.50\textwidth]{img/colab_step2_savecopy.png}\end{center}
 
 \step{Step 3 --- Run a cell}
 A notebook is a list of \emph{cells}. A cell holds either text or code.
@@ -108,7 +109,7 @@ Click a code cell, then press \textbf{Shift + Enter} --- or hover over the
 The \textbf{Runtime} menu is the fix for almost everything.
 
 \vspace{3pt}
-\begin{center}\includegraphics[width=0.66\textwidth]{img/colab_step3_runtime.png}\end{center}
+\begin{center}\includegraphics[width=0.54\textwidth]{img/colab_step3_runtime.png}\end{center}
 
 \vspace{2pt}
 \begin{itemize}
@@ -120,7 +121,7 @@ The \textbf{Runtime} menu is the fix for almost everything.
 \end{itemize}
 
 \step{Step 5 --- If the link does not open}
-Go to \texttt{colab.research.google.com} directly, sign in \mk[amber]{1}, then use
+Go to \href{https://colab.research.google.com/}{\color{teal}\texttt{colab.research.google.com}} directly, sign in \mk[amber]{1}, then use
 \textbf{File $\rightarrow$ Open notebook $\rightarrow$ GitHub} and paste
 \texttt{indigobio/msacl\_dl\_course}. Or use \textbf{Upload notebook} \mk{2} if an
 instructor hands you the \texttt{.ipynb} file on a USB stick.
@@ -162,6 +163,7 @@ You edited the wrong tab and lost your work &
 Screenshots are of the Google Colab interface, captured 22 September 2026, with
 callout numbers added for this sheet. Colab is a Google product and its
 appearance changes from time to time --- if a button has moved, the menu path in
-the text is still the one to follow.}
+the text is still the one to follow. A clickable version of this sheet is
+\texttt{lab01\_colab\_setup.html}.}
 
 \end{document}

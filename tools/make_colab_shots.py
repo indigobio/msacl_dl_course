@@ -63,7 +63,22 @@ def _free_port():
         return s.getsockname()[1]
 
 
-def capture(url, out_png, clicks=()):
+# getBoundingClientRect is viewport-relative, so the cell must actually be on
+# screen when it is measured. Colab scrolls its own container, and scrollIntoView
+# proved unreliable there, so the cell run simply uses a taller window.
+CELL_WINDOW = (1440, 1500)
+
+CELL_RECT_JS = """
+(() => {
+  const c = document.querySelector('div.cell.code');
+  if (!c) return '';
+  const r = c.getBoundingClientRect();
+  return JSON.stringify({x: Math.round(r.x), y: Math.round(r.y),
+                         w: Math.round(r.width), h: Math.round(r.height)});
+})()"""
+
+
+def capture(url, out_png, clicks=(), probe_js=None, window=(1440, 900)):
     """Load `url` in headless Chrome, click each (x, y), and save a screenshot.
 
     Each call gets its own debugging port and profile directory: sharing either
@@ -75,7 +90,7 @@ def capture(url, out_png, clicks=()):
         [CHROME, "--headless=new", "--disable-gpu", "--hide-scrollbars",
          f"--remote-debugging-port={port}", "--remote-allow-origins=*",
          f"--user-data-dir={profile}", "--no-first-run", "--no-default-browser-check",
-         "--window-size=1440,900", "about:blank"],
+         f"--window-size={window[0]},{window[1]}", "about:blank"],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         page = None
@@ -100,6 +115,11 @@ def capture(url, out_png, clicks=()):
                     return msg.get("result", {})
 
         send("Page.enable")
+        # Colab follows prefers-color-scheme, and headless Chrome inherits
+        # whatever the machine is set to — so without this the sheet's figures
+        # come out light on one run and dark on the next.
+        send("Emulation.setEmulatedMedia",
+             features=[{"name": "prefers-color-scheme", "value": "light"}])
         send("Page.navigate", url=url)
         time.sleep(14)                      # Colab is a heavy single-page app
         for (x, y) in clicks:
@@ -107,8 +127,14 @@ def capture(url, out_png, clicks=()):
                 send("Input.dispatchMouseEvent", type=kind, x=x, y=y,
                      button="left", clickCount=1)
             time.sleep(1.6)
+        probed = None
+        if probe_js:
+            val = send("Runtime.evaluate", expression=probe_js,
+                       returnByValue=True).get("result", {}).get("value")
+            probed = json.loads(val) if val else None
         out_png.write_bytes(base64.b64decode(
             send("Page.captureScreenshot", format="png")["data"]))
+        return probed
     finally:
         proc.terminate()
         try:
@@ -130,8 +156,6 @@ ANNOTATIONS = [
         ((22, 28, 300, 54), TEAL, 340, 41, 1),
         ((22, 260, 372, 287), AMBER, 412, 274, 2),
         ((22, 340, 352, 367), AMBER, 392, 354, 3)], "colab_step3_runtime.png"),
-    ("nb", (60, 735, 1180, 855), [
-        ((18, 28, 52, 58), TEAL, 92, 43, 1)], "colab_step4_cell.png"),
     ("landing", (0, 10, 1440, 250), [
         ((1320, 12, 1410, 35), AMBER, 1288, 23, 1),
         ((387, 142, 570, 172), TEAL, 604, 157, 2)], "colab_step5_landing.png"),
@@ -141,14 +165,20 @@ ANNOTATIONS = [
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     raw = {}
+    cell_rect = None
     shots = [("nb", NOTEBOOK, ()),                    # the notebook as it opens
              ("file", NOTEBOOK, ((82, 102),)),        # with the File menu open
              ("runtime", NOTEBOOK, ((280, 102),)),    # with the Runtime menu open
+             ("cell", NOTEBOOK, ()),                  # scrolled to the first code cell
              ("landing", LANDING, ())]
     for key, url, clicks in shots:
         path = OUT / f".raw_{key}.png"
         print(f"  capturing {key} …")
-        capture(url, path, clicks)
+        probed = capture(url, path, clicks,
+                         probe_js=CELL_RECT_JS if key == "cell" else None,
+                         window=CELL_WINDOW if key == "cell" else (1440, 900))
+        if key == "cell":
+            cell_rect = probed
         raw[key] = path
 
     for key, cropbox, marks, name in ANNOTATIONS:
@@ -161,6 +191,34 @@ def main():
                     outline=(190, 190, 186), width=2)
         im.save(OUT / name, optimize=True)
         print(f"  wrote {name}")
+    # The first code cell moves with the page, so crop it from its real DOM box
+    # rather than a fixed rectangle — a hard-coded crop silently slid onto the
+    # black area below the page the first time this was re-run.
+    if not cell_rect:
+        raise SystemExit("could not locate a 'div.cell.code' to crop for "
+                         "colab_step4_cell.png — has Colab's DOM changed?")
+    x, y = cell_rect["x"], cell_rect["y"]
+    x1, y1 = min(x + min(cell_rect["w"], 1120), 1440), min(y + 150, CELL_WINDOW[1])
+    if y1 - y < 60:
+        raise SystemExit(f"the first code cell is only {y1 - y}px tall on screen; "
+                         "nothing useful to crop")
+    im = Image.open(raw["cell"]).convert("RGB").crop((x, y, x1, y1))
+    # Guard: a crop that slid off the page is nearly FLAT (one solid colour).
+    # Check variance rather than brightness — an earlier brightness test rejected
+    # a perfectly good crop simply because Colab had rendered in dark mode.
+    px = list(im.convert("L").getdata())
+    mean = sum(px) / len(px)
+    var = sum((v - mean) ** 2 for v in px) / len(px)
+    if var < 200:
+        raise SystemExit(f"the code-cell crop looks blank (variance {var:.0f}) — "
+                         "the capture probably missed the cell; check the selector")
+    d = ImageDraw.Draw(im)
+    box(d, (10, 24, 46, 54), TEAL)
+    badge(d, 86, 39, 1, TEAL)
+    d.rectangle([0, 0, im.width - 1, im.height - 1], outline=(190, 190, 186), width=2)
+    im.save(OUT / "colab_step4_cell.png", optimize=True)
+    print("  wrote colab_step4_cell.png")
+
     for p in raw.values():
         p.unlink(missing_ok=True)
     print("done — rebuild the sheet with: tools/build.sh handouts")
