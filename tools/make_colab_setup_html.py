@@ -157,7 +157,7 @@ code cell, then press <kbd>Shift</kbd> + <kbd>Enter</kbd> — or hover over the
 <ul>
   <li>Run the cells <strong>in order, top to bottom</strong>. Later cells depend on earlier ones.</li>
   <li>While a cell runs the bracket shows a spinner; when it finishes you get a number, e.g. <code>[1]</code>.</li>
-  <li>The very first run installs things and fetches the data — give it a few seconds.</li>
+  <li><strong>Run the first code cell, “⚙️ Setup”, before anything else.</strong> It installs the course packages and downloads the lab’s data for you — about a minute, and it ends with <code>✓ lab01 is ready</code>. You never download or copy data files yourself.</li>
   <li>Only the cells marked <strong>YOUR TURN</strong> ✏️ need editing. Run all the others exactly as they are.</li>
 </ul>
 

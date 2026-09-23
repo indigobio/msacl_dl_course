@@ -1151,3 +1151,51 @@ Figures are credited on the sheet as the Google Colab interface with the capture
 date, and the sheet notes that if a button has moved the menu path in the text
 still holds. `tools/build.sh handouts` globs `*.tex`, so it picked the new sheet
 up with no change.
+
+## 2026-09-23 — Labs bootstrap themselves on Colab: pinned env + hosted, fingerprinted data
+
+**Asked for:** students "fork the entire student pack" into Colab — code *and*
+offline data — so nobody downloads or copies individual labs; a solution that
+scales to later labs with much larger data; and the uv environment carried into
+Colab.
+
+**Why not a literal fork:** a Colab link opens one notebook on an empty,
+ephemeral machine; only Google Drive persists. There is no Colab object that
+holds a folder. So each lab's **first cell rebuilds what the folder would have
+provided**, and the notebook itself stays tiny.
+
+**Design:**
+- `student_pack/msacl.py` (standard library only — it runs before anything is
+  installed). The setup cell downloads it from `main` and calls
+  `msacl.setup("labNN")`, returning `DATA = {file name: local path}`. Notebooks
+  read data only as `DATA["…"]`; no URLs or paths in lab code. Run locally, the
+  same cell uses `data/slices/` and installs nothing.
+- **Environment:** `requirements-colab.txt`, generated from `uv.lock` by
+  `tools/build_colab_bootstrap.py` — the 7 top-level deps pinned with the lock's
+  environment markers, torch excluded so Colab keeps its GPU build, installed with
+  `uv pip install --system`. Chosen over pinning the full lock (would churn
+  dozens of Colab system packages) and over unpinned installs (non-reproducible).
+  Skipped when already satisfied; if it upgrades a module the kernel had already
+  imported (Colab preloads pandas) it stops with "Restart session, then run this
+  cell again", because a half-upgraded kernel fails in baffling ways later.
+- **Data:** hosted on the Hugging Face dataset repo `indigobio/msacl-ds301` —
+  chosen over GitHub release assets (2 GB/file cap, awkward for growing data) and
+  Drive links (quota/virus-scan interstitials break scripted downloads). HF serves
+  large files over a CDN with range requests, needs no login to read, and
+  versions the data. `datasets.json` records per file: URLs, bytes, SHA-256,
+  licence, source, labs, `optional`. Downloads resume; a fingerprint mismatch
+  deletes the file and fails loudly. `mount_drive=True` caches in
+  `MyDrive/msacl_ds301_data/` so big data downloads once per course.
+- **Licence gate:** only `publish=True` files are staged for upload
+  (`build/hf_upload/`, git-ignored). DRIAMS slices are CC0 → published.
+  `MTBLS90.xlsx` stays fetched from the CIMCB repo (no LICENSE file).
+  `peakonly_roi_qc.npz` is held (annotations unlicensed) and marked optional, so
+  Lab 5 Tracks A and C run without it.
+- Fixed on the way: Labs 2 and 5 still carried a `<ORG>/<REPO>` placeholder and
+  read git-ignored slices, so they could not have run on Colab at all.
+
+**Verified:** `msacl.py` unit checks (download, resume, cache, corrupted cache,
+fingerprint rejection, optional dataset, install skip/restart paths); all five
+solution notebooks executed end to end in the locked environment (pandas 3.0.5,
+numpy 2.5.2). **Still needs a live Colab rehearsal** after the HF upload and the
+merge to `main`.
