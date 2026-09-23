@@ -82,23 +82,26 @@ whether it is right. Only the two marked cells need editing; run everything else
 
 \vspace{3pt}\hrule\vspace{4pt}
 
-\textbf{Step 6 --- the learning rate: pick a too-big value, then read the curves.}\; {\small You are
-given \opt{lr\_ok = 0.01}. Choose a rate that is clearly \emph{too big} so the loss climbs, run both,
-then decide which one diverged.}
+\textbf{Step 6 --- the learning rate: find all three regimes.}\; {\small You are given
+\opt{lr\_ok = 0.01}. Pick one rate that is \emph{too small} (the loss barely moves in 150 epochs)
+and one that is \emph{too big} (the loss climbs). The plot shows all three curves.}
 
-\textbf{1. A learning rate that is clearly TOO BIG.}
+\textbf{1. A learning rate that is TOO SMALL.}
 \begin{itemize}
-  \item[(a)] \opt{lr\_too\_big = 5.0}\quad{\small (huge step $\Rightarrow$ overshoots, loss rises)}
-  \item[(b)] \opt{lr\_too\_big = 0.001}\quad{\small (smaller than \opt{lr\_ok} --- trains fine, doesn't diverge)}
-  \item[(c)] \opt{lr\_too\_big = 0.01}\quad{\small (equal to \opt{lr\_ok} --- no contrast at all)}
+  \item[(a)] \opt{lr\_too\_small = 0.0001}\quad{\small (100$\times$ smaller: loss 0.277 $\to$ 0.213, still crawling)}
+  \item[(b)] \opt{lr\_too\_small = 0.003}\quad{\small (smaller, but still trains well: ends at 0.017 --- not a crawl)}
+  \item[(c)] \opt{lr\_too\_small = 0.1}\quad{\small (that is \emph{bigger} than \opt{lr\_ok})}
 \end{itemize}
 
-\textbf{2. Which run diverged? (read it off the two-curve plot).}
+\textbf{2. A learning rate that is TOO BIG.}
 \begin{itemize}
-  \item[(a)] \opt{which\_diverged = "too\_big"}\quad{\small (its loss went UP, not down)}
-  \item[(b)] \opt{which\_diverged = "ok"}\quad{\small (no --- the sensible rate fell smoothly)}
-  \item[(c)] \opt{which\_diverged = "both"}\quad{\small (no --- only the too-big curve rose)}
+  \item[(a)] \opt{lr\_too\_big = 5.0}\quad{\small (huge steps overshoot: loss 0.277 $\to$ 0.487, it rose)}
+  \item[(b)] \opt{lr\_too\_big = 0.1}\quad{\small (bigger, but it wobbles and still ends lower, at 0.073)}
+  \item[(c)] \opt{lr\_too\_big = 0.001}\quad{\small (that is \emph{smaller} than \opt{lr\_ok})}
 \end{itemize}
+
+{\small\textbf{Then explore:} the next cell has no blank. Change \opt{lr\_try}, re-run it, and each
+run is added to the plot. Try 0.001, 0.003, 0.03, 0.1, 0.3, 1.0 and compare the final losses.}
 
 \vspace{3pt}\hrule\vspace{4pt}
 
