@@ -1213,3 +1213,24 @@ fingerprint rejection, optional dataset, install skip/restart paths); all five
 solution notebooks executed end to end in the locked environment (pandas 3.0.5,
 numpy 2.5.2). **Still needs a live Colab rehearsal** after the HF upload and the
 merge to `main`.
+
+## 2026-09-23 — Lab 1 Step 6: students watch the learning-rate curves change, not label them
+
+**Asked for:** Step 6 was "bad" — the `which_diverged = "too_big"` blank was a toy
+label, and students had to fill it in before the plot cell had even run. Students
+should *see* the curves and the loss change.
+
+**Now:** two real blanks — `lr_too_small` and `lr_too_big` — and one plot of all
+three regimes (too small / 0.01 / too big) with each run's start → end loss in
+the legend. The asserts check the behaviour of the rates the student chose, not a
+label: too small must still be crawling (falls, but ends > 3× lr_ok's loss), too
+big must end above where it started. Then an ungraded explore cell: change
+`lr_try`, re-run, and each run is ADDED to one growing plot with a final-loss
+table under it — the "watch it change" moment. No slider: `ipywidgets` is not in
+the locked env and Colab form sliders still need a re-run, so re-run-to-add is
+the robust version. A "what to notice" note names three things visible in the
+real curves (measured, seed 1, 150 epochs): 0.03 falls faster than 0.01 early but
+ends higher (0.022 vs 0.011); 0.1 spikes to 0.377 before settling at 0.073; 0.3
+and above never settle. Hint sheet options were verified against the asserts:
+distractors 0.003 (too small? no — ends 0.017) and 0.1 (too big? no — ends
+0.073) fail for the reason their labels give.
