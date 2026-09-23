@@ -8350,6 +8350,317 @@ def followalong_debrief(name="fig_followalong_debrief.png"):
     _save(fig, name)
 
 
+# ---- Lecture 14: the three-stage demo, walked step by step -----------------
+# (instructor, 2026-09-14) The live demo used to be two slides — a storyboard
+# and one payoff panel.  It is now a stage-by-stage walkthrough of the three
+# scripts under demos/lecture14_agent/, because the teaching value is in the
+# DIFF: each script adds exactly one idea, and each one fails in a new way
+# until the last.  Transcript panels deliberately reuse the demo's own terminal
+# chips (YOU / BOT / OBS / THINK / ACT) so the slide and the projector match.
+DEMO_YOU = "#2E6F95"          # blue, as ui.py
+DEMO_BOT = TEAL               # green-teal, as ui.py
+DEMO_OBS = AMBER
+DEMO_THINK = MUTED
+DEMO_ACT = "#7D5BA6"          # purple, as ui.py
+
+# The three questions every stage is asked, verbatim from the demo scripts.
+DEMO_Q1 = "We're starting morning QC and the run in question is QC-04. First: what does it mean for a run to be 'out of spec'?"
+DEMO_Q2 = "Which run did I just say we're reviewing today?"
+DEMO_Q3 = "What is QC-04's mass error, and does it pass QC?"
+
+
+def _chip_row(ax, x, y, w, label, colour, body, body_col=None, fs=9.0,
+              chip_w=1.05, bad=False, linespacing=1.5):
+    """One terminal-style line: a solid chip, a gutter bar, then the text."""
+    ax.add_patch(FancyBboxPatch((x, y - 0.17), chip_w, 0.34,
+                 boxstyle="round,pad=0.02,rounding_size=0.05",
+                 facecolor=colour, edgecolor=colour, lw=1.2, zorder=3))
+    ax.text(x + chip_w / 2, y, label, ha="center", va="center", color=WHITE,
+            fontsize=7.6, fontweight="bold", zorder=4)
+    ax.plot([x + chip_w + 0.12, x + chip_w + 0.12], [y - 0.19, y + 0.19],
+            color=colour, lw=2.2, solid_capstyle="round", zorder=3)
+    ax.text(x + chip_w + 0.30, y, body, ha="left", va="center",
+            color=body_col or INK, fontsize=fs, linespacing=linespacing,
+            fontweight="bold" if bad else "normal", zorder=4)
+
+
+def demo_plan(name="fig_demo_plan.png"):
+    """The demo in one table: three scripts, one new idea each, and where each
+    one breaks on the same three questions. This is the map the room keeps in
+    their head while the three scripts run."""
+    fig, ax = plt.subplots(figsize=(13.0, 5.2))
+    ax.set_xlim(0, 13); ax.set_ylim(0, 7.15); ax.axis("off")
+    ax.text(6.5, 6.80, "three scripts · one new idea each · the same three questions",
+            ha="center", color=INK, fontsize=13.5, fontweight="bold")
+    cols = [1.45, 4.05, 6.55, 9.0, 11.4]
+    heads = ["the script", "the one new idea", "Q1  a concept",
+             "Q2  memory", "Q3  the data"]
+    for cx, h in zip(cols, heads):
+        ax.text(cx, 6.08, h, ha="center", color=MUTED, fontsize=10.2,
+                fontweight="bold")
+    ax.plot([0.3, 12.7], [5.83, 5.83], color=HAIRLINE, lw=1.4)
+    rows = [
+        ("stage1_chatbot.py", "a bare LLM call", "✓", "✗  forgets",
+         "makes it up", MUTED),
+        ("stage2_memory.py", "keep the conversation", "✓", "✓  “QC-04”",
+         "INVENTS a number —\nand passes a failing run", RED),
+        ("stage3_react.py", "let it call tools (ReAct)", "✓", "✓  “QC-04”",
+         "reads the file →\n+5.6 ppm, OUT OF SPEC", TEAL),
+    ]
+    y = 5.05
+    for script, idea, q1, q2, q3, col in rows:
+        hero = col is TEAL
+        ax.add_patch(FancyBboxPatch((0.3, y - 0.72), 12.4, 1.44,
+                     boxstyle="round,pad=0.03,rounding_size=0.08",
+                     facecolor=TEAL_SOFT if hero else
+                     ("#F9EDEC" if col is RED else WHITE),
+                     edgecolor=col if col is not MUTED else HAIRLINE,
+                     lw=2.2 if col is not MUTED else 1.5))
+        ax.text(cols[0], y, script, ha="center", va="center", color=INK,
+                fontsize=10.2, fontweight="bold", family="monospace")
+        ax.text(cols[1], y, idea, ha="center", va="center", color=INK_SOFT,
+                fontsize=10)
+        ax.text(cols[2], y, q1, ha="center", va="center", color=TEAL,
+                fontsize=12, fontweight="bold")
+        ax.text(cols[3], y, q2, ha="center", va="center",
+                color=TEAL if "✓" in q2 else RED, fontsize=10.5,
+                fontweight="bold")
+        ax.text(cols[4], y, q3, ha="center", va="center", color=col,
+                fontsize=9.6, fontweight="bold", linespacing=1.45)
+        y -= 1.62
+    ax.text(6.5, 0.35,
+            "the punchline: the memory-only chatbot PASSES a run that fails all "
+            "three limits — the one the agent catches",
+            ha="center", color=ROI_INK, fontsize=10.8, fontweight="bold")
+    _save(fig, name)
+
+
+def demo_stage1(name="fig_demo_stage1.png"):
+    """STAGE 1 — a bare chatbot. The message list is rebuilt from scratch every
+    turn, so nothing carries over: Q2 cannot name the run we just named."""
+    fig, (axl, axr) = plt.subplots(1, 2, figsize=(13.0, 4.9),
+                                   gridspec_kw={"width_ratios": [1, 1.5]})
+    axl.set_xlim(0, 10); axl.set_ylim(0, 10); axl.axis("off")
+    axl.text(5.0, 9.5, "the code", ha="center", color=INK, fontsize=12.5,
+             fontweight="bold")
+    axl.add_patch(FancyBboxPatch((0.3, 4.55), 9.4, 4.25,
+                  boxstyle="round,pad=0.05,rounding_size=0.1",
+                  facecolor="#F1F1EC", edgecolor=MUTED, lw=1.8))
+    code = ("for q in QUESTIONS:\n"
+            "    messages = [        # rebuilt each turn\n"
+            "        {\"role\": \"system\", ...},\n"
+            "        {\"role\": \"user\", \"content\": q},\n"
+            "    ]\n"
+            "    bot(claude(messages))")
+    axl.text(0.65, 6.65, code, ha="left", va="center", color=INK,
+             fontsize=9.2, family="monospace", linespacing=1.65)
+    axl.add_patch(FancyBboxPatch((0.3, 2.65), 9.4, 1.45,
+                  boxstyle="round,pad=0.05,rounding_size=0.1",
+                  facecolor=AMBER_SOFT, edgecolor=AMBER, lw=2.2))
+    axl.text(5.0, 3.38, "nothing carries between turns", ha="center",
+             va="center", color=ROI_INK, fontsize=11.5, fontweight="bold")
+    axl.text(5.0, 1.65,
+             "the raw LLM is a stateless text function:\n"
+             "every question starts from nothing",
+             ha="center", va="center", color=INK_SOFT, fontsize=10,
+             linespacing=1.55)
+
+    axr.set_xlim(0, 10); axr.set_ylim(0, 10); axr.axis("off")
+    axr.text(5.0, 9.5, "what the room sees", ha="center", color=INK,
+             fontsize=12.5, fontweight="bold")
+    _chip_row(axr, 0.2, 8.55, 9.6, "YOU", DEMO_YOU,
+              "…the run in question is QC-04. What does\n"
+              "'out of spec' mean?")
+    _chip_row(axr, 0.2, 7.35, 9.6, "BOT", DEMO_BOT,
+              "A run is out of spec when a monitored metric\n"
+              "falls outside the SOP's acceptance limits.")
+    _chip_row(axr, 0.2, 5.95, 9.6, "YOU", DEMO_YOU,
+              "Which run did I just say we're reviewing today?")
+    _chip_row(axr, 0.2, 4.85, 9.6, "BOT", DEMO_BOT,
+              "You haven't mentioned a specific run — could\n"
+              "you tell me which one?", body_col=RED, bad=True)
+    axr.text(5.0, 3.95, "— it was told, one turn ago", ha="center",
+             va="center", color=RED, fontsize=9.6, style="italic")
+    axr.add_patch(FancyBboxPatch((0.2, 0.85), 9.6, 2.5,
+                  boxstyle="round,pad=0.05,rounding_size=0.1",
+                  facecolor="#F9EDEC", edgecolor=RED, lw=2.2))
+    axr.text(5.0, 2.70, "FAILURE 1 — no memory", ha="center", va="center",
+             color=RED, fontsize=11.5, fontweight="bold")
+    axr.text(5.0, 1.65,
+             "Q3 is hopeless for the same reason: it has never\n"
+             "seen your data and cannot remember your question.",
+             ha="center", va="center", color=INK, fontsize=9.8,
+             linespacing=1.55)
+    fig.subplots_adjust(wspace=0.12)
+    _save(fig, name)
+
+
+def demo_stage2(name="fig_demo_stage2.png"):
+    """STAGE 2 — add memory: ONE change, the message list persists. Q2 now
+    works. Q3 exposes the scarier failure: with no way to SEE the data it
+    invents a clean number and passes a run that fails all three limits."""
+    fig, (axl, axr) = plt.subplots(1, 2, figsize=(13.0, 4.9),
+                                   gridspec_kw={"width_ratios": [1, 1.5]})
+    axl.set_xlim(0, 10); axl.set_ylim(0, 10); axl.axis("off")
+    axl.text(5.0, 9.5, "the ONLY change", ha="center", color=INK,
+             fontsize=12.5, fontweight="bold")
+    axl.add_patch(FancyBboxPatch((0.3, 4.55), 9.4, 4.25,
+                  boxstyle="round,pad=0.05,rounding_size=0.1",
+                  facecolor="#F1F1EC", edgecolor=MUTED, lw=1.8))
+    axl.text(0.65, 6.65,
+             "messages = [ ... ]       # ONE list\n\n"
+             "for q in QUESTIONS:\n"
+             "    messages.append(user(q))\n"
+             "    reply = claude(messages)\n"
+             "    messages.append(reply)   # remember it",
+             ha="left", va="center", color=INK, fontsize=9.2,
+             family="monospace", linespacing=1.65)
+    axl.add_patch(FancyBboxPatch((0.3, 2.65), 9.4, 1.45,
+                  boxstyle="round,pad=0.05,rounding_size=0.1",
+                  facecolor=TEAL_SOFT, edgecolor=TEAL, lw=2.2))
+    axl.text(5.0, 3.38, "that single change IS “memory”", ha="center",
+             va="center", color=TEAL, fontsize=11.5, fontweight="bold")
+    axl.text(5.0, 1.65,
+             "no new model, no new machinery —\nyou just stopped throwing the "
+             "history away",
+             ha="center", va="center", color=INK_SOFT, fontsize=10,
+             linespacing=1.55)
+
+    axr.set_xlim(0, 10); axr.set_ylim(0, 10); axr.axis("off")
+    axr.text(5.0, 9.5, "what the room sees", ha="center", color=INK,
+             fontsize=12.5, fontweight="bold")
+    _chip_row(axr, 0.2, 8.6, 9.6, "YOU", DEMO_YOU,
+              "Which run did I just say we're reviewing today?")
+    _chip_row(axr, 0.2, 7.65, 9.6, "BOT", DEMO_BOT,
+              "QC-04.", body_col=TEAL, bad=True)
+    axr.text(2.9, 7.65, "  ✓  memory works", ha="left", va="center",
+             color=TEAL, fontsize=9.4, style="italic")
+    _chip_row(axr, 0.2, 6.45, 9.6, "YOU", DEMO_YOU,
+              "What is QC-04's mass error, and does it pass QC?")
+    _chip_row(axr, 0.2, 5.15, 9.6, "BOT", DEMO_BOT,
+              "QC-04's mass error is +0.8 ppm, comfortably\n"
+              "within ±2 ppm — it PASSES.", body_col=RED, bad=True)
+    axr.add_patch(FancyBboxPatch((0.2, 0.95), 9.6, 3.35,
+                  boxstyle="round,pad=0.05,rounding_size=0.1",
+                  facecolor="#F9EDEC", edgecolor=RED, lw=2.4))
+    axr.text(5.0, 3.70, "FAILURE 2 — memory is not knowledge",
+             ha="center", va="center", color=RED, fontsize=11.5,
+             fontweight="bold")
+    axr.text(5.0, 2.45,
+             "It has never seen the file. So it invented a clean\n"
+             "number and PASSED a run that fails all three limits.\n"
+             "Fluent, confident, and wrong.",
+             ha="center", va="center", color=INK, fontsize=9.8,
+             linespacing=1.6)
+    axr.text(5.0, 1.32, "in a lab, this releases a bad batch", ha="center",
+             va="center", color=RED, fontsize=10.2, fontweight="bold")
+    fig.subplots_adjust(wspace=0.12)
+    _save(fig, name)
+
+
+def demo_stage3(name="fig_demo_stage3.png"):
+    """STAGE 3 — add TOOLS (ReAct). When the model writes `Action:`, WE run that
+    Python function and feed the result back as an `Observation:`. The same Q3
+    is now answered from the real file."""
+    fig, (axl, axr) = plt.subplots(1, 2, figsize=(13.0, 5.1),
+                                   gridspec_kw={"width_ratios": [1, 1.55]})
+    axl.set_xlim(0, 10); axl.set_ylim(0, 10); axl.axis("off")
+    axl.text(5.0, 9.5, "the loop we add", ha="center", color=INK,
+             fontsize=12.5, fontweight="bold")
+    axl.add_patch(FancyBboxPatch((0.3, 4.85), 9.4, 3.95,
+                  boxstyle="round,pad=0.05,rounding_size=0.1",
+                  facecolor="#F1F1EC", edgecolor=MUTED, lw=1.8))
+    axl.text(0.65, 6.80,
+             "while has_action(reply):\n"
+             "    name, arg = parse_action(reply)\n"
+             "    obs = run_tool(name, arg, state)\n"
+             "    messages.append(\"Observation: \" + obs)\n"
+             "    reply = claude(messages)",
+             ha="left", va="center", color=INK, fontsize=9.2,
+             family="monospace", linespacing=1.7)
+    axl.add_patch(FancyBboxPatch((0.3, 2.95), 9.4, 1.45,
+                  boxstyle="round,pad=0.05,rounding_size=0.1",
+                  facecolor=TEAL_SOFT, edgecolor=TEAL, lw=2.2))
+    axl.text(5.0, 3.68, "the model only ever writes TEXT", ha="center",
+             va="center", color=TEAL, fontsize=11.5, fontweight="bold")
+    axl.text(5.0, 1.85,
+             "the SCRIPT is what touches your data.\n"
+             "That is why “restricted tools” is a real\n"
+             "guardrail and not a promise.",
+             ha="center", va="center", color=INK_SOFT, fontsize=10,
+             linespacing=1.6)
+
+    axr.set_xlim(0, 10); axr.set_ylim(0, 10); axr.axis("off")
+    axr.text(5.0, 9.6, "the same question, now grounded", ha="center",
+             color=INK, fontsize=12.5, fontweight="bold")
+    _chip_row(axr, 0.2, 8.75, 9.6, "YOU", DEMO_YOU,
+              "What is QC-04's mass error, and does it pass QC?")
+    _chip_row(axr, 0.2, 7.95, 9.6, "THINK", DEMO_THINK,
+              "I must read the real table before quoting a number.")
+    _chip_row(axr, 0.2, 7.20, 9.6, "ACT", DEMO_ACT, "load_csv(qc_runs.csv)")
+    _chip_row(axr, 0.2, 6.45, 9.6, "OBS", DEMO_OBS,
+              "6 runs loaded; columns: run_id, mass_error_ppm, …")
+    _chip_row(axr, 0.2, 5.70, 9.6, "THINK", DEMO_THINK,
+              "Now compare every run against the spec limits.")
+    _chip_row(axr, 0.2, 4.95, 9.6, "ACT", DEMO_ACT, "check_limits()")
+    _chip_row(axr, 0.2, 4.05, 9.6, "OBS", DEMO_OBS,
+              "5/6 pass; QC-04 FAILS: mass error +5.6 ppm (limit ±2);\n"
+              "resolution 22,300 (limit >30,000); TIC 3.1 (limit 8–12)")
+    _chip_row(axr, 0.2, 2.85, 9.6, "BOT", DEMO_BOT,
+              "QC-04 is +5.6 ppm — OUT OF SPEC on all three\n"
+              "limits. Hold the results; please verify before release.",
+              body_col=TEAL, bad=True)
+    axr.add_patch(FancyBboxPatch((0.2, 0.55), 9.6, 1.55,
+                  boxstyle="round,pad=0.05,rounding_size=0.1",
+                  facecolor=TEAL_SOFT, edgecolor=TEAL, lw=2.4))
+    axr.text(5.0, 1.33,
+             "every number now traces to an Observation — nothing invented",
+             ha="center", va="center", color=TEAL, fontsize=10.6,
+             fontweight="bold")
+    fig.subplots_adjust(wspace=0.12)
+    _save(fig, name)
+
+
+def demo_why(name="fig_demo_why.png"):
+    """What actually made stage 3 work — the two lessons to carry into the
+    guardrails section: the script owns the tools, and the agent only knows
+    what its context says exists."""
+    fig, ax = plt.subplots(figsize=(13.0, 4.8))
+    ax.set_xlim(0, 13); ax.set_ylim(0, 8); ax.axis("off")
+    ax.text(6.5, 7.55, "why stage 3 worked — two lessons to keep",
+            ha="center", color=INK, fontsize=13.5, fontweight="bold")
+    cards = [
+        (TEAL, "the SCRIPT owns the tools",
+         "The model never touches your files. It writes\n"
+         "`Action: check_limits` and the Python code\n"
+         "decides whether to run it.",
+         "→ restricted tools is enforceable:\nthe agent cannot do what you "
+         "did not\nwrite a function for"),
+        (AMBER, "it only knows what the context says",
+         "The system prompt lists the data files that\n"
+         "exist. Without that, asked about QC-04 it had\n"
+         "nothing to pass but the run id — and the\n"
+         "demo crashed trying to open a file “QC-04”.",
+         "→ an agent that has to guess\nwill guess"),
+    ]
+    w = 6.1
+    for k, (col, head, body, punch) in enumerate(cards):
+        x = 0.35 + k * (w + 0.5)
+        ax.add_patch(FancyBboxPatch((x, 0.9), w, 5.85,
+                     boxstyle="round,pad=0.05,rounding_size=0.12",
+                     facecolor=WHITE, edgecolor=col, lw=2.4))
+        ax.add_patch(FancyBboxPatch((x, 5.85), w, 0.9,
+                     boxstyle="round,pad=0.05,rounding_size=0.12",
+                     facecolor=col, edgecolor=col, lw=2.4))
+        ax.text(x + w / 2, 6.30, head, ha="center", va="center", color=WHITE,
+                fontsize=11.5, fontweight="bold")
+        ax.text(x + w / 2, 4.45, body, ha="center", va="center", color=INK,
+                fontsize=9.8, linespacing=1.65)
+        ax.text(x + w / 2, 2.05, punch, ha="center", va="center",
+                color=col if col is TEAL else ROI_INK, fontsize=10,
+                fontweight="bold", linespacing=1.6)
+    _save(fig, name)
+
 def demo_storyboard(name="fig_demo_storyboard.png"):
     """Live-demo storyboard: the MS analysis assistant reads → analyzes → plots
     → flags → drafts, each panel a reason→act beat the instructor narrates."""
@@ -8629,7 +8940,11 @@ def _lecture14_figures():
     react_transcript("youdo", "fig_react_transcript_youdo.png")
     followalong_card()
     followalong_debrief()
-    demo_storyboard()
+    demo_plan()
+    demo_stage1()
+    demo_stage2()
+    demo_stage3()
+    demo_why()
     demo_flag()
     agents_fit()
     guardrails("ido", "fig_guardrails_ido.png")
@@ -8855,6 +9170,8 @@ FUNCS = {
         react_transcript("youdo", "fig_react_transcript_youdo.png"),
     ),
     "followalong": lambda: (followalong_card(), followalong_debrief()),
+    "demo_walk": lambda: (demo_plan(), demo_stage1(), demo_stage2(),
+                          demo_stage3(), demo_why()),
     "demo_storyboard": demo_storyboard,
     "demo_flag": demo_flag,
     "agents_fit": agents_fit,
