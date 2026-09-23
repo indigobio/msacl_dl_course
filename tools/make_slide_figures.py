@@ -5114,6 +5114,132 @@ def embedding_dedup(name="fig_embed_dedup.png"):
     _save(fig, name)
 
 
+# ---- Lecture 10: augmentation, taught on a PICTURE (instructor, 2026-09-16) -
+# The first version illustrated augmentation on a stem spectrum and the
+# instructor was right that it does not read: a 2% m/z shift looks like nothing
+# from the back of a room. Augmentation is a fundamentally VISUAL idea, so the
+# concept is now carried by a real microscopy image where every transform is
+# unmistakable and the label ("a band neutrophil") is obviously preserved — and
+# where one over-aggressive crop obviously destroys it. The MS transfer (m/z
+# jitter, intensity, baseline) is stated in one line and the arithmetic stays on
+# the real DRIAMS split, so the generic picture is the bridge, not the payload
+# (rule 2).
+SMEAR_SRC = "img_blood_smear.jpg"
+SMEAR_CREDIT = ("blood smear · Bobjgalindo, “Band neutrophil”, Wikimedia "
+                "Commons, CC BY-SA 4.0 — transforms applied by the course")
+AUG_N_VIEWS = 8
+AUG_N_RES, AUG_N_SUS = 41, 697
+
+
+def _smear_views(px=230):
+    """The original plus five transforms, all cropped from a larger source so a
+    rotation never leaves black corners. Returns (label, image, ok) triples."""
+    from PIL import Image, ImageEnhance
+    src = Image.open(IMG / SMEAR_SRC).convert("RGB")
+    n = src.size[0]
+    m = int(px * 1.05)                       # centre-crop window on the source
+
+    def centre(im, side=m):
+        w, h = im.size
+        l, t = (w - side) // 2, (h - side) // 2
+        return im.crop((l, t, l + side, t + side)).resize((px, px), Image.LANCZOS)
+
+    original = centre(src)
+    flipped = centre(src.transpose(Image.FLIP_LEFT_RIGHT))
+    rotated = centre(src.rotate(35, resample=Image.BICUBIC))
+    zoomed = centre(src.crop((n // 4, n // 4, 3 * n // 4, 3 * n // 4)))
+    dim = centre(ImageEnhance.Brightness(ImageEnhance.Color(src).enhance(0.6))
+                 .enhance(0.72))
+    dim = Image.fromarray(np.clip(np.asarray(dim).astype(float)
+                                  + np.random.default_rng(2).normal(0, 11, (px, px, 3)),
+                                  0, 255).astype("uint8"))
+    # the counter-example: crop a corner that contains no neutrophil at all
+    corner = src.crop((0, 0, int(n * 0.30), int(n * 0.30))).resize((px, px),
+                                                                   Image.LANCZOS)
+    return [("the original", original, True),
+            ("flip", flipped, True),
+            ("rotate 35°", rotated, True),
+            ("zoom / crop", zoomed, True),
+            ("dim + noise", dim, True),
+            ("crop too hard", corner, False)]
+
+
+def augmentation(name="fig_augmentation.png"):
+    """Augmentation on a real microscopy image: five transforms that all keep
+    the label ('a band neutrophil') and one that destroys it, beside the rule,
+    the transfer to spectra, and the exact do-it-together arithmetic."""
+    views = _smear_views()
+    fig = plt.figure(figsize=(13.4, 5.6))
+    gsL = fig.add_gridspec(2, 3, left=0.035, right=0.545, top=0.87, bottom=0.185,
+                           wspace=0.07, hspace=0.46)
+    for k, (lab, im, ok) in enumerate(views):
+        ax = fig.add_subplot(gsL[k // 3, k % 3])
+        ax.imshow(im)
+        ax.set_xticks([]); ax.set_yticks([])
+        for sp in ax.spines.values():
+            sp.set_edgecolor(TEAL if ok else RED)
+            sp.set_linewidth(2.6 if k == 0 or not ok else 1.8)
+        ax.set_title(lab, fontsize=9.4, color=INK if ok else RED,
+                     fontweight="bold", pad=3.5)
+        ax.text(0.5, -0.11, "✓ still a band neutrophil" if ok
+                else "✗ the cell is gone — label destroyed",
+                transform=ax.transAxes, ha="center", va="top",
+                color=TEAL if ok else RED, fontsize=7.8,
+                fontweight="bold" if not ok else "normal")
+    fig.text(0.29, 0.925, "one labelled image → five more of it",
+             ha="center", color=INK, fontsize=12.5, fontweight="bold")
+    fig.text(0.29, 0.035, SMEAR_CREDIT, ha="center", color=MUTED, fontsize=6.8)
+
+    axr = fig.add_axes([0.575, 0.05, 0.405, 0.90])
+    axr.set_xlim(0, 10); axr.set_ylim(0, 10); axr.axis("off")
+    axr.add_patch(FancyBboxPatch((0.15, 7.75), 9.7, 2.05,
+                  boxstyle="round,pad=0.05,rounding_size=0.1",
+                  facecolor=TEAL_SOFT, edgecolor=TEAL, lw=2.4))
+    axr.text(5.0, 9.40, "a transform is legitimate only if", ha="center",
+             va="center", color=TEAL, fontsize=11.2, fontweight="bold")
+    axr.text(5.0, 8.48,
+             "1.  your instrument could have produced it, and\n"
+             "2.  it does not change the LABEL",
+             ha="center", va="center", color=INK, fontsize=10, linespacing=1.7)
+    axr.text(5.0, 7.15,
+             "on spectra that means m/z jitter ±0.1%, intensity ×0.9,\n"
+             "baseline and noise — never a left–right flip",
+             ha="center", va="center", color=INK_SOFT, fontsize=9.4,
+             style="italic", linespacing=1.6)
+
+    axr.text(5.0, 6.05, "do it together — what does that buy?", ha="center",
+             color=INK, fontsize=11.2, fontweight="bold")
+    lines = [("resistant spectra you have", f"{AUG_N_RES}", INK),
+             (f"× {AUG_N_VIEWS} augmented views each",
+              f"= {AUG_N_RES * AUG_N_VIEWS}", TEAL),
+             ("imbalance in the batch",
+              f"{AUG_N_SUS} : {AUG_N_RES * AUG_N_VIEWS}  ≈  2.1 : 1", TEAL)]
+    y = 5.30
+    for lab, val, col in lines:
+        axr.add_patch(FancyBboxPatch((0.15, y - 0.52), 9.7, 0.96,
+                      boxstyle="round,pad=0.03,rounding_size=0.08",
+                      facecolor=WHITE,
+                      edgecolor=col if col is TEAL else HAIRLINE,
+                      lw=2.0 if col is TEAL else 1.4))
+        axr.text(0.55, y - 0.04, lab, ha="left", va="center", color=INK,
+                 fontsize=9.8)
+        axr.text(9.45, y - 0.04, val, ha="right", va="center", color=col,
+                 fontsize=11.2, fontweight="bold")
+        y -= 1.10
+    axr.text(5.0, 1.95, "(was 697 : 41 ≈ 17 : 1)", ha="center", color=MUTED,
+             fontsize=9.2, style="italic")
+    axr.add_patch(FancyBboxPatch((0.15, 0.10), 9.7, 1.45,
+                  boxstyle="round,pad=0.05,rounding_size=0.1",
+                  facecolor="#F9EDEC", edgecolor=RED, lw=2.4))
+    axr.text(5.0, 1.16, "augment AFTER the split — never before", ha="center",
+             va="center", color=RED, fontsize=10.6, fontweight="bold")
+    axr.text(5.0, 0.55,
+             "views of one isolate in train AND test is the leakage curation\n"
+             "just removed — and it is still 41 isolates, not 328.",
+             ha="center", va="center", color=INK, fontsize=9.0,
+             linespacing=1.6)
+    _save(fig, name)
+
 def class_weight_family(name="fig_class_weights.png"):
     """Make the rare class count, worked: balanced class weights on the real
     DRIAMS split (w = N/(K·n_c) → 9.00 and 0.53, a ratio of exactly 17), then
@@ -5317,6 +5443,7 @@ def _lecture10_figures():
     treatment_menu()
     curation_pass()
     embedding_dedup()
+    augmentation()
     class_weight_family()
     smote_interpolation("ido", "fig_smote.png")
     focal_loss_volume()
@@ -9047,6 +9174,7 @@ FUNCS = {
                                "ido", "fig_smote.png"),
                            focal_loss_volume(), curriculum_learning()),
     "embed_dedup": embedding_dedup,
+    "augmentation": augmentation,
     "roc_intro": lambda: (score_threshold_sweep(), roc_curve_intro(),
                           pr_curve_intro(), roc_pr_curves()),
     # ---- Lecture 5 ----
