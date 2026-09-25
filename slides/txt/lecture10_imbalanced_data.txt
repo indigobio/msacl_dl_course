@@ -93,7 +93,7 @@ the PR curve’s chance baseline sits at the prevalence (ROC’s sits at 0.5)
 (c)  To report this screen across ALL thresholds, would you trust the AUROC or the AUPRC (PR curve) — and why?
 CHECKPOINT · Your turn → Quiz 10, Q2. Same screen, 4% prevalence. Place its one operating point on the ROC and on the PR curve, then decide which area to report across all thresholds — and why. Worked answer in the notes.
 NOTES:
-  YOU-DO = Quiz 10 Q2, straight after 'why AUROC flatters'. The formulas it needs are restated on the slide. Worked answer: (a) FPR = 32/(32+448) = 32/480 = 0.067; TPR = 0.80 — the point (0.067, 0.80) hugs the top-left, so the ROC/AUROC looks excellent. (b) PR point =(recall 0.80, precision 0.33); PR baseline = prevalence = 20/500 = 0.04 (ROC's baseline is 0.5). (c) Trust the AUPRC / PR curve (reported with recall). At 4% prevalence the 480 true-negatives dominate, so a tiny FPR keeps AUROC flatteringly high even though precision is only 0.33 (2 of 3 flags false). AUROC is invariant to the class ratio; AUPRC collapses toward the prevalence, so it stays honest as recall grows (Saito \& Rehmsmeier 2015).
+  YOU-DO = Quiz 10 Q2, straight after 'why AUROC flatters'. The formulas it needs are restated on the slide. Worked answer: (a) FPR = 32/(32+448) = 32/480 = 0.067; TPR = 0.80 — the point (0.067, 0.80) hugs the top-left, so the ROC/AUROC looks excellent. (b) PR point =(recall 0.80, precision 0.33); PR baseline = prevalence = 20/500 = 0.04 (ROC's baseline is 0.5). (c) Trust the AUPRC / PR curve (reported with recall). At 4% prevalence the 480 true-negatives dominate, so a tiny FPR keeps AUROC flatteringly high even though precision is only 0.33 (2 of 3 flags false). AUROC is invariant to the class ratio; AUPRC collapses toward the prevalence, so it stays honest as recall grows (Saito & Rehmsmeier 2015).
 
 --- slide 12 · layout: Blank ---
 PART A · ONE HONESTY NOTE (NO QUIZ ITEM)
@@ -160,7 +160,7 @@ Two real minority points:   A = (2, 6)   B = (4, 10)   λ = 0.25
 (b)  One sentence: why is raw-spectrum SMOTE risky in 6,000 dimensions?
 CHECKPOINT · Your turn → Quiz 10, Q4. Same formula, new numbers: A = (2, 6), B = (4, 10), λ = 0.25. (a) Compute the synthetic point. (b) Why is raw-spectrum SMOTE risky in 6,000 dimensions? Worked answer in the notes.
 NOTES:
-  YOU-DO = Quiz 10 Q4, straight after the SMOTE do-it-together. Worked answer: (a) synthetic = (2 + 0.25 2, 6 + 0.25 4) = (2 + 0.5, 6 + 1) = (2.5, 7) — a quarter of the way from A toward B. (b) A straight-line blend of two real 6,000-dimensional spectra can produce a non-physical spectrum (a peak pattern no instrument would ever record), so pair SMOTE with curation and domain augmentation (m/z jitter), or simply oversample real spectra.
+  YOU-DO = Quiz 10 Q4, straight after the SMOTE do-it-together. Worked answer: (a) synthetic = (2 + 0.25·2, 6 + 0.25·4) = (2 + 0.5, 6 + 1) = (2.5, 7) — a quarter of the way from A toward B. (b) A straight-line blend of two real 6,000-dimensional spectra can produce a non-physical spectrum (a peak pattern no instrument would ever record), so pair SMOTE with curation and domain augmentation (m/z jitter), or simply oversample real spectra.
 
 --- slide 20 · layout: Blank ---
 PART B · 5 · FOCAL LOSS · I-DO
@@ -193,7 +193,7 @@ curriculum
 (e)  Which of these four adds NEW resistant signal to the dataset?
 CHECKPOINT · Your turn → Quiz 10, Q3. Four situations, four moves from the menu — each used once. Then the honest question: which of the four adds NEW resistant signal? Worked answer in the notes.
 NOTES:
-  YOU-DO = Quiz 10 Q3, after the last treatment (curriculum). Worked answer: (a) curation — clean the labels and drop the junk before anything fancier, then deduplicate: embed every spectrum (the CNN's last hidden layer) and treat cosine ≥ 0.99 as the same isolate, keeping one — repeats split across train and test are leakage. (b) class weights / SMOTE / oversample — make the rare class count. (c) focal loss — up-weight the hard, low-confidence cases. (d) curriculum — order easy, or class-balanced prevalence. (e) None of them. Every move re-uses the same 41 resistant spectra (reweighting shouts them louder, SMOTE interpolates between them, focal loss focuses on them, curriculum reorders them) — no new biological information enters. Only collecting more real resistant isolates adds signal.
+  YOU-DO = Quiz 10 Q3, after the last treatment (curriculum). Worked answer: (a) curation — clean the labels and drop the junk before anything fancier, then deduplicate: embed every spectrum (the CNN's last hidden layer) and treat cosine ≥ 0.99 as the same isolate, keeping one — repeats split across train and test are leakage. (b) class weights / SMOTE / oversample — make the rare class count. (c) focal loss — up-weight the hard, low-confidence cases. (d) curriculum — order easy → hard, or class-balanced → true prevalence. (e) None of them. Every move re-uses the same 41 resistant spectra (reweighting shouts them louder, SMOTE interpolates between them, focal loss focuses on them, curriculum reorders them) — no new biological information enters. Only collecting more real resistant isolates adds signal.
 
 --- slide 23 · layout: Blank ---
 LECTURE 10 · WHAT YOU CAN DO NOW
