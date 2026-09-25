@@ -233,7 +233,7 @@ NOTES:
 PART 3 · OVERFITTING · YOUR TURN (YOU-DO = Q2)
 Diagnose four curve pairs — and name the fix
 [image: Picture 4]
-CHECKPOINT · Your turn → Quiz 4, Q2. For each pair write the diagnosis and one fix (word banks on the sheet). Watch out: (d) is NOT an overfitting problem. 2–3 minutes — worked answer in the notes.
+CHECKPOINT · Your turn → Quiz 4, Q2. For each pair write the diagnosis and one fix (use the word banks below). Watch out: (d) is NOT an overfitting problem. 2–3 minutes — worked answer in the notes.
 Diagnosis bank:  underfitting  ·  just right  ·  overfitting  ·  learning rate far too high (diverging)
 Fix bank:  make the model bigger / train longer  ·  keep it (ship it)  ·  regularize (dropout / weight decay / early stopping / more data)  ·  lower the learning rate
 NOTES:
