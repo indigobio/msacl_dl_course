@@ -28,7 +28,7 @@ NOTES:
   Open with the trap, on REAL data (rule 2). These are the actual DRIAMS S. aureus + oxacillin class counts from Lab 2's dataset: 697 susceptible, 41 resistant — about 6% positive (41/738 = 0.056). A lazy model that always predicts the majority class ("susceptible") is right 697/738 = 94% of the time and yet never flags a single resistant isolate — the exact failure that would let a resistant infection go untreated. The point to land hard: when one class is rare, ACCURACY is dominated by the common class and tells you almost nothing about whether you catch the rare, important one. So we need metrics that look at the rare class directly — precision, recall, and specificity — computed next. (Same imbalance figure introduced in Lecture 4's class-imbalance discussion, now the launch point for the metrics we actually compute.)
 
 --- slide 4 · layout: Title and Body ---
-PART A · Metrics
+PART A · THE METRICS IN PLAIN LANGUAGE
 Evaluation metrics in plain language
 Precision: how many correct positive predictions out of all predictions for a specific class?
 Recall (Sensitivity): how many correct positive predictions out of all positives?

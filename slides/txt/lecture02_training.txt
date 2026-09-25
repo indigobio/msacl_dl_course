@@ -17,7 +17,7 @@ NOTES:
   Two minutes. Rebuild the bridge before adding anything new. This is the Lecture 1 network — same two inputs, one hidden layer, one output — except every weight now reads "w = ?". That is the honest starting state of any real network: weights are initialised at random, so the very first prediction is garbage. Learning is nothing more than repeatedly adjusting those numbers until the predictions stop being garbage. Keep the mantra alive: multiply, add, bend — now we add a fourth verb, "correct."
 
 --- slide 3 · layout: Title and Body ---
-Deep learning training
+TODAY · TRY AND ADJUST
 Learning by trying and adjusting
 [image: Picture 6]
 Target
@@ -84,7 +84,7 @@ NOTES:
   I-DO. The learning rate is the multiplier on the slope — how big a step we take. Walk the three bowls left to right. Too small: steps so tiny the ball crawls; training wastes hours and can settle into a shallow dip and never reach the true bottom. Too big: each step overshoots and lands higher up the far wall; the loss bounces and can diverge to infinity. Just right: brisk, stable steps into the valley. Tell them plainly this is the first knob they reach for in every lab and real project — and the next slides show how to read the loss curve to tell which case you are in.
 
 --- slide 9 · layout: Screenshot + Caption ---
-PART TWO · More on Gradient Descent
+PART TWO · GRADIENT DESCENT IN 2D
 A 2D-view: Gradient Descent
 Color: Value Total Loss
 𝑤2
@@ -93,7 +93,7 @@ Compute 𝜕𝐿 𝜕𝑤1, 𝜕𝐿 𝜕𝑤2
 𝑤1
 
 --- slide 10 · layout: Screenshot + Caption ---
-Part two – More on Gradient descent
+PART TWO · WHERE GRADIENT DESCENT STRUGGLES
 Difficulty of Gradient Descent
 [image: Picture 5]
 Gradient descent never guarantee global minima

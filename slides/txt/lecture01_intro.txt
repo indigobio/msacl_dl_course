@@ -9,7 +9,7 @@ NOTES:
   Sunday morning, hour one — the very first hour of the course. Welcome them and set the contract for all 15 hours: intuition first, mass spec always, a little arithmetic by hand because most of you are PhDs and numbers make it click. Promise of THIS hour: you will compute a neuron by hand, multiply a weight matrix by an input vector by hand, and say in one sentence how deep learning differs from the machine learning you may already use. Nothing today needs math beyond multiply-and-add. This hour is interactive: every worked example (I-do) is followed by one you do yourself (you-do) — and each you-do IS a Quiz 1 question, so by the recap you have already worked the whole quiz. Hand out Quiz 1 now, blank; they fill it as we go.
 
 --- slide 2 · layout: Title and Body ---
-Instructor – Lixing song
+LECTURE 1 · YOUR INSTRUCTOR
 Lixing (lee-shin)
 [image: Picture 4]
 Ph.D. in Computer Science 
@@ -60,7 +60,7 @@ NOTES:
   The spine of the whole field — read the five parts aloud. Contrast with ordinary software: normally YOU write the rules (if peak-area > threshold, flag it); in ML you show examples and the machine writes the rule itself (part 1). Part 5 is the one clinicians must never forget: performance is only real on data the model has NOT seen — hammered in Lecture 10 with external validation. Next slide is a 60-second do-it-together to pin down the boundary before we go further.
 
 --- slide 7 · layout: Blank ---
-WHAT AI IS
+WHAT AI IS · THE BIGGER PICTURE
 What is AI then?
 [image: Picture 4]
 Judea Pearl, a winner of the Turing Award (the “Nobel Prize of computing”), has argued that, 
@@ -96,12 +96,12 @@ NOTES:
   The pivot of the lecture, and the live version of Quiz 1 Q4. The feature-engineering step disappears INTO the network — it learns what to measure and how to decide, jointly, from raw pixels. That is the one-sentence outcome for Lecture 1: learned features vs. hand-engineered features. Honest trade-off: DL removes feature-guessing but demands far more data and compute and gives up interpretability (theme of Lecture 10). PAIR (assessed) — this is Quiz 1 Q4: in Pipeline A a technician computes the peak area at m/z 2415 and the 2415/4100 ratio, then feeds those two numbers to logistic regression (hand-engineered); in Pipeline B the raw 6,000-bin spectrum goes straight into a network that grows its own "peak-ish here" detector (learned). Harvest 2-3 answers aloud — peak area, isotope ratio, retention time, S/N, adduct pattern — every one is a hand-engineered feature a network could learn from the raw spectrum.
 
 --- slide 10 · layout: Title Slide ---
-Intro to Neural networks
+LECTURE 1 · THEORY FUNDAMENTALS
 Theory Fundamentals
 The “simple” math behind the neural networks
 
 --- slide 11 · layout: Title and Body ---
-The basic unit of neural networks
+THE NEURON · THE PERCEPTRON
 Perceptron
 
 --- slide 12 · layout: Blank ---

@@ -61,7 +61,7 @@ NOTES:
   Strip the canonical diagram down to the four blocks the quiz will ask for, each labelled here so the room sees the whole machine is just parts it already owns. Bottom to top: ① the input — token embeddings with the positional encoding we added two slides ago (label it "Positional encoding"); ② multi-head self-attention, last hour's query/key/value weighted average run by several heads at once; ③ "Add & Norm" — the residual skip (Lecture 5) adds the block's input back to its output, then layer norm (this hour) rescales; ④ the feed-forward network, a small dense MLP applied to each position — exactly the Lecture-1 neuron stack. Name the residual skip explicitly (the curved arrow) so it isn't mistaken for decoration: it is why deep transformers train at all. One honesty note if a sharp eye catches it: the real dvgodoy diagram on the previous slide places its Norm BEFORE each sub-layer (the modern pre-norm arrangement), whereas this teaching block collapses to a single "Add & Norm" drawn after attention — same parts, the norms merged for a clean picture. The takeaway is assembly, not new material: every block here is something the room already owns. If anyone is unsure why attention comes before the feed-forward: attention mixes information across tokens, then the feed-forward refines each token on its own.
 
 --- slide 8 · layout: Title and Body ---
-Transformer OverAll
+ENCODER + DECODER · ZOOMED IN
 Encoder Decoder Zoomed in
 
 --- slide 9 · layout: Blank ---
@@ -81,12 +81,12 @@ NOTES:
   Two dominant wirings, both built from the same block. Encoder-only models (BERT is the famous one) keep just the left stack: they read the entire input at once, every token attending both left and right, and produce either one label for the whole sequence (classification) or a rich per-token embedding — the natural fit for "is this spectrum resistant or susceptible?" or "embed this peptide for search." Decoder-only models (the GPT family) keep the right stack with masked attention: they generate one token at a time, each new token attending only to what came before — the natural fit for GENERATION, like writing a peptide sequence residue by residue. Foreshadow the training idea for Lecture 13: a decoder-only model is TRAINED exactly the way it generates — by predicting the next token over an enormous text corpus, a self-supervised objective that needs no human labels (the same "the data labels itself" trick Lecture 11 will make explicit). That next-token pretraining is what an LLM is. The old encoder→decoder pairing (translation: read all of language A, write language B) is exactly Casanovo's shape: read a spectrum, write a peptide. Tie it to the room's task list: classification jobs → encoder-only; generation/de-novo jobs → decoder-only or encoder–decoder. Lab 3 next hour fine-tunes a pretrained GENERATOR instead of a classifier — a diffusion UNet that draws images — so the transfer move is identical while the output is a picture; the primer at the end of the hour explains what that model is.
 
 --- slide 11 · layout: Title and Body ---
-Transformer
+ENCODER + DECODER · STEP BY STEP · 1 OF 2
 Encoder/Decoder Interaction
 source: Jay Alammar, “The Illustrated Transformer” — decoding animation, step 1 (jalammar.github.io/illustrated-transformer/) · © the author; all rights reserved, not for redistribution
 
 --- slide 12 · layout: Title and Body ---
-Transformer
+ENCODER + DECODER · STEP BY STEP · 2 OF 2
 Encoder/Decoder Interaction
 source: Jay Alammar, “The Illustrated Transformer” — decoding animation, step 2: the encoder’s K/V feed every decoder step (jalammar.github.io/illustrated-transformer/) · © the author; all rights reserved, not for redistribution
 

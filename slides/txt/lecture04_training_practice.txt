@@ -37,7 +37,7 @@ NOTES:
   This is the FORMAL definition of softmax — worth stating cleanly here because Lecture 7's attention is built directly on it (weights = softmax(scores)). Walk the worked numbers on the slide: exponentiate each score, e^2.0 = 7.39 and e^0.5 = 1.65, sum to 9.04, then each probability is its exponential over that sum — 7.39/9.04 = 0.82, 1.65/9.04 = 0.18. The final layer gives a raw score per class (here R = 2.0, S = 0.5). Softmax exponentiates each score (which forces it positive) and divides by the sum of all the exponentials (the normalizer that forces the total to 1), landing near 0.82 / 0.18 — "82% sure it's resistant." Nothing about it is binary-only: the same sum-and-divide works for 2 classes or 200; a species-ID model just has a longer sum. That confidence is exactly what the next slide's loss grades: a good loss rewards high probability on the TRUE class and punishes high probability on a WRONG class. Anchor it in their world — this is precisely the output of a DRIAMS-style MALDI-TOF resistance classifier they meet in Lab 2.
 
 --- slide 5 · layout: Blank ---
-PART 1 · LOSS · STEP 3 · THE FORMULA
+PART 1 · LOSS · STEP 2 · THE FORMULA
 Cross-entropy, written out: CE = −log(p_true)
 [image: Picture 4]
 The full loss is CE = −Σ yᵢ·log(ŷᵢ). Because the truth is one-hot (the right class is 1, all others 0), every term drops except the true class — so it reduces to CE = −log(p_true), a natural log. That is the only formula you need for every number today.
@@ -45,21 +45,21 @@ NOTES:
   The explicit formula, so the worked numbers on the next slides are COMPUTED, not read off a curve (rule 3: exercises must be solvable and exact). Walk it in two beats. General form: cross-entropy sums −yᵢ·log(ŷᵢ) over every class, where yᵢ is the true label (1 for the correct class, 0 otherwise) and ŷᵢ is the model's probability for class i. Because the label is one-hot, every term with yᵢ=0 vanishes and only the true class's term survives, leaving CE = −log(p_true): "how surprised were you by the truth," now as an equation. Do the one substitution on the slide out loud — truth R, model says p_true = 0.90, so CE = −ln(0.90) = 0.105 — and note we use the natural log (ln), the PyTorch default; the base only rescales the loss, it never changes which model wins. Tell them to keep this line: the next slide, the you-do, and Quiz 4 Q1 all just plug numbers into −ln(p_true).
 
 --- slide 6 · layout: Blank ---
-PART 1 · LOSS · STEP 2 · THE PENALTY SHAPE
+PART 1 · LOSS · STEP 3 · THE PENALTY SHAPE
 Penalty = how surprised were you by the truth?
 [image: Picture 4]
-This curve IS the cross-entropy penalty −log(p_true). Said 0.9 and right → barely any penalty. Said 0.5 (a shrug) → moderate. Said 0.02 (confidently wrong) → the penalty rockets. That steep left wall is the whole idea; the next slide writes the formula out.
+This curve IS the cross-entropy penalty −log(p_true). Said 0.9 and right → barely any penalty. Said 0.5 (a shrug) → moderate. Said 0.02 (confidently wrong) → the penalty rockets. That steep left wall is the whole idea — the formula from the last slide, drawn.
 NOTES:
   This is the intuition to land, and it is the "penalize confident wrong answers" outcome verbatim. Read the curve right to left: give the true class a probability near 1 and you were right and sure, so the penalty is essentially zero; at 0.5 you were on the fence, a moderate penalty; as your probability for the truth heads toward zero — meaning you were confidently backing the WRONG class — the penalty shoots toward infinity. That asymmetry is deliberate and clinically sensible: a test that hedges is tolerable, a test that is loudly, confidently wrong is dangerous, and the loss reflects that. Name it plainly now: this curve is −log(p_true) — the next slide writes the full formula and does one substitution, so every number they compute later is exact, not eyeballed. One line of contrast with MSE: MSE treats 0.9-vs-1 and 0.1-vs-0 as similar-sized misses; cross- entropy blows the confident miss up enormously.
 
 --- slide 7 · layout: Title and Body ---
-LECTURE 4 · PART 1 OF 3
+PART 1 · LOSS · WHICH LOSS FOR WHICH TASK
 Selecting Proper Loss
 Hand-written digit recognition - classification
 cc deep learning in one day from Prof. Lee
 
 --- slide 8 · layout: Title and Body ---
-LECTURE 4 · PART 1 OF 3
+PART 1 · LOSS · THE RESULT
 Results
 cc deep learning in one day from Prof. Lee
 

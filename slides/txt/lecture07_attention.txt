@@ -62,7 +62,7 @@ NOTES:
   An integer ID says nothing about meaning — id 41 is not 'more' than id 2, and cat is not 39 units better than the. The embedding layer replaces each ID with a short vector of coordinates, and those coordinates are LEARNED during training (they are weights, tuned by the same gradient descent from Lecture 2). The payoff, shown in the picture: words that get used in similar contexts end up near each other — the animals cluster, the drinks cluster, the verbs cluster — because placing them near each other helps the model predict. 'Words → coordinates where similar things sit near each other.' Two dimensions here for drawing; real embeddings use hundreds. The application line to say once: run the identical layer over amino-acid tokens and the chemistry falls out the same way (D and E together, K/R/H together) — nobody hands the model the chemistry, it discovers it. This is the input to attention: attention works on these coordinate vectors, never on raw IDs.
 
 --- slide 8 · layout: Title and Body ---
-Sequence Model intuition
+SEQUENCE MODELS · GETTING CONTEXT
 How to get “Context”
 [image: Picture 5]
 RNN encodes the context in the hidden states
@@ -86,16 +86,16 @@ NOTES:
   This replaces the old vague "what I'm looking for" wording with the rigorous definition (Vaswani et al. 2017; d2l.ai). The one thing to say clearly: query, key, and value are not three different things a token "has" — they are three LEARNED linear projections of the same token vector, q = x·W_Q, k = x·W_K, v = x·W_V, and the network learns the three weight matrices. Define each by its job in the computation, not by a feeling: the QUERY is the vector this token dots against every other token's KEY; that dot product query·key is a compatibility / relevance score (bigger = more relevant); softmax turns the row of scores into weights that sum to 1; the output is the sum of the VALUE vectors, each weighted by its attention weight. The honest analogy is a database key-value lookup made soft: a hard lookup returns the one value whose key matches; attention returns a weighted blend of ALL values, weighted by how well each key matched the query. Real attention also divides the scores by √d_k before softmax so they don't blow up (we skip that in the hand example). The heat map next IS the query-vs-keys scoring step; the weighted average after it is the value-mixing step — and Quiz 7 Q2 has you run one whole head end to end.
 
 --- slide 11 · layout: Title and Body ---
-Self-Attention - QKV
+SELF-ATTENTION · GENERATING Q, K, V
 Generating QKV
 source: Jay Alammar, “The Illustrated Transformer” (jalammar.github.io) · © the author; all rights reserved, not for redistribution
 
 --- slide 12 · layout: Title and Body ---
-Self-Attention - Heat Map
+SELF-ATTENTION · SIMILARITY · 1 OF 2
 Compute Similarity (dot product)
 
 --- slide 13 · layout: Title and Body ---
-Self-Attention - Heat Map
+SELF-ATTENTION · SIMILARITY · 2 OF 2
 Compute Similarity (dot product)
 [image: Picture 6]
 
@@ -149,7 +149,7 @@ NOTES:
   Real attention runs several lookups at once — "heads." Read the diagram bottom to top: the same Q, K, V are each passed through their own small Linear projection per head, every head runs the identical scaled dot-product attention we just did by hand (scores → softmax → weighted values), and the heads' outputs are concatenated and passed through a final Linear to mix them. Why bother: a single set of weights can only express one notion of "relevant," but language has many at once — one head tracks coreference (the it→cat link we just read), another subject–verb agreement, another plain adjacency. Train the identical architecture on residue tokens and a head can pick up charge complementarity (K with D or E) instead — same machinery, new vocabulary. "Scaled" just means the scores are divided by a constant before softmax to keep them well-behaved — a detail, not a new idea. This is a real published diagram; hand-drawn mechanics were ours, canonical architecture is sourced.
 
 --- slide 20 · layout: Blank ---
-WHY ATTENTION WON
+SELF-ATTENTION · WHY IT WON
 Parallel and long-range — that's why attention replaced recurrence
 [image: Picture 4]
 MASS SPEC · Recurrence (left): token 5 must wait for tokens 1–4 (slow), and early tokens fade over the chain (forgetful). Self-attention (right): all pairs at once (parallel — fast on a GPU) and any two tokens are one hop apart (long-range). Both solved — which is what lets one model read a whole document, or a 500-residue protein, end to end.
