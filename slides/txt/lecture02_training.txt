@@ -111,6 +111,8 @@ PART TWO · YOUR TURN (YOU-DO = Q3)
 Diagnose four loss curves — and name the fix
 [image: Picture 4]
 CHECKPOINT · Your turn → Quiz 2, Q3. For each curve write the diagnosis and the one change you would make (use the word banks). Watch out: (a) and (d) are NOT the same problem. 2 minutes — worked answer in the notes.
+Diagnosis bank:  far too high (diverging)  ·  a bit too high (noisy but converging)  ·  too low  ·  just right
+Fix bank:  lower the rate a lot  ·  lower it a little  ·  raise it  ·  keep it (train longer)
 NOTES:
   YOU-DO = Quiz 2 Q3 (same four curves as the sheet, tagged a–d). Answers: (a) FAR TOO HIGH → lower the rate a lot — the swings GROW and the loss climbs, training is diverging. (b) TOO LOW → raise it — the loss barely drops, still high and still falling at the end; wastes time. (c) JUST RIGHT → keep it — steep early drop that flattens low and stays. (d) A BIT TOO HIGH → lower it a little — the loss IS trending down but bounces noisily on the way. The tell separating (a) from (d): in (a) the swings grow and the loss rises; in (d) they shrink and the loss falls. Harvest a couple of pairs, then have them fill Q3.
 
