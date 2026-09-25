@@ -17,6 +17,7 @@ NOTES:
   Two minutes. Rebuild the bridge before adding anything new. This is the Lecture 1 network — same two inputs, one hidden layer, one output — except every weight now reads "w = ?". That is the honest starting state of any real network: weights are initialised at random, so the very first prediction is garbage. Learning is nothing more than repeatedly adjusting those numbers until the predictions stop being garbage. Keep the mantra alive: multiply, add, bend — now we add a fourth verb, "correct."
 
 --- slide 3 · layout: Title and Body ---
+Deep learning training
 Learning by trying and adjusting
 [image: Picture 6]
 Target
@@ -25,7 +26,7 @@ How to find the best parameter values to hit the target?
 
 --- slide 4 · layout: Blank ---
 TODAY · THE WHOLE IDEA IN ONE LOOP
-Learning = guess → measure → adjust, over and over
+Learning = guess → measure → adjust, repeatedly
 1 · Forward
 make a guess ŷ
 2 · Loss
@@ -41,6 +42,7 @@ NOTES:
 --- slide 5 · layout: Blank ---
 PART ONE · LOSS = THE 'HOW WRONG' NUMBER
 Loss = distance between guess and truth
+[image: Picture 6]
 [image: Picture 4]
 MATH· MSE = average of (guess − truth)². Squaring makes every gap positive and punishes big misses hardest. One number for the whole dataset: small = good, big = bad.
 NOTES:
@@ -50,11 +52,11 @@ NOTES:
 PART TWO · GRADIENT DESCENT (I-DO)
 Downhill = the direction that lowers the loss
 Find network parameters 𝜽∗ that minimize total loss L
+Total  Loss 𝐿
+w
 Pick an initial value for w
 Compute 𝜕𝐿 𝜕𝑤
-Total  Loss 𝐿
 [image: Picture 46]
-w
 NOTES:
   I-DO — the engine of all deep learning, with zero calculus. Height = loss, horizontal = a weight's value. The slope at the ball's feet points uphill; subtract a bit of it and you move downhill, toward lower loss. Read the update rule aloud twice — new weight = old weight − lr × slope — because it is literally the last line of the training loop and Quiz 2 Q2. "Gradient" is just our fancy word for "the slope of the loss with respect to a weight"; keep translating it back to "slope." Honesty note: real loss surfaces live in millions of dimensions — the picture is faithful, we just cannot draw a million axes. Next: how big a step? That is the learning rate.
 
@@ -69,6 +71,7 @@ Repeat
 η is called  “learning rate”
 w
 −𝜂𝜕𝐿 𝜕𝑤
+Discussion: Pros and Cons of Gradient Descent?
 NOTES:
   I-DO — the engine of all deep learning, with zero calculus. Height = loss, horizontal = a weight's value. The slope at the ball's feet points uphill; subtract a bit of it and you move downhill, toward lower loss. Read the update rule aloud twice — new weight = old weight − lr × slope — because it is literally the last line of the training loop and Quiz 2 Q2. "Gradient" is just our fancy word for "the slope of the loss with respect to a weight"; keep translating it back to "slope." Honesty note: real loss surfaces live in millions of dimensions — the picture is faithful, we just cannot draw a million axes. Next: how big a step? That is the learning rate.
 
@@ -206,7 +209,7 @@ NOTES:
 
 --- slide 24 · layout: Blank ---
 PART FOUR · WATCH IT LEARN
-Run the five lines for 20 epochs — watch the loss fall
+Ideal Loss Fall
 [image: Picture 4]
 Random weights → 20 passes over the data, each running the five lines on every batch. The healthy signature: a steep early drop, then a gentle flatten. In Lab 1 you run this exact loop on real clinical spectra.
 NOTES:
