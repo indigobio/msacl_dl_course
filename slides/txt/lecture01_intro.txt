@@ -135,7 +135,7 @@ NOTES:
   Walk left to right. Inputs are numbers (say two peak intensities). Each is multiplied by its own weight — how much this neuron cares about that input; weights are what training learns. Add the results plus a bias (a constant nudge) to get z. Then the activation f bends z into the output. Without the bend, stacking neurons collapses back to one big weighted sum (a single line); the bend is what lets networks model curves.
 
 --- slide 14 · layout: Blank ---
-THE NEURON · YOUR TURN (YOU-DO)
+THE NEURON · YOUR TURN (YOU-DO = Q1)
 Pick the activation — then compute one
 [image: Picture 4]
 ❌
@@ -154,7 +154,7 @@ NOTES:
   I-DO, done aloud and slowly — the first hand-computation of the course. z is the dot product of weights and inputs, plus bias: 2·3=6, −1·2=−2, +1 → z=5. Then bend: ReLU leaves 5 alone (positive passes); sigmoid would map 5 to about 0.99, a confident yes. Note the schematic: inputs → weighted edges → Σ (the sum, z) → activation (the bend) → output y. Next slide you run the SAME machine on different numbers — and this time the sum comes out negative. That is Quiz 1 Q2.
 
 --- slide 16 · layout: Blank ---
-THE NEURON · YOUR TURN (YOU-DO)
+THE NEURON · YOUR TURN (YOU-DO = Q2)
 Your neuron — compute it
 [image: Picture 4]
 CHECKPOINT · Your turn → Quiz 1, Q2. Compute z = w·x + b, then apply ReLU. 90 seconds with a neighbour — worked answer in the notes.

@@ -132,7 +132,7 @@ NOTES:
   The first self-supervised flavor, and a direct callback to Lecture 8's BERT. The pretext task: take an unlabeled sequence, hide a piece of it, and train the model to fill in the blank from the surrounding context. On a peptide, mask a residue — A–C–[MASK]–E–F–G — and predict the missing D; on a spectrum, mask a peak or a region and predict it back. The label was never supplied by a human — it's just the token you hid, so any pile of unlabeled data becomes training data. Run this over millions of unlabeled sequences or spectra and the model is forced to learn genuine structure (which residues co-occur, what a real peak pattern looks like) to succeed — exactly the general features you then transfer. This is precisely how BERT pretrained on text and how protein language models like ESM-2 (Lab 3's bonus) pretrained on sequences. Next, a different self-supervised idea: agreement between two views.
 
 --- slide 18 · layout: Blank ---
-SELF-SUPERVISED · CONTRASTIVE · I-DO
+SELF-SUPERVISED · CONTRASTIVE · I-DO · 1 OF 2
 Contrastive Learning: two views should land together
 SimCLR: A Simple Framework for Contrastive Learning of Visual Representations
 [image: Picture 7]
@@ -141,7 +141,7 @@ NOTES:
   The second self-supervised flavor: contrastive learning. Take one spectrum and make two AUGMENTED views of it — add intensity noise for one, shift the m/z axis slightly for the other (exactly the Lab 2 augmentations). Both views still come from the same physical sample, so the model should map them to NEARBY points in embedding space — "pull together" — while a view of a DIFFERENT spectrum is pushed apart. The self-supervised label is just "did these two come from the same source?", which you know for free because YOU made the augmentations. By insisting that augmented views agree, the model is forced to learn features that capture the real content and IGNORE the nuisance variation (noise, small shifts) — which is precisely the augmentation-invariance you want for robust spectra. This "views must agree" idea is the core of Quiz 11 Q4, and it sets up DINO, which takes the same agreement principle and adds a teacher.
 
 --- slide 19 · layout: Blank ---
-SELF-SUPERVISED · CONTRASTIVE · I-DO
+SELF-SUPERVISED · CONTRASTIVE · I-DO · 2 OF 2
 Contrastive Learning: two views should land together
 SimCLR: A Simple Framework for Contrastive Learning of Visual Representations
 [image: Picture 1]
@@ -169,7 +169,7 @@ NOTES:
   The second self-supervised flavor: contrastive learning. Take one spectrum and make two AUGMENTED views of it — add intensity noise for one, shift the m/z axis slightly for the other (exactly the Lab 2 augmentations). Both views still come from the same physical sample, so the model should map them to NEARBY points in embedding space — "pull together" — while a view of a DIFFERENT spectrum is pushed apart. The self-supervised label is just "did these two come from the same source?", which you know for free because YOU made the augmentations. By insisting that augmented views agree, the model is forced to learn features that capture the real content and IGNORE the nuisance variation (noise, small shifts) — which is precisely the augmentation-invariance you want for robust spectra. This "views must agree" idea is the core of Quiz 11 Q4, and it sets up DINO, which takes the same agreement principle and adds a teacher.
 
 --- slide 22 · layout: Blank ---
-SELF-SUPERVISED · DINO · I-DO
+SELF-SUPERVISED · DINO · I-DO · 1 OF 3
 DINO: a student learns to match a teacher
 [image: Picture 4]
 student–teacher self-distillation; the object-segmentation panel is an illustrative schematic of the DINO attention result (Caron et al. 2021, Meta AI, code Apache-2.0)
@@ -178,7 +178,7 @@ NOTES:
   The third self-supervised flavor and the one with the striking visual: DINO (self-DIstillation with NO labels, Caron et al. 2021). It runs on the same "two views must agree" principle as contrastive learning, packaged as a student and a teacher. Two augmented views of one input are fed to a STUDENT network and a TEACHER network; the student is trained so its output distribution MATCHES the teacher's on the same input. Where does the teacher come from with no labels? It IS the student — a slow moving average of the student's own weights — so the model teaches itself, which is why it's called self-distillation. The famous, almost eerie payoff (right panel): after this label-free pretraining, the model's ATTENTION spontaneously highlights the main object in an image — unsupervised segmentation, no masks or boxes ever provided. For us the message is the through-line of the whole self-supervised section: augmentation-invariance — make different views of the same thing agree — plus scale is enough to learn powerful, general features without labels, which is how modern foundation models pretrain (forward to Lecture 13). Next slide the room decides WHICH augmentation would corrupt this agreement — a spot-the-break DECIDE, not a definition restated (Quiz 11 Q4).
 
 --- slide 23 · layout: Blank ---
-SELF-SUPERVISED · DINO · I-DO
+SELF-SUPERVISED · DINO · I-DO · 2 OF 3
 DINO: a student learns to match a teacher
 What if I don’t have enough negative examples?
 [image: Picture 8]
@@ -188,7 +188,7 @@ NOTES:
   The third self-supervised flavor and the one with the striking visual: DINO (self-DIstillation with NO labels, Caron et al. 2021). It runs on the same "two views must agree" principle as contrastive learning, packaged as a student and a teacher. Two augmented views of one input are fed to a STUDENT network and a TEACHER network; the student is trained so its output distribution MATCHES the teacher's on the same input. Where does the teacher come from with no labels? It IS the student — a slow moving average of the student's own weights — so the model teaches itself, which is why it's called self-distillation. The famous, almost eerie payoff (right panel): after this label-free pretraining, the model's ATTENTION spontaneously highlights the main object in an image — unsupervised segmentation, no masks or boxes ever provided. For us the message is the through-line of the whole self-supervised section: augmentation-invariance — make different views of the same thing agree — plus scale is enough to learn powerful, general features without labels, which is how modern foundation models pretrain (forward to Lecture 13). Next slide the room decides WHICH augmentation would corrupt this agreement — a spot-the-break DECIDE, not a definition restated (Quiz 11 Q4).
 
 --- slide 24 · layout: Blank ---
-SELF-SUPERVISED · DINO
+SELF-SUPERVISED · DINO · 3 OF 3
 DINO: a student learns to match a teacher
 [image: Picture 4]
 source: Caron et al., “Emerging Properties in Self-Supervised Vision Transformers” (ICCV 2021, Meta AI) — Algorithm 1 pseudocode and the DINO self-attention video (github.com/facebookresearch/dino) · © the authors; all rights reserved, not for redistribution

@@ -87,7 +87,7 @@ NOTES:
   Part two of three: the settings you choose to make training converge well. We go in order — how we feed the data (mini-batches), which optimizer updates the weights (Adam), how we shrink the step over time (the schedule), which activation to use and why (it seeds the next beat), why very deep nets are still hard (vanishing/exploding — a quiz-backed you-do, Quiz 4 Q4, and the set-up for Lecture 5's ResNet), then the hyperparameters you actually dial: batch size — with its fingerprint on the loss curve (Quiz 4 Q3) — plus how to search them.
 
 --- slide 12 · layout: Blank ---
-PART 2 · TUNING · HOW THE DATA IS FED
+PART 2 · TUNING · HOW THE DATA IS FED · 1 OF 2
 Mini-batches: step often, on a handful at a time
 We don’t really optimize the TOTAL loss with all data at once.
 [image: Picture 6]
@@ -96,7 +96,7 @@ NOTES:
   This follows the reference deck (Hung-yi Lee, "Deep Learning in one day," mini-batch section). Keep the categorization clean: a "batch" is how many samples you look at before ONE weight step — how the data is fed, not which optimizer you use. Full-batch = the entire dataset per step: gradient exact, path smooth, but one step per pass and everything must fit in memory. Mini-batch = chop into small groups (32, 64, …) and, crucially, UPDATE AFTER EACH GROUP; when every batch has been used that is one epoch, then repeat (shuffling between epochs). Two payoffs the source shows: FASTER — 20 updates per epoch instead of one; and BETTER — the gradient noise nudges the model toward flatter, better-generalizing minima (callback to Lecture 2's local-dip slide). "Stochastic" just means "a bit random." Say it plainly: this is separate from the OPTIMIZER, which decides how each step actually updates the weights — that is next.
 
 --- slide 13 · layout: Blank ---
-PART 2 · TUNING · HOW THE DATA IS FED
+PART 2 · TUNING · HOW THE DATA IS FED · 2 OF 2
 Mini-batches: step often, on a handful at a time
 [image: Picture 6]
 Split the data into mini-batches (say 32) and take one step after EACH batch — don't wait to see all the data. This is mini-batch SGD, a data-feeding choice, not an optimizer. 20 batches = 20 updates per epoch (vs. 1 for full-batch): faster, and the noise finds flatter, better-generalizing solutions.
@@ -104,17 +104,17 @@ NOTES:
   This follows the reference deck (Hung-yi Lee, "Deep Learning in one day," mini-batch section). Keep the categorization clean: a "batch" is how many samples you look at before ONE weight step — how the data is fed, not which optimizer you use. Full-batch = the entire dataset per step: gradient exact, path smooth, but one step per pass and everything must fit in memory. Mini-batch = chop into small groups (32, 64, …) and, crucially, UPDATE AFTER EACH GROUP; when every batch has been used that is one epoch, then repeat (shuffling between epochs). Two payoffs the source shows: FASTER — 20 updates per epoch instead of one; and BETTER — the gradient noise nudges the model toward flatter, better-generalizing minima (callback to Lecture 2's local-dip slide). "Stochastic" just means "a bit random." Say it plainly: this is separate from the OPTIMIZER, which decides how each step actually updates the weights — that is next.
 
 --- slide 14 · layout: Title and Body ---
-PART 2 · TUNING · THE OPTIMIZER
+PART 2 · TUNING · THE OPTIMIZER · 1 OF 3
 Hard to find best learning rate (step size)
 
 --- slide 15 · layout: Title and Body ---
-PART 2 · TUNING · THE OPTIMIZER
+PART 2 · TUNING · THE OPTIMIZER · 2 OF 3
 Adam: Motivation
 In the real physical world
 [image: Picture 4]
 
 --- slide 16 · layout: Blank ---
-PART 2 · TUNING · THE OPTIMIZER
+PART 2 · TUNING · THE OPTIMIZER · 3 OF 3
 Adam: a per-weight, adaptive step size
 [image: Picture 4]
 Plain SGD uses one learning rate for every weight. Adam = adaptive rate (each weight's step tuned from its own gradient history) + momentum (inertia that glides through small bumps and flat spots). It is the sensible default optimizer and usually 'just works.'
