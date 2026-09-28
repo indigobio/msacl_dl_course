@@ -1234,3 +1234,54 @@ ends higher (0.022 vs 0.011); 0.1 spikes to 0.377 before settling at 0.073; 0.3
 and above never settle. Hint sheet options were verified against the asserts:
 distractors 0.003 (too small? no — ends 0.017) and 0.1 (too big? no — ends
 0.073) fail for the reason their labels give.
+
+## 2026-09-24 — Every quiz question gets a stop slide that shows the problem; every slide gets a proper header
+
+**Asked for:** (1) each quiz question must have a slide where the lecture naturally
+stops and the room works it — with the problem description ON the slide, not only
+"Your turn → Quiz N, Qk"; (2) a sanity check that every slide carries a proper
+header (the small uppercase eyebrow above the title), since some edited slides lacked one.
+
+**Audit (all 10 decks, 44 quiz questions):** 31 questions already had a stop slide
+carrying the full problem (most in the figure itself: numbers plus `?` cells). The
+other 13 fell into three gaps — 11 with no on-screen problem, plus 2 missing banks:
+- no stop slide at all (7) — Quiz 4 Q4 · Quiz 8 Q3, Q4 · Quiz 10 Q2, Q3, Q4 · Quiz 11 Q2
+  (the speaker notes sent the room there, but nothing on screen stopped it);
+- a stop existed but the problem did not (4) — Quiz 1 Q4 (a cat photo, no Pipeline A/B),
+  Quiz 8 Q1 and Q2 (Q1(b)'s weights missing), Quiz 13 Q5 (γ = 0.5 not stated);
+- word banks the question depends on lived only on paper — Quiz 2 Q3, Quiz 4 Q2.
+
+**Fix:** 10 new you-do slides covering those 11 questions (Quiz 8 Q1–Q2 share one),
+each placed straight after the slide that teaches it (rule 8), cloned from a you-do slide in the same deck so eyebrow, title and the
+two-tone CHECKPOINT callout match exactly. The middle band is an EDITABLE problem
+panel (text boxes, cards, word-bank chips — no raster, rule 6) carrying the quiz's
+exact numbers and wording; the notes carry the quiz key verbatim (rule 3c). Every
+answer was recomputed (0.5⁵ = 0.03125; 32/480 = 0.067, 16/48 = 0.33, 20/500 = 0.04;
+(2.5, 7); 0.25). Where a formula was only in a figure (FPR = FP/(FP+TN)) it is
+restated on the new slide (rule 3a). Word banks were added under the two callouts.
+The old pointer callouts (Lecture 1 s9, Lecture 8 s9, Lecture 13 s14) now say the
+you-do is next. Lecture 13's RL block renumbers to 1–12 OF 12, with its notes.
+
+**Headers:** ~30 headers rewritten to the deck's own `SECTION · TOPIC` scheme in the
+standard eyebrow style (Menlo 13 pt bold grey) — mixed-case / hyphenated ones on
+slides built from the template's layouts (some carried a `cap="none"` override from
+copy-paste), two content slides wearing the Lecture 4 part-divider header, Lecture
+11 slides wearing a neighbour's header, and Lecture 4's loss steps renumbered to
+match the slide order the 2026-09-14 commit chose (with slide 6's stale "the next
+slide writes the formula out" corrected). Wording of titles and bodies untouched.
+
+**Later refinements:** duplicate eyebrows on multi-slide sequences were suffixed
+`k OF n` (Lecture 11 contrastive and DINO, Lecture 4 mini-batches and optimizer);
+Lecture 1's two you-dos name their question instead — `(YOU-DO = Q1)` / `(YOU-DO = Q2)`
+— because they are different questions, not a sequence.
+
+**Verified:** coverage and header audits re-run clean (all 44 questions now have a
+stop slide showing the problem); every original slide present and in order. The
+header and quiz-stop edits add no lint problems of their own, but the instructor's
+own Lecture 1–2 hand edits (commit 1d2094c) do: two overlap failures (Lecture 1
+slide 9, Lecture 2 slide 5 — callout over picture) and four new text-overflow
+warnings (Lecture 1 slides 8 and 19, Lecture 2 slides 4 and 7). So
+`tools/check_pptx_overlap.py --all` now FAILs where it passed on main, and overflow
+goes 9 → 13 boxes. Those layouts are left for the instructor to nudge in PowerPoint.
+**Cost:** Lectures 8 and 10 each gain three short stops (~2–3 min each) — watch the
+hour; the you-dos are the cut candidates in each deck's timing note.

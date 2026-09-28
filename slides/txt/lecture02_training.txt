@@ -17,6 +17,7 @@ NOTES:
   Two minutes. Rebuild the bridge before adding anything new. This is the Lecture 1 network — same two inputs, one hidden layer, one output — except every weight now reads "w = ?". That is the honest starting state of any real network: weights are initialised at random, so the very first prediction is garbage. Learning is nothing more than repeatedly adjusting those numbers until the predictions stop being garbage. Keep the mantra alive: multiply, add, bend — now we add a fourth verb, "correct."
 
 --- slide 3 · layout: Title and Body ---
+TODAY · TRY AND ADJUST
 Learning by trying and adjusting
 [image: Picture 6]
 Target
@@ -25,7 +26,7 @@ How to find the best parameter values to hit the target?
 
 --- slide 4 · layout: Blank ---
 TODAY · THE WHOLE IDEA IN ONE LOOP
-Learning = guess → measure → adjust, over and over
+Learning = guess → measure → adjust, repeatedly
 1 · Forward
 make a guess ŷ
 2 · Loss
@@ -41,6 +42,7 @@ NOTES:
 --- slide 5 · layout: Blank ---
 PART ONE · LOSS = THE 'HOW WRONG' NUMBER
 Loss = distance between guess and truth
+[image: Picture 6]
 [image: Picture 4]
 MATH· MSE = average of (guess − truth)². Squaring makes every gap positive and punishes big misses hardest. One number for the whole dataset: small = good, big = bad.
 NOTES:
@@ -50,11 +52,11 @@ NOTES:
 PART TWO · GRADIENT DESCENT (I-DO)
 Downhill = the direction that lowers the loss
 Find network parameters 𝜽∗ that minimize total loss L
+Total  Loss 𝐿
+w
 Pick an initial value for w
 Compute 𝜕𝐿 𝜕𝑤
-Total  Loss 𝐿
 [image: Picture 46]
-w
 NOTES:
   I-DO — the engine of all deep learning, with zero calculus. Height = loss, horizontal = a weight's value. The slope at the ball's feet points uphill; subtract a bit of it and you move downhill, toward lower loss. Read the update rule aloud twice — new weight = old weight − lr × slope — because it is literally the last line of the training loop and Quiz 2 Q2. "Gradient" is just our fancy word for "the slope of the loss with respect to a weight"; keep translating it back to "slope." Honesty note: real loss surfaces live in millions of dimensions — the picture is faithful, we just cannot draw a million axes. Next: how big a step? That is the learning rate.
 
@@ -69,6 +71,7 @@ Repeat
 η is called  “learning rate”
 w
 −𝜂𝜕𝐿 𝜕𝑤
+Discussion: Pros and Cons of Gradient Descent?
 NOTES:
   I-DO — the engine of all deep learning, with zero calculus. Height = loss, horizontal = a weight's value. The slope at the ball's feet points uphill; subtract a bit of it and you move downhill, toward lower loss. Read the update rule aloud twice — new weight = old weight − lr × slope — because it is literally the last line of the training loop and Quiz 2 Q2. "Gradient" is just our fancy word for "the slope of the loss with respect to a weight"; keep translating it back to "slope." Honesty note: real loss surfaces live in millions of dimensions — the picture is faithful, we just cannot draw a million axes. Next: how big a step? That is the learning rate.
 
@@ -81,7 +84,7 @@ NOTES:
   I-DO. The learning rate is the multiplier on the slope — how big a step we take. Walk the three bowls left to right. Too small: steps so tiny the ball crawls; training wastes hours and can settle into a shallow dip and never reach the true bottom. Too big: each step overshoots and lands higher up the far wall; the loss bounces and can diverge to infinity. Just right: brisk, stable steps into the valley. Tell them plainly this is the first knob they reach for in every lab and real project — and the next slides show how to read the loss curve to tell which case you are in.
 
 --- slide 9 · layout: Screenshot + Caption ---
-PART TWO · More on Gradient Descent
+PART TWO · GRADIENT DESCENT IN 2D
 A 2D-view: Gradient Descent
 Color: Value Total Loss
 𝑤2
@@ -90,7 +93,7 @@ Compute 𝜕𝐿 𝜕𝑤1, 𝜕𝐿 𝜕𝑤2
 𝑤1
 
 --- slide 10 · layout: Screenshot + Caption ---
-Part two – More on Gradient descent
+PART TWO · WHERE GRADIENT DESCENT STRUGGLES
 Difficulty of Gradient Descent
 [image: Picture 5]
 Gradient descent never guarantee global minima
@@ -108,6 +111,8 @@ PART TWO · YOUR TURN (YOU-DO = Q3)
 Diagnose four loss curves — and name the fix
 [image: Picture 4]
 CHECKPOINT · Your turn → Quiz 2, Q3. For each curve write the diagnosis and the one change you would make (use the word banks). Watch out: (a) and (d) are NOT the same problem. 2 minutes — worked answer in the notes.
+Diagnosis bank:  far too high (diverging)  ·  a bit too high (noisy but converging)  ·  too low  ·  just right
+Fix bank:  lower the rate a lot  ·  lower it a little  ·  raise it  ·  keep it (train longer)
 NOTES:
   YOU-DO = Quiz 2 Q3 (same four curves as the sheet, tagged a–d). Answers: (a) FAR TOO HIGH → lower the rate a lot — the swings GROW and the loss climbs, training is diverging. (b) TOO LOW → raise it — the loss barely drops, still high and still falling at the end; wastes time. (c) JUST RIGHT → keep it — steep early drop that flattens low and stays. (d) A BIT TOO HIGH → lower it a little — the loss IS trending down but bounces noisily on the way. The tell separating (a) from (d): in (a) the swings grow and the loss rises; in (d) they shrink and the loss falls. Harvest a couple of pairs, then have them fill Q3.
 
@@ -206,7 +211,7 @@ NOTES:
 
 --- slide 24 · layout: Blank ---
 PART FOUR · WATCH IT LEARN
-Run the five lines for 20 epochs — watch the loss fall
+Ideal Loss Fall
 [image: Picture 4]
 Random weights → 20 passes over the data, each running the five lines on every batch. The healthy signature: a steep early drop, then a gentle flatten. In Lab 1 you run this exact loop on real clinical spectra.
 NOTES:

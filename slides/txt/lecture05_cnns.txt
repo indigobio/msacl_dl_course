@@ -63,7 +63,7 @@ NOTES:
   Subsampling the pixels does not change the object: keep one pixel in twenty and it is still obviously a bird, but the next layer has far less to process. This is the license for pooling later in the hour. Wrap the whole "why" section here: three properties of the data map to three design moves — local windows, shared weights, and pooling — and each held just as well for spectra (the three mass-spec callouts). Now we compute all three by hand on a numeric grid.
 
 --- slide 7 · layout: Title and Body ---
-How to CNN - overview
+CNN ARCHITECTURE · THE OVERVIEW
 CNN General Architecture
 cat dog ……
 Convolution
@@ -295,7 +295,7 @@ NOTES:
   Keep this at altitude — no anchor boxes, no non-max suppression, no detection loss. The message is small and important: detection is just a change of OUTPUT HEAD on the same convolutional machinery. The backbone that turns pixels into feature maps is exactly what we built; the new part predicts, for each location, a bounding box and a confidence score. Names they will meet: YOLO (fast, one pass over a grid of positions) and Faster R-CNN (propose regions, then verify). Then bring it home to their world on the next slide.
 
 --- slide 32 · layout: Title and Body ---
-CNN Object detection
+DETECTION · YOLOV7
 YOLOv7 Overview
 
 --- slide 33 · layout: Blank ---
