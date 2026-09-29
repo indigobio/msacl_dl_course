@@ -41,9 +41,17 @@ Colab is a free notebook that runs in your web browser, with a GPU included.
    - downloads exactly the data this lab needs and checks each file's SHA-256
      fingerprint, so a broken download fails loudly;
    - ends with `✓ labNN is ready`.
+
+   The first time in a session, it may print **"Restarting now"** and Colab then
+   reports that the session restarted (or "crashed"). That is expected: the course
+   packages replaced ones Colab had already loaded. Wait for it to reconnect, then
+   run the Setup cell again — it will say `course packages already installed`.
 4. **Run the rest** top to bottom, filling in the blanks marked **YOUR TURN ✏️**.
 
 For the labs marked **T4 GPU**: **Runtime → Change runtime type → T4 GPU** before step 3.
+
+> **`AttributeError` mentioning `numpy` or `_multiarray_umath`?** The session was not
+> restarted after setup. **Runtime → Restart session**, then run the Setup cell again.
 
 > **Big datasets:** `msacl.setup("labNN", mount_drive=True)` asks Google for permission
 > to keep the data in your Drive (`MyDrive/msacl_ds301_data/`), so it downloads once

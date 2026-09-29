@@ -14,7 +14,7 @@ Four stops, one idea
 • Why: three properties of the data   · 8 min
 •  How: Convolution by hand — filters, stride, padding, output size, channels, pooling   · 31 min
 • Adaptation: The same trick in 1D — spectra and chromatograms   · 6 min
-• Going deeper (ResNet), then further (detection = peak-picking)   · 11 min
+• Application: Object detection   · 11 min
 NOTES:
   The order is deliberate: mechanics in 2D first with real numbers (easier to see on a grid), then transfer to the 1D data this room actually works with, then the architecture story and the detection reframe. Signpost the four stops so people can pace themselves. Quiz 5 reuses exactly these grids: the convolution maps (Q1), the max-pool (Q2), the output-size count (Q3), the peak-as-detection item (Q4), and the channel arithmetic (Q5). Keep it moving — the convolution block is the biggest, and every mechanic in it has a matching quiz item. Timing note: the channels block (slides 17–20) added about five minutes to the convolution stop, hence 31 min, and the last stop is trimmed 16 → 11 min to pay for it (the LeNet→VGG row at ~3 min and the segmentation slide are the compressible pieces). If channels have to go, drop slide 20 (the you-do) first and set Quiz 5 Q5 as homework.
 
@@ -22,7 +22,7 @@ NOTES:
 WHY CNN · 1 OF 4 · THE PROBLEM
 A fully connected layer doesn't scale to images — or spectra
 [image: Picture 4]
-MASS SPEC · Same problem in 1D: feed a 6,000-bin spectrum straight into a dense layer and it is millions of weights — and the network must relearn 'what a peak looks like' separately at every m/z position. A convolution reuses ONE small detector everywhere.
+MATH · Same problem in 1D: feed a 6,000-bin spectrum straight into a dense layer and it is millions of weights — and the network must relearn 'what a peak looks like' separately at every m/z position. A convolution reuses ONE small detector everywhere.
 NOTES:
   The motivating example is a plain photo — the classic doorway to CNNs. Wire every pixel of a modest 100x100x3 image to each of 1,000 neurons and layer one alone is 30 MILLION weights; the waste is not just memory, every one of those weights needs training data to pin down. Callback to Lab 1: our MLP was fine there because 189 metabolite features have no spatial order — but pixels do, and so do spectrum bins. On the right is the fix in one picture: a single 3x3 filter is 9 shared weights slid across the whole image (local windows + weight sharing). Three observations about images make this work, and each restates verbatim for spectra over the next three slides.
 
@@ -146,7 +146,7 @@ NOTES:
 --- slide 16 · layout: Blank ---
 CONVOLUTION BY HAND · YOUR TURN (YOU-DO = Q3)
 Run the formula once yourself
-[image: Picture 4]
+[image: Picture 6]
 CHECKPOINT · Your turn → Quiz 5, Q3. A 3×3 filter runs over a 7-long input with padding 1 and stride 1. What is the output length? And what would it be with no padding? Worked answer in the notes.
 NOTES:
   YOU-DO = Quiz 5 Q3 (the same (n − k + 2p)/s + 1 formula, new numbers, so it is real practice and it assesses the output-size outcome). Answer: with padding, (7 − 3 + 2·1)/1 + 1 = (7 − 3 + 2) + 1 = 6 + 1 = 7 — padding 1 with a 3×3 filter keeps the length unchanged. Without padding, (7 − 3 + 0)/1 + 1 = 4 + 1 = 5, so the map shrinks by two. Both numbers match the Quiz 5 key. Ask a pair for the padded length before revealing, then have them fill Q3.

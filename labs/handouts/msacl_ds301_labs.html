@@ -83,7 +83,7 @@ code{font:13px/1.4 Menlo,ui-monospace,monospace;background:var(--teal-soft);bord
 <ol class="moves">
   <li><b>Open the lab's link</b><span>It opens in Google Colab. Sign in with any Google account.</span></li>
   <li><b>File → Save a copy in Drive</b><span>The link is read-only. Work in the tab named <i>Copy of …</i></span></li>
-  <li><b>Run the ⚙️ Setup cell</b><span>About a minute. It ends with <code>✓ labNN is ready</code>.</span></li>
+  <li><b>Run the ⚙️ Setup cell</b><span>About a minute. The first time, Colab may restart once — just run ⚙️ Setup again. It ends with <code>✓ labNN is ready</code>.</span></li>
   <li><b>Fill in the ✏️ blanks</b><span>Run the cells top to bottom. The <code>assert</code> cells check your answers.</span></li>
 </ol>
 
@@ -173,8 +173,10 @@ code{font:13px/1.4 Menlo,ui-monospace,monospace;background:var(--teal-soft);bord
 
 <h2>If something goes wrong</h2>
 <div class="help">
-  <div><b>"Restart session, then run this setup cell again"</b>
-    <span>Expected once per session. <b>Runtime → Restart session</b>, then run ⚙️ Setup again.</span></div>
+  <div><b>"Restarting now" — then Colab says the session restarted or crashed</b>
+    <span>Expected once per session: the setup replaced packages Colab had already loaded. Wait for it to reconnect, then run ⚙️ Setup again.</span></div>
+  <div><b><code>AttributeError</code> mentioning <code>numpy</code> or <code>_multiarray_umath</code></b>
+    <span>The session was not restarted after setup. <b>Runtime → Restart session</b>, then run ⚙️ Setup again.</span></div>
   <div><b>Colab asks for a GPU, or runs slowly</b>
     <span><b>Runtime → Change runtime type → T4 GPU</b>, then run ⚙️ Setup again.</span></div>
   <div><b>"Could not get …" during setup</b>
