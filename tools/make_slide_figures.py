@@ -2565,7 +2565,9 @@ def output_size(mode="ido", name="fig_output_size.png"):
     """The one formula of the hour: out = (n \u2212 k + 2p) / s + 1, drawn with a
     labelled 1D strip so every letter is concrete before it is used (rule 3:
     the rule is on the deck before the exercise). mode='ido' shows three worked
-    counts on the 5\u00d75 grid; mode='youdo' poses the Quiz 5 Q3 scenario blank."""
+    counts on the 5\u00d75 grid; mode='youdo' draws the Quiz 5 Q3 input itself --
+    n = 7 cells, k = 3, p = 1 -- and asks both parts (padding 1, then none), so
+    the picture matches the numbers the room is working."""
     fig, ax = plt.subplots(figsize=(11.6, 4.6))
     ax.set_xlim(0, 12)
     ax.set_ylim(0, 6)
@@ -2576,7 +2578,7 @@ def output_size(mode="ido", name="fig_output_size.png"):
     # labelled strip: n cells (white), a padding cell each side (amber dashed),
     # one filter window (teal) of width k
     cell = 0.62
-    n_disp = 5
+    n_disp = 7 if mode == "youdo" else 5
     y = 3.4
     x0 = 6 - (n_disp + 2) * cell / 2
     # padding left
@@ -2594,13 +2596,15 @@ def output_size(mode="ido", name="fig_output_size.png"):
                 kk * cell, cell + 0.16,
                 boxstyle="round,pad=0.01,rounding_size=0.04", fill=False,
                 edgecolor=TEAL, lw=2.8, zorder=6))
-    ax.text(x0 + cell + kk * cell / 2, y + cell / 2 + 0.34, "k",
+    lab_k, lab_n, lab_p = (("k = 3", "n = 7", "p = 1") if mode == "youdo"
+                           else ("k", "n", "p"))
+    ax.text(x0 + cell + kk * cell / 2, y + cell / 2 + 0.34, lab_k,
             ha="center", color=TEAL, fontsize=15, fontweight="bold")
-    ax.text(x0 + cell + n_disp * cell / 2, y - cell / 2 - 0.42, "n",
+    ax.text(x0 + cell + n_disp * cell / 2, y - cell / 2 - 0.42, lab_n,
             ha="center", color=INK, fontsize=15, fontweight="bold")
-    ax.text(x0 + cell / 2, y - cell / 2 - 0.42, "p", ha="center",
+    ax.text(x0 + cell / 2, y - cell / 2 - 0.42, lab_p, ha="center",
             color=ROI_INK, fontsize=13, fontweight="bold")
-    ax.text(x0 + (n_disp + 1.5) * cell, y - cell / 2 - 0.42, "p", ha="center",
+    ax.text(x0 + (n_disp + 1.5) * cell, y - cell / 2 - 0.42, lab_p, ha="center",
             color=ROI_INK, fontsize=13, fontweight="bold")
 
     if mode == "ido":
@@ -2614,11 +2618,15 @@ def output_size(mode="ido", name="fig_output_size.png"):
                 ha="center", color=INK_SOFT, fontsize=14,
                 family="monospace")
     else:
-        ax.text(6, 1.35,
-                "Quiz 5 Q3:   n = 7,  k = 3,  p = 1,  s = 1   \u2192   out = ?",
+        ax.text(6, 1.55,
+                "(a)  n = 7,  k = 3,  p = 1,  s = 1   \u2192   out = ?",
                 ha="center", color=ROI_INK, fontsize=16, fontweight="bold",
                 family="monospace")
-        ax.text(6, 0.7, "plug into the formula above \u2014 what length comes out?",
+        ax.text(6, 0.95,
+                "(b)  same, but no padding  (p = 0)   \u2192   out = ?",
+                ha="center", color=ROI_INK, fontsize=16, fontweight="bold",
+                family="monospace")
+        ax.text(6, 0.35, "Quiz 5 Q3 \u2014 plug into the formula above",
                 ha="center", color=MUTED, fontsize=13, style="italic")
     _save(fig, name)
 
@@ -3977,60 +3985,74 @@ def rope_relative(name="fig_rope.png"):
 
 
 def cross_attention(name="fig_cross_attention.png"):
-    """How an encoder-decoder actually connects (rule 9): the encoder reads the
-    whole input and exposes a set of KEY/VALUE vectors (its 'memory'); the
-    decoder, writing one token at a time, sends a QUERY from the current step
-    into that encoder K/V via CROSS-attention, on top of masked self-attention
-    over what it has written so far. Anchored on Casanovo (spectrum -> peptide)."""
+    """How an encoder-decoder actually connects (rule 9), on the classic
+    translation example -- the same sentence as the Illustrated-Transformer
+    animation on the next slides: French in, English out. The encoder reads the
+    whole sentence once and keeps one KEY/VALUE per word (its memory); the
+    decoder, writing one word at a time, sends a QUERY from the current step into
+    that memory via CROSS-attention, on top of masked self-attention over what it
+    has written. The cross-attention weights are shown (they sum to 1): writing
+    'student', the decoder looks mostly at 'etudiant'."""
     fig, ax = plt.subplots(figsize=(12.0, 6.0))
     ax.set_xlim(0, 12); ax.set_ylim(0, 7); ax.axis("off")
+    words = ["je", "suis", "\u00e9tudiant"]
+    weights = [0.05, 0.10, 0.85]
+    xs = [1.15, 2.4, 3.65]
     # ---- encoder (left) ----
-    for i, c in enumerate([2.6, 6.2, 4.4]):
-        _chip(ax, 0.9 + i * 0.9, 0.9, 0.7, 0.5, "", TEAL_SOFT, edge=TEAL, lw=1.2)
-    ax.text(1.95, 0.35, "spectrum peaks", ha="center", fontsize=9.5,
-            color=MUTED)
-    ax.text(2.4, 4.55, "Encoder\nreads all peaks\n(self-attention)", ha="center",
-            va="center", fontsize=11.5, color=INK, fontweight="bold",
-            linespacing=1.4,
-            bbox=dict(boxstyle="round,pad=0.6", fc=TEAL_SOFT, ec=TEAL, lw=2.2))
-    ax.annotate("", xy=(2.4, 3.55), xytext=(2.4, 1.25),
+    for x, w in zip(xs, words):
+        _chip(ax, x - 0.55, 1.05, 1.1, 0.55, w, TEAL_SOFT, txt=INK, fs=12,
+              edge=TEAL, lw=1.3)
+    ax.text(2.4, 0.5, "French in (the source sentence)", ha="center",
+            fontsize=10, color=MUTED)
+    ax.text(2.4, 2.75, "Encoder \u00b7 reads the whole sentence\n(self-attention)",
+            ha="center", va="center", fontsize=11.5, color=INK, fontweight="bold",
+            linespacing=1.35,
+            bbox=dict(boxstyle="round,pad=0.55", fc=TEAL_SOFT, ec=TEAL, lw=2.2))
+    ax.annotate("", xy=(2.4, 2.28), xytext=(2.4, 1.38),
                 arrowprops=dict(arrowstyle="-|>", color=TEAL, lw=2.0))
-    ax.text(2.4, 6.05, "Encoder  K, V\n(the read spectrum — its memory)",
-            ha="center", va="center", fontsize=11, color=ROI_INK,
-            fontweight="bold", linespacing=1.3,
-            bbox=dict(boxstyle="round,pad=0.5", fc=AMBER_SOFT, ec=AMBER, lw=2.2))
-    ax.annotate("", xy=(2.4, 5.5), xytext=(2.4, 5.05),
+    # the memory: one key/value per source word
+    for x, w in zip(xs, words):
+        _chip(ax, x - 0.55, 4.25, 1.1, 0.55, w, AMBER_SOFT, txt=ROI_INK, fs=11.5,
+              edge=AMBER, lw=1.6)
+    ax.text(2.4, 6.45, "Encoder K, V \u2014 one per word (its memory)",
+            ha="center", fontsize=11, color=ROI_INK, fontweight="bold")
+    ax.annotate("", xy=(2.4, 3.94), xytext=(2.4, 3.3),
                 arrowprops=dict(arrowstyle="-|>", color=AMBER, lw=2.0))
     # ---- decoder (right) ----
-    ax.text(8.7, 6.4, "Decoder · writing residue 3", ha="center",
+    ax.text(8.9, 6.55, "Decoder \u00b7 writing word 4", ha="center",
             fontsize=12, color=RED, fontweight="bold")
-    ax.text(8.7, 5.0, "② cross-attention\nquery from decoder · K,V from ENCODER",
+    ax.text(8.9, 5.1, "\u2461 cross-attention\nquery from decoder \u00b7 K,V from ENCODER",
             ha="center", va="center", fontsize=11, color=INK, fontweight="bold",
             linespacing=1.35,
             bbox=dict(boxstyle="round,pad=0.55", fc=AMBER_SOFT, ec=AMBER, lw=2.4))
-    ax.text(8.7, 3.2, "① masked self-attention\nlook only at residues written so far",
+    ax.text(8.9, 3.2, "\u2460 masked self-attention\nlook only at words written so far",
             ha="center", va="center", fontsize=11, color=INK_SOFT,
             linespacing=1.35,
             bbox=dict(boxstyle="round,pad=0.55", fc="#F7E4E3", ec=RED, lw=2.0))
-    for i, t in enumerate(["A", "C"]):
-        _chip(ax, 7.9 + i * 0.9, 1.35, 0.7, 0.55, t, "#F7E4E3", txt=INK,
+    for i, t in enumerate(["I", "am", "a"]):
+        _chip(ax, 7.0 + i * 0.95, 1.35, 0.8, 0.55, t, "#F7E4E3", txt=INK,
               fs=13, edge=RED, lw=1.3)
-    _chip(ax, 9.7, 1.35, 0.7, 0.55, "D", WHITE, txt=INK, fs=13, edge=AMBER, lw=1.6)
-    ax.text(9.0, 0.7, "→ next residue: D", ha="center", fontsize=10.5,
-            color=ROI_INK, fontweight="bold")
-    ax.annotate("", xy=(8.7, 4.25), xytext=(8.7, 3.9),
+    _chip(ax, 9.85, 1.35, 1.25, 0.55, "student", WHITE, txt=INK, fs=12.5,
+          edge=AMBER, lw=1.8)
+    ax.text(8.9, 0.75, "English out \u2192 next word: student", ha="center",
+            fontsize=10.5, color=ROI_INK, fontweight="bold")
+    ax.annotate("", xy=(8.9, 4.35), xytext=(8.9, 3.9),
                 arrowprops=dict(arrowstyle="-|>", color=INK_SOFT, lw=1.8))
-    ax.annotate("", xy=(8.7, 2.55), xytext=(8.7, 1.75),
+    ax.annotate("", xy=(8.9, 2.55), xytext=(8.9, 1.95),
                 arrowprops=dict(arrowstyle="-|>", color=INK_SOFT, lw=1.8))
-    # ---- the cross-attention bridge ----
-    ax.annotate("", xy=(6.65, 5.0), xytext=(3.75, 6.05),
-                arrowprops=dict(arrowstyle="-|>", color=AMBER, lw=3.0,
-                                connectionstyle="arc3,rad=-0.15"))
-    ax.text(5.2, 6.15, "cross-attention", ha="center", fontsize=11,
-            color=ROI_INK, fontweight="bold", rotation=-12)
+    # ---- the cross-attention bridge: one arrow per source word, width = weight
+    for x, w in zip(xs, weights):
+        ax.annotate("", xy=(6.55, 5.25), xytext=(x, 5.05),
+                    arrowprops=dict(arrowstyle="-|>", color=AMBER,
+                                    lw=0.8 + 5.0 * w, alpha=0.35 + 0.65 * w,
+                                    connectionstyle="arc3,rad=-0.22"))
+    for x, w in zip(xs, weights):
+        ax.text(x, 4.72, f"w = {w:.2f}", ha="center", va="center", fontsize=10.5,
+                color=ROI_INK, fontweight="bold")
     ax.text(6, 0.12,
-            "every residue the decoder writes sends a query into the encoder's K,V — so each output token "
-            "can look back at the whole spectrum; repeat until the peptide ends",
+            "every word the decoder writes sends a query into the encoder's K,V \u2014 "
+            "writing \u2018student\u2019, its weights (sum 1) fall mostly on \u2018\u00e9tudiant\u2019 (0.85); "
+            "repeat until the sentence ends",
             ha="center", va="center", fontsize=10, color=MUTED, style="italic")
     _save(fig, name)
 
@@ -4274,11 +4296,13 @@ def _confusion_cells(ax, tp, fn, fp, tn, x0, ytop, cell, blank):
 
 def confusion_matrix(tp, fn, fp, tn, mode="ido", name="fig_confusion_ido.png",
                      positive="resistant", negative="susceptible"):
-    """A worked confusion matrix with the THREE rates the room needs under
+    """A worked confusion matrix with the FOUR rates the room needs under
     imbalance (rule 6): recall/sensitivity = TP/(TP+FN), specificity =
-    TN/(TN+FP), and precision = TP/(TP+FP). mode='ido' fills every number and
-    shows the accuracy trap; mode='youdo' shows the counts but leaves the three
-    rates as '?' for the worksheet Part-A question (rules 3/8)."""
+    TN/(TN+FP), the false-positive rate FPR = FP/(FP+TN) = 1 - specificity (the
+    ROC curve's x-axis, defined here before the ROC slides use it), and
+    precision = TP/(TP+FP). mode='ido' fills every number and shows the accuracy
+    trap; mode='youdo' shows the counts but leaves the rates as '?' for Quiz 10 Q1
+    (rules 3/8)."""
     total = tp + fn + fp + tn
     pos = tp + fn
     neg = tn + fp
@@ -4286,6 +4310,7 @@ def confusion_matrix(tp, fn, fp, tn, mode="ido", name="fig_confusion_ido.png",
     sens = tp / pos
     spec = tn / neg
     prec = tp / flagged
+    fpr = fp / neg
     acc = (tp + tn) / total
     always_neg = neg / total
     blank = mode == "youdo"
@@ -4303,6 +4328,8 @@ def confusion_matrix(tp, fn, fp, tn, mode="ido", name="fig_confusion_ido.png",
          f"= {tp:g} / {pos:g} = {sens:.2f}  ({sens*100:.0f}%)", TEAL),
         ("specificity = TN / (TN + FP)",
          f"= {tn:g} / {neg:g} = {spec:.2f}  ({spec*100:.0f}%)", TEAL),
+        ("false-positive rate (FPR) = FP / (FP + TN) = 1 − spec.",
+         f"= {fp:g} / {neg:g} = {fpr:.3f}  ({fpr*100:.1f}%)", RED),
         ("precision = TP / (TP + FP)",
          f"= {tp:g} / {flagged:g} = {prec:.2f}  ({prec*100:.0f}%)", ROI_INK),
     ]
@@ -4312,7 +4339,7 @@ def confusion_matrix(tp, fn, fp, tn, mode="ido", name="fig_confusion_ido.png",
                 fontweight="bold")
         ax.text(fx, y - 0.5, ("= ?" if blank else worked), ha="left",
                 color=col, fontsize=13.5, fontweight="bold")
-        y -= 1.28
+        y -= 1.12
     # the accuracy trap box -- auto-fitting bbox so long lines never overflow.
     if blank:
         trap = ("accuracy = ?  — but a model that ALWAYS\n"
@@ -5325,9 +5352,12 @@ def class_weight_family(name="fig_class_weights.png"):
 
 
 def treatment_menu(name="fig_treatment_menu.png"):
-    """The imbalanced-data treatment menu as four cards mapped to a SITUATION
+    """The imbalanced-data treatment menu as five cards mapped to a SITUATION,
+    in the order Part B teaches them (curate, augment, reweight/SMOTE, focal
+    loss, curriculum)
     (rule 9, no text wall), with the durable footer: none of these adds NEW
     minority signal — only collecting more real resistant spectra does."""
+    AUG_BLUE = "#2E6F95"                     # the fifth card needs its own hue
     fig, ax = plt.subplots(figsize=(12.2, 4.8))
     ax.set_xlim(0, 12.4)
     ax.set_ylim(0, 5)
@@ -5337,16 +5367,18 @@ def treatment_menu(name="fig_treatment_menu.png"):
     cards = [
         (TEAL, "1 · curate", "junk / mislabeled\nruns", "clean labels beat\nmore noisy ones",
          "drop 22 failed runs;\nresolve 8 discordant labels"),
-        (AMBER, "2 · reweight /\nSMOTE", "rare class\nignored",
+        (AUG_BLUE, "2 · augment", "too few rare\nexamples", "label-safe variants\nof real spectra",
+         "m/z jitter, ×0.9, noise;\n41 × 8 = 328 views"),
+        (AMBER, "3 · reweight /\nSMOTE", "rare class\nignored",
          "class weights,\noversample, SMOTE",
-         "w = 9.0 vs 0.53;\noversample ×17; jitter m/z"),
-        (RED, "3 · focal loss", "borderline cases\nmissed", "up-weight the\nhard, low-conf.",
+         "w = 9.0 vs 0.53;\noversample ×17"),
+        (RED, "4 · focal loss", "borderline cases\nmissed", "up-weight the\nhard, low-conf.",
          "MICs on the breakpoint;\nheteroresistant isolates"),
-        (INK_SOFT, "4 · curriculum", "unstable across\neasy/hard", "order easy→hard /\nbalanced→true",
+        (INK_SOFT, "5 · curriculum", "unstable across\neasy/hard", "order easy→hard /\nbalanced→true",
          "one site → all sites;\nbalanced → the true 6%"),
     ]
-    w = 2.65
-    gap = 0.3
+    w = 2.1
+    gap = 0.225
     x = 0.5
     for col, head, situ, body, example in cards:
         ax.add_patch(FancyBboxPatch((x, 1.25), w, 2.85,
@@ -5356,14 +5388,14 @@ def treatment_menu(name="fig_treatment_menu.png"):
                     boxstyle="round,pad=0.02,rounding_size=0.06",
                     facecolor=col, edgecolor=col, lw=2.4))
         ax.text(x + w / 2, 3.72, head, ha="center", va="center", color=WHITE,
-                fontsize=11.5, fontweight="bold")
+                fontsize=11, fontweight="bold")
         ax.text(x + w / 2, 3.02, "if: " + situ, ha="center", va="center",
-                color=RED, fontsize=9.5, fontweight="bold", style="italic")
+                color=RED, fontsize=9, fontweight="bold", style="italic")
         ax.text(x + w / 2, 2.34, body, ha="center", va="center", color=INK,
-                fontsize=10)
-        ax.plot([x + 0.25, x + w - 0.25], [1.94, 1.94], color=HAIRLINE, lw=1.1)
+                fontsize=9.5)
+        ax.plot([x + 0.2, x + w - 0.2], [1.94, 1.94], color=HAIRLINE, lw=1.1)
         ax.text(x + w / 2, 1.62, example, ha="center", va="center",
-                color=MUTED, fontsize=9, style="italic", linespacing=1.4)
+                color=MUTED, fontsize=8.5, style="italic", linespacing=1.4)
         x += w + gap
     ax.add_patch(FancyBboxPatch((0.5, 0.35), 11.4, 0.72,
                 boxstyle="round,pad=0.02,rounding_size=0.06",
@@ -5453,13 +5485,13 @@ def _lecture10_figures():
 # ---- diffusion primer (Lecture 8, foreshadowing Lab 3) ----------------------
 # Lab 3 fine-tunes a real pretrained DDPM digit-drawer, so the primer uses the
 # lab's own schedule (linear betas 1e-4 → 0.02 over 1000 steps) and a real
-# MNIST digit. The hand-worked numbers below are the ones on Quiz 8 Q5.
+# MNIST digit. The hand-worked numbers below are the in-class do-it-together.
 MNIST_RAW = (Path(__file__).resolve().parent.parent / "labs" / "solutions"
              / "torchvision_data" / "MNIST" / "raw" / "train-images-idx3-ubyte")
 # I-do patch: x0, the noise actually added, and the model's guess of that noise
 DIFF_IDO = dict(x0=[1.0, 0.0, -1.0, 0.5], eps=[0.5, -0.5, 1.0, 0.0],
                 pred=[0.3, -0.4, 0.8, 0.1])
-# you-do patch = Quiz 8 Q5 (same shape, new numbers): x_t = (0.8, −0.5, 0.1, 0.6),
+# do-it-together patch (same shape, new numbers; was Quiz 8 Q5 until 2026-09-28): x_t = (0.8, −0.5, 0.1, 0.6),
 # errors (0.2, −0.1, 0.2, −0.3) → MSE = 0.18/4 = 0.045
 DIFF_QUIZ = dict(x0=[1.0, -1.0, 0.5, 0.0], eps=[0.0, 0.5, -0.5, 1.0],
                  pred=[0.2, 0.4, -0.3, 0.7])
@@ -5555,7 +5587,7 @@ def diffusion_objective(spec=None, reveal=True, name="fig_diffusion_train.png",
                         note=None):
     """The training objective, worked on a 4-pixel patch (rule 6): noise the
     patch with a known ε, let the model guess ε, score the guess with MSE.
-    reveal=False blanks the two answers for the you-do (Quiz 8 Q5)."""
+    reveal=False blanks the two answers for the do-it-together."""
     spec = spec or DIFF_IDO
     x0, eps, pred = spec["x0"], spec["eps"], spec["pred"]
     xt = [SQRT_AB * a + SQRT_1MAB * b for a, b in zip(x0, eps)]
@@ -5654,7 +5686,7 @@ def _lecture8_figures():
     diffusion_strip()
     diffusion_objective(DIFF_IDO, reveal=True, name="fig_diffusion_train.png")
     diffusion_objective(DIFF_QUIZ, reveal=False, name="fig_diffusion_youdo.png",
-                        note="your turn — same two steps, new numbers (Quiz 8 Q5)")
+                        note="together — same two steps, new numbers")
 
 
 # ============================================================================
@@ -9168,6 +9200,7 @@ FUNCS = {
     "dropout": dropout_panels,
     "weight_decay": weight_decay,
     "imbalance": class_imbalance,
+    "treatment_menu": treatment_menu,
     "treatments": lambda: (treatment_menu(), curation_pass(),
                            embedding_dedup(),
                            class_weight_family(), smote_interpolation(
@@ -9180,6 +9213,9 @@ FUNCS = {
     # ---- Lecture 5 ----
     "cnn": _lecture5_figures,
     "dense_explosion": dense_explosion,
+    "cross_attention": cross_attention,
+    "output_size": lambda: (output_size(mode="ido", name="fig_output_size.png"),
+                            output_size(mode="youdo", name="fig_output_size_youdo.png")),
     "conv_youdo": lambda: conv_walk_two_strides(
         CONV_IMG_QUIZ, CONV_FILT_QUIZ, name="fig_conv_youdo.png",
         filt_note="corners + centre",
@@ -9248,7 +9284,7 @@ FUNCS = {
                             name="fig_diffusion_train.png"),
         diffusion_objective(DIFF_QUIZ, reveal=False,
                             name="fig_diffusion_youdo.png",
-                            note="your turn — same two steps, new numbers (Quiz 8 Q5)"),
+                            note="together — same two steps, new numbers"),
     ),
     # ---- Lecture 10 (imbalanced data: evaluation + treatment) ----
     "metrics": _lecture10_figures,

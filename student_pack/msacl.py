@@ -28,6 +28,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import signal
 import subprocess
 import sys
 import time
@@ -41,7 +43,6 @@ MANIFEST = "datasets.json"
 REQUIREMENTS = "requirements-colab.txt"
 DRIVE_ROOT = Path("/content/drive/MyDrive")
 _UA = {"User-Agent": "msacl-ds301-labs/1.0"}
-_MODULE = {"scikit-learn": "sklearn"}      # package name → import name, where they differ
 
 
 # ----------------------------------------------------------------- where ----
@@ -202,6 +203,28 @@ def _installed(name: str) -> str | None:
         return None
 
 
+def _dist_versions() -> dict[str, str]:
+    """{normalized distribution name: version} for everything installed."""
+    from importlib import metadata               # noqa: PLC0415
+    out = {}
+    for d in metadata.distributions():
+        name = (d.metadata["Name"] or "").lower().replace("_", "-")
+        if name:
+            out[name] = d.version
+    return out
+
+
+def _imported_from(dists: set[str]) -> set[str]:
+    """Which of `dists` provide a module this kernel has already imported."""
+    from importlib import metadata               # noqa: PLC0415
+    loaded = {m.partition(".")[0] for m in sys.modules}
+    hits = set()
+    for module, owners in metadata.packages_distributions().items():
+        if module in loaded and any(o.lower().replace("_", "-") in dists for o in owners):
+            hits.add(module)
+    return hits
+
+
 def install_env(force: bool = False) -> None:
     """Install the pinned course packages into this Python (Colab by default)."""
     if not (_in_colab() or force):
@@ -216,6 +239,7 @@ def install_env(force: bool = False) -> None:
             return
     req = cache_dir() / REQUIREMENTS
     req.write_text(text, encoding="utf-8")
+    before = _dist_versions()
     print("  ↓ installing the course packages (about a minute the first time)…")
     cmd = ["uv", "pip", "install", "--system", "-q", "-r", str(req)]
     try:
@@ -224,17 +248,22 @@ def install_env(force: bool = False) -> None:
         # uv missing or refused: fall back to pip so the lab still runs.
         subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-r", str(req)],
                        check=True)
-    # A package this kernel had ALREADY imported (Colab preloads some, e.g. pandas)
-    # keeps running its old version until the session restarts. Mixing the two
-    # gives baffling errors later, so stop here and say exactly what to do.
-    names = stale if pins is not None else {
-        l.split("==")[0].strip().lower() for l in text.splitlines() if "==" in l}
-    changed = sorted(n for n in names if _MODULE.get(n, n.replace("-", "_")) in sys.modules)
+    # A package this kernel had ALREADY imported (Colab preloads numpy, pandas,
+    # matplotlib…) keeps its old compiled core while its Python files are now the
+    # new version; the mix fails in baffling ways (e.g. numpy's "no attribute
+    # '_blas_supports_fpe'"). Compare every distribution, not just our pins —
+    # diffusers can pull in upgrades too — and restart before anything else runs.
+    after = _dist_versions()
+    changed = sorted(_imported_from({d for d, v in after.items() if before.get(d) != v}))
     if changed:
-        raise SystemExit(
-            "\n  ✓ packages installed. One more step, needed once per session:\n"
-            "    Runtime → Restart session, then run this setup cell again.\n"
-            f"    (updated while already in use: {', '.join(changed)})")
+        msg = ("\n  ✓ packages installed. The session must restart once to load them\n"
+               f"    (updated while already in use: {', '.join(changed)}).\n")
+        if _in_colab():
+            print(msg + "    Restarting now — when Colab reconnects, run this setup cell"
+                  " again.", flush=True)
+            time.sleep(1)
+            os.kill(os.getpid(), signal.SIGKILL)   # Colab restarts the kernel itself
+        raise SystemExit(msg + "    Restart the kernel, then run this setup cell again.")
     print("  ✓ packages ready")
 
 

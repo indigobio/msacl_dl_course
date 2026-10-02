@@ -143,6 +143,12 @@ instructor hands you the \texttt{.ipynb} file on a USB stick.
 ``Sign in'' keeps reappearing, or Colab will not load &
   Your institutional Google account may block Colab. Sign in with a personal
   \texttt{@gmail.com} instead. \\[3pt]
+The setup cell says ``Restarting now'', then ``session restarted'' / ``crashed'' &
+  Expected, once per session: the course packages replaced ones Colab had
+  already loaded. Wait for it to reconnect, then run the \textbf{setup cell} again. \\[3pt]
+\texttt{AttributeError} mentioning \texttt{numpy} or \texttt{\_multiarray\_umath} &
+  The session was not restarted after setup. \textbf{Runtime $\rightarrow$ Restart session},
+  then run the setup cell again. \\[3pt]
 \texttt{NameError} / \texttt{... is not defined} &
   You skipped a cell, or ran them out of order. \textbf{Runtime $\rightarrow$ Restart session and run all}. \\[3pt]
 A cell has been running for minutes &

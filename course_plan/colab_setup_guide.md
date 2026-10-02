@@ -26,9 +26,11 @@ Every lab starts with the same cell. On Colab it installs `uv`, downloads
 1. **installs `requirements-colab.txt`** — the 7 top-level lab packages pinned to the
    versions in `student_pack/uv.lock` (markers kept, so the right pin applies to
    Colab's Python), via `uv pip install --system`. Skipped when already satisfied.
-   If the install upgrades a package the kernel had already imported (Colab
-   preloads pandas), it stops and prints **Runtime → Restart session, then run this
-   setup cell again** — the second run finds everything installed and moves on;
+   If the install changes any package the kernel had already imported (Colab
+   preloads numpy, pandas, matplotlib; diffusers can also pull in upgrades), it
+   prints "Restarting now" and kills the kernel, which Colab restarts
+   automatically — the student runs the setup cell again, it finds everything
+   installed and moves on;
 2. **downloads the data tagged with that lab** in `student_pack/datasets.json`,
    verifying each file's SHA-256; a mismatch deletes the file and fails loudly.
    Interrupted downloads resume. A dataset marked `optional` (one track of Lab 5)
@@ -70,7 +72,7 @@ Run locally, the same cell finds `msacl.py` in the course folder, installs nothi
 Open each lab from `student_pack/labs/` via its link, **Runtime → Change runtime
 type → T4 GPU**, run the setup cell, then **Runtime → Run all**. Check:
 
-- the setup ends `✓ labNN is ready` (after at most one restart prompt);
+- the setup ends `✓ labNN is ready` (after at most one automatic restart);
 - no import errors where Colab's preinstalled packages meet our pins (pandas 3,
   numpy 2.5). Colab's own `google-colab` package may pin an older pandas, so pip can
   print a dependency-conflict warning. That warning is expected; a real failure is
@@ -103,6 +105,7 @@ To test that everything still *computes*, open `labs/solutions/` instead.
 | Setup cell 404s fetching `msacl.py` | The branch isn't merged to `main`, or the repo isn't public. |
 | `Could not get driams_….npz` (404) | The Hugging Face upload hasn't been done (Part 1, step 1). |
 | "SHA-256 fingerprint does not match" | The uploaded file differs from `data/slices/`. Rerun `build_colab_bootstrap.py` and re-upload; commit the new `datasets.json`. |
-| "Restart session, then run this setup cell again" | Expected once per session on Colab. Do exactly that. |
+| "Restarting now", then Colab says the session restarted/crashed | Expected once per session on Colab. Wait for it to reconnect, run the setup cell again. |
+| `AttributeError: … _multiarray_umath … _blas_supports_fpe` | A half-upgraded numpy: the session wasn't restarted after setup (or ran an old `msacl.py` from before 2026-09-28). **Runtime → Restart session**, rerun setup. |
 | `torch.cuda.is_available()` is `False` | **Runtime → Change runtime type → T4 GPU**, then rerun the setup cell. |
 | Want to reset everything | **Runtime → Disconnect and delete runtime**, reopen, select GPU, run setup. |

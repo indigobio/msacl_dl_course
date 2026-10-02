@@ -87,7 +87,7 @@ $\text{FPR} = \dfrac{FP}{FP+TN}$
 \vspace{-2pt}\hrule\vspace{5pt}
 
 % =========================== Q1 ===========================
-\textbf{1. Three rates by hand.}\; {\small The screen's confusion matrix (rows $=$ the model's call, columns $=$
+\textbf{1. Four rates by hand.}\; {\small The screen's confusion matrix (rows $=$ the model's call, columns $=$
 truth):}
 
 \vspace{4pt}
@@ -107,18 +107,22 @@ truth):}
 \textbf{(b)} specificity $=$ \rb{$448/480 = 0.93$ \,(93\%)}{3.4cm}
 \work{0.3cm}
 
-\textbf{(c)} precision $=$ \rb{$16/48 = 0.33$ \,(33\%)}{3.4cm}
+\textbf{(c)} false-positive rate (FPR) $=$ \rb{$32/480 = 0.067$ \,(6.7\%)}{3.4cm}
 \work{0.3cm}
 
-\textbf{(d)} A model that ALWAYS calls ``susceptible'' scores accuracy $= 480/500 = 96\%$. The lab must not miss
+\textbf{(d)} precision $=$ \rb{$16/48 = 0.33$ \,(33\%)}{3.4cm}
+\work{0.3cm}
+
+\textbf{(e)} A model that ALWAYS calls ``susceptible'' scores accuracy $= 480/500 = 96\%$. The lab must not miss
 resistant isolates. \emph{Which rate(s) do you trust here, and why is accuracy misleading?}
 
 \work{1.0cm}
 \ifsolution\else\blk{\linewidth}\par\vspace{2pt}\blk{\linewidth}\fi
 
 \keybox{(a) recall $= 16/(16+4) = 16/20 = \mathbf{0.80}$ (\textbf{80\%}). (b) specificity $= 448/(448+32) = 448/480 =
-\mathbf{0.93}$ (\textbf{93\%}). (c) precision $= 16/(16+32) = 16/48 = \mathbf{0.33}$ (\textbf{33\%}). Accuracy $=
-(16+448)/500 = 464/500 = \mathbf{0.93}$ (93\%). (d) Trust \textbf{recall} (catch the resistant) reported \emph{with}
+\mathbf{0.93}$ (\textbf{93\%}). (c) FPR $= FP/(FP+TN) = 32/(32+448) = 32/480 = \mathbf{0.067}$ (\textbf{6.7\%}) ---
+the share of susceptibles wrongly flagged, and exactly $1 - \text{specificity} = 1 - 0.933$. (d) precision $= 16/(16+32) =
+16/48 = \mathbf{0.33}$ (\textbf{33\%}). Accuracy $= (16+448)/500 = 464/500 = \mathbf{0.93}$ (93\%). (e) Trust \textbf{recall} (catch the resistant) reported \emph{with}
 \textbf{precision} (only 1 flag in 3 is real). Positives are rare (20 of 500), so accuracy is dominated by the 480
 susceptibles: an always-``susceptible'' model scores \textbf{96\%} yet catches \textbf{0 of 20} resistant. Accuracy
 hides both the missed cases and the false alarms.}
@@ -130,7 +134,7 @@ hides both the missed cases and the false alarms.}
 this one operating point on each curve, then choose what to report across all thresholds.}
 
 \vspace{2pt}
-\textbf{(a)} ROC point: FPR $=\ \dfrac{32}{32+448} =\ $ \rb{$32/480 = 0.067$}{2.8cm}, \; TPR (recall) $=\ $
+\textbf{(a)} ROC point: FPR (your Q1(c)) $=\ \dfrac{32}{32+448} =\ $ \rb{$32/480 = 0.067$}{2.8cm}, \; TPR (recall) $=\ $
 \rb{$0.80$}{2.0cm}\; --- does it hug the top-left corner? \rb{yes (looks great)}{3.0cm}
 \work{0.3cm}
 

@@ -1285,3 +1285,85 @@ warnings (Lecture 1 slides 8 and 19, Lecture 2 slides 4 and 7). So
 goes 9 → 13 boxes. Those layouts are left for the instructor to nudge in PowerPoint.
 **Cost:** Lectures 8 and 10 each gain three short stops (~2–3 min each) — watch the
 hour; the you-dos are the cut candidates in each deck's timing note.
+
+## 2026-09-28 — Colab setup restarts the session itself after upgrading a loaded package
+
+**Reported:** Lab 3 on Colab failed with `AttributeError: module
+'numpy._core._multiarray_umath' has no attribute '_blas_supports_fpe'`: numpy's
+Python files had been upgraded to the pinned version while the kernel still held
+Colab's old compiled numpy core.
+
+**Why the 2026-09-23 guard missed it:** it only checked our 7 pinned packages,
+and it relied on the student reading a `SystemExit` message and restarting by
+hand. Colab's post-cell hooks (for example matplotlib's) can touch the
+half-upgraded numpy before the student sees that message, and diffusers can
+bring in upgrades to other packages the kernel has already loaded.
+
+**Now:** `install_env` snapshots every installed distribution before and after
+the install. If anything the kernel has already imported changed, on Colab it
+prints "Restarting now" and kills the kernel, which Colab restarts
+automatically. The student then runs the setup cell again, and it reports "already
+installed". Locally it still stops with a restart message. The Lab 1 Colab
+sheet's troubleshooting table now lists both the expected restart and this
+numpy `AttributeError`.
+
+## 2026-09-28 — Lecture 5 you-do figure matches its numbers; Lecture 8 cross-attention on translation; Quiz 8 drops Q5; diffusion primer gains sampling
+
+**Asked for:** (1) Lecture 5 slide 16's figure drew a 5-cell strip while the problem
+(Quiz 5 Q3) is n = 7 — make the illustration match the practice. (2) Lecture 8 slide 9
+used a spectrum → peptide example built on Casanovo, which the room has not met at that
+point — use a common NLP example, and analyse the illustration; same for Quiz 8 Q2.
+(3) Remove Q5 from Quiz 8. (4) Recover the diffusion slide the instructor removed.
+(5) Add a slide near the end of Lecture 8 showing how a diffusion model samples a new image.
+
+**Done:**
+- `fig_output_size_youdo.png` now draws the actual input — n = 7 cells, k = 3, p = 1 —
+  and asks both parts, (a) p = 1 and (b) p = 0 (`output_size(mode="youdo")`). The
+  worked figure on slide 15 keeps its 5-cell strip (it matches the 5×5 examples).
+- Slide 9's illustration, analysed: the encoder input was three blank boxes, the decoder
+  wrote A → C → D, and the cross-attention arrow carried no weights — so the one idea
+  the slide exists for (the decoder's output is a weighted read of the encoder's K,V)
+  was not visible. Redrawn on French → English translation — "je suis étudiant" → "I am
+  a student", the same sentence as the Illustrated-Transformer animation two slides on —
+  with one K,V per source word and the cross-attention weights drawn (je 0.05, suis 0.10,
+  étudiant 0.85, sum 1) while the decoder writes "student". The callout was shortened to
+  its point so the figure is readable; the full account moved to the notes.
+- Quiz 8 Q2 (quiz, slide-10 panel, notes) uses the same translator; the "different
+  patient's spectrum" swap becomes a swap to "il fait froid". Q1 is unchanged.
+  Casanovo stays where it is taught later (the tokenization section, Q3's word bank).
+- Quiz 8 Q5 removed; Quiz 8 is four items. The only diffusion slide the instructor had
+  removed was Q5's you-do; at the instructor's choice it is restored as an in-class
+  **do-it-together** (same numbers, no quiz pointer). The diffusion objective stays
+  assessed through Lab 3's loss-line blank.
+- New slide **DIFFUSION PRIMER · 4 OF 4 · GENERATING A NEW IMAGE**: real intermediate
+  images from the Lab 3 generator (balakrish181/ddpm-class-mnist-28, MIT) run through
+  its DDPM sampler, three seeds → a 5, a 6 and a 0, snapshots from t = 1000 (pure noise)
+  to t = 0 — `tools/make_diffusion_sampling_fig.py`. The primer is now 1–4 OF 4; slide 1,
+  slide 2 and the closing slide no longer mention Q5; `Learning_outcomes.md` updated.
+
+**Verified:** Quiz 8 student sheet and key compile (1 and 2 pages); the decks keep every
+original slide in order; lint shows no new problems (remaining flags are the instructor's
+own edits: Lecture 5 slide 2 overflow, Lecture 8 slide 14 picture over the title).
+
+## 2026-09-28 — Lecture 10 defines the false-positive rate; the treatment menu includes augmentation
+
+**Asked for:** Lecture 10 used FPR (the ROC x-axis, Quiz 10 Q2) without ever
+defining it — add the definition and examples to slides 4, 5 and 6; and the slide-13
+treatment menu should include data augmentation.
+
+**Done:**
+- Slide 4 (plain language): a fourth line in the instructor's own pattern — "False
+  positive rate (FPR): how many negatives wrongly flagged as positive out of all
+  negatives? FPR = 1 − specificity" — with an example: 60 of 697 susceptible isolates
+  flagged → 8.6% (specificity 91.4%; the two always add to 100%).
+- Slide 5 (I-do): `fig_confusion_ido.png` gains the FPR row, FP/(FP+TN) = 60/697 =
+  0.086; header/title say four rates; the callout carries numbers only (the formulas are
+  in the figure); notes work FPR and tie it to the ROC slides.
+- Slide 6 (you-do = Quiz 10 Q1): `fig_confusion_youdo.png` gains "FPR = ?"; callout and
+  notes add FPR = 32/480 = 0.067. Quiz 10 Q1 becomes "Four rates by hand" with FPR as
+  part (c) (precision → (d), the trust question → (e)); Q2(a) now reads "FPR (your
+  Q1(c))". Recomputed: 60/697 = 0.0861, 32/480 = 0.0667, each = 1 − specificity.
+- Slide 13: `fig_treatment_menu.png` is five cards in teaching order — curate, AUGMENT
+  (label-safe variants of real spectra: m/z jitter, ×0.9, noise; 41 × 8 = 328 views),
+  reweight/SMOTE, focal loss, curriculum; callout and notes follow. The recap slide
+  lists FPR and augmentation. Quiz 10 Q3's four-move menu is unchanged.
