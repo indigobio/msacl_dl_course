@@ -1367,3 +1367,18 @@ treatment menu should include data augmentation.
   (label-safe variants of real spectra: m/z jitter, ×0.9, noise; 41 × 8 = 328 views),
   reweight/SMOTE, focal loss, curriculum; callout and notes follow. The recap slide
   lists FPR and augmentation. Quiz 10 Q3's four-move menu is unchanged.
+
+## 2026-10-02 — Lab 4 drops "KL by hand"; training shows a tqdm progress bar
+
+**Asked for:** remove Step 3 of Lab 4 (KL by hand, `kl_by_hand = 0.5`) and add tqdm
+to Step 4 (training).
+
+**Done:** Step 3's markdown and code cells are gone; the later steps renumber 3–8 and
+the blanks 1–3 (the impostor threshold is now Blank 2 in Step 7, the doodle Blank 3 in
+Step 8), and the intro lists three pieces. Training wraps its epoch loop in
+`tqdm.auto` (a widget in Colab/Jupyter, text elsewhere) with the current loss on the
+bar instead of twelve printed lines; tqdm is already a pinned course dependency. The
+hint sheet loses its KL section (now one page) and the combined handouts PDF is
+rebuilt. The KL formula itself stays where the loss is built (Step 2), so the VAE
+objective is still complete. Verified: the solution notebook runs end to end with all
+15 asserts passing (16 before; the KL check is the one removed).

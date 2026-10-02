@@ -109,16 +109,16 @@ in Phase 2 before a lab is built on it.
   2-D-latent MLP VAE (784→256→64→(mu,logvar); dec 2→64→256→784 sigmoid) on
   12,000 FashionMNIST images (Adam 1e-3, batch 128, ~12 epochs) and scores
   held-out MNIST digits as impostors. The model, training loop, and every plot
-  are read-and-run; participants fill **four blanks**: **Blank 1** the VAE loss
-  `loss = recon_loss + beta * kl_loss` (Step 2); **Blank 2** one KL value by hand
-  `kl_by_hand = 0.5` for mu=[1,0], logvar=[0,0] (Step 3); **Blank 3** the impostor
+  are read-and-run (training shows a tqdm progress bar); participants fill **three
+  blanks** (the KL-by-hand step was dropped 2026-10-02): **Blank 1** the VAE loss
+  `loss = recon_loss + beta * kl_loss` (Step 2); **Blank 2** the impostor
   `THRESHOLD = np.percentile(normal_errors, 90)` plus a prediction
-  `expected_false_alarms = round(0.10 * len(normal_errors))` (Step 8); **Blank 4**
-  the creative ASCII `DOODLE` impostor (Step 9). It plots the VAE latent vs. a
+  `expected_false_alarms = round(0.10 * len(normal_errors))` (Step 7); **Blank 3**
+  the creative ASCII `DOODLE` impostor (Step 8). It plots the VAE latent vs. a
   plain-AE latent (Lecture 11 picture), morphs a sneaker→ankle-boot, generates
   clothes from random z ~ N(0, I), and flags impostor digits by reconstruction
   error (AUROC > 0.85). Verified end-to-end (`jupyter nbconvert --execute`): all
-  code cells ran with **0 errors** and all **16 asserts** pass (incl. cached
+  code cells ran with **0 errors** and all **15 asserts** pass (incl. cached
   downloads).
 
 ### Lab 3 — transfer learning by fine-tuning: pretrained diffusion generator (redesigned 2026-09-01)
