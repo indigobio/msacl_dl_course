@@ -371,14 +371,13 @@ playable.
 - Guided notebook `lab04`: a VAE that **only knows clothes**. Trains on
   **FashionMNIST** (28×28 grayscale garments); loads free from torchvision (no
   credentials); **MNIST digits** load too as unseen impostors for the detector.
-  The model, training loop, and every plot are read-and-run; participants fill in
-  four short pieces.
-- Blanks (4): **Blank 1** combine the VAE loss `loss = recon_loss + beta *
-  kl_loss` (reconstruction + KL "tidiness"); **Blank 2** compute one KL value by
-  hand (`kl_by_hand = 0.5` for mu=[1,0], logvar=[0,0], from the KL formula shown
-  on the slide); **Blank 3** the impostor `THRESHOLD` = 90th percentile of the
-  normal errors, plus a prediction of the ~10% `expected_false_alarms`; **Blank
-  4** a **draw-anything** ASCII `DOODLE` the detector then judges. The
+  The model, training loop (with a tqdm progress bar), and every plot are
+  read-and-run; participants fill in three short pieces.
+- Blanks (3; the KL-by-hand step was dropped 2026-10-02): **Blank 1** combine the
+  VAE loss `loss = recon_loss + beta * kl_loss` (reconstruction + KL "tidiness");
+  **Blank 2** the impostor `THRESHOLD` = 90th percentile of the normal errors, plus a
+  prediction of the ~10% `expected_false_alarms`; **Blank 3** a **draw-anything**
+  ASCII `DOODLE` the detector then judges. The
   reconstruction and KL terms are provided; the student combines and calibrates
   them.
 - Latent playground: encode held-out clothes to the 2D latent and scatter by
