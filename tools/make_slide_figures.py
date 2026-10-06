@@ -7009,67 +7009,92 @@ def rl_anatomy(name="fig_rl_anatomy.png"):
 
 
 def markov_property(name="fig_markov.png"):
-    """THE requirement RL is built on, stated correctly: MARKOV is a property of
-    the STATE YOU HAND THE AGENT, not of the world (instructor, 2026-10-05:
-    replace the corridor with plainer examples).  Left, the clean good case -- a
-    tic-tac-toe BOARD: reach the same board by two different move orders and the
-    best next move is identical, so the board is enough.  Right, the clean
-    failure -- ONE photo of a ball in flight: from position alone you cannot tell
-    rising from falling, so the snapshot is not Markov; add the velocity (or the
-    previous frame) and it is -- which is why Atari-playing agents stack their
-    last four frames.  (Not a stock price: under the textbook random-walk model
-    tomorrow depends only on today, i.e. it IS Markov, so it would confuse.)"""
-    fig, (axl, axr) = plt.subplots(1, 2, figsize=(13.2, 5.2),
+    """THE requirement RL is built on, shown as a TRANSITION MODEL (instructor,
+    2026-10-06: the old examples showed no transitions; use physics for Markov
+    and the stock market for non-Markov).  Left: radioactive decay of 18F (the
+    PET isotope, half-life 110 min) -- a two-state chain whose transition
+    probability is 0.5 per half-life whatever the atom's age, so the current
+    state is all you need.  Right: a stock's PRICE alone -- two stocks both at
+    $100 today, one after a calm week, one after a wild week; big swings tend to
+    follow big swings (volatility clustering), so the same price leads to
+    different futures.  Fix: put recent volatility into the state."""
+    fig, (axl, axr) = plt.subplots(1, 2, figsize=(13.2, 5.4),
                                    gridspec_kw={"width_ratios": [1, 1.05]})
-    # ---------------- LEFT: tic-tac-toe, two move orders, one board -----------
-    axl.set_xlim(0, 7.4); axl.set_ylim(-2.1, 4.3); axl.axis("off")
-    axl.text(3.7, 4.05, "✓  MARKOV — the board is enough", ha="center",
+    # ---------------- LEFT: 18F decay as a two-state transition model ---------
+    axl.set_xlim(0, 7.4); axl.set_ylim(-2.2, 4.4); axl.axis("off")
+    axl.text(3.7, 4.1, "✓  MARKOV — radioactive decay", ha="center",
              color=TEAL, fontsize=13, fontweight="bold")
-    marks = {(0, 0): "X", (1, 1): "X", (0, 2): "O"}       # (row, col): row 0 = top
-    orders = ["X top-left → O top-right → X centre",
-              "X centre → O top-right → X top-left"]
-    for k, x0 in enumerate((0.45, 4.05)):
-        c = 0.95
-        for i in range(1, 3):
-            axl.plot([x0 + i * c, x0 + i * c], [0.35, 0.35 + 3 * c], color=INK_SOFT, lw=2.2)
-            axl.plot([x0, x0 + 3 * c], [0.35 + i * c, 0.35 + i * c], color=INK_SOFT, lw=2.2)
-        for (r, col), m in marks.items():
-            axl.text(x0 + (col + 0.5) * c, 0.35 + (2 - r + 0.5) * c, m, ha="center", va="center",
-                     fontsize=24, fontweight="bold", color=TEAL if m == "X" else ROI_INK)
-        # O must block the diagonal at bottom-right -- the same best move on both boards
-        axl.add_patch(FancyBboxPatch((x0 + 2 * c + 0.12, 0.35 + 0.12), c - 0.24, c - 0.24,
-                      boxstyle="round,pad=0.01,rounding_size=0.08", fill=False,
-                      edgecolor=RED, lw=2.0, ls=(0, (3, 2))))
-        axl.text(x0 + 1.5 * c, -0.05, orders[k], ha="center", fontsize=8.8, color=MUTED)
-    axl.text(3.7, -0.75, "same board → same best move (O must block, red box).",
-             ha="center", fontsize=11.5, color=INK, fontweight="bold")
-    axl.text(3.7, -1.3, "how you got there carries NO extra information.", ha="center",
-             fontsize=10.5, color=MUTED)
-    # ---------------- RIGHT: one snapshot of a ball -----------------------------
-    axr.set_xlim(0, 7.8); axr.set_ylim(-2.1, 4.3); axr.axis("off")
-    axr.text(3.9, 4.05, "✗  NOT MARKOV — one photo of a ball", ha="center",
+    axl.text(3.7, 3.6, "¹⁸F, the PET isotope · half-life 110 min", ha="center",
+             color=MUTED, fontsize=10, style="italic")
+    for x0, who, past in ((0.25, "atom A", "made 1 minute ago"),
+                          (3.85, "atom B", "already survived 3 hours")):
+        axl.add_patch(FancyBboxPatch((x0, 2.45), 3.3, 0.8,
+                      boxstyle="round,pad=0.02,rounding_size=0.08",
+                      facecolor="#F1F1EC", edgecolor=HAIRLINE, lw=1.4))
+        axl.text(x0 + 1.65, 3.0, who, ha="center", va="center", color=INK,
+                 fontsize=10.5, fontweight="bold")
+        axl.text(x0 + 1.65, 2.66, past, ha="center", va="center", color=INK_SOFT,
+                 fontsize=9.5)
+        axl.annotate("", xy=(2.05, 1.62), xytext=(x0 + 1.65, 2.42),
+                     arrowprops=dict(arrowstyle="-|>", color=MUTED, lw=1.4))
+    # the two states
+    axl.add_patch(plt.Circle((2.05, 1.0), 0.62, facecolor=TEAL_SOFT, edgecolor=TEAL, lw=2.4))
+    axl.text(2.05, 1.0, "NOT YET\nDECAYED", ha="center", va="center", color=TEAL,
+             fontsize=9.5, fontweight="bold", linespacing=1.2)
+    axl.add_patch(plt.Circle((5.6, 1.0), 0.62, facecolor="#F1F1EC", edgecolor=INK_SOFT, lw=2.0))
+    axl.text(5.6, 1.0, "DECAYED", ha="center", va="center", color=INK_SOFT,
+             fontsize=9.5, fontweight="bold")
+    axl.annotate("", xy=(4.95, 1.0), xytext=(2.7, 1.0),
+                 arrowprops=dict(arrowstyle="-|>", color=ROI_INK, lw=2.4))
+    axl.text(3.82, 1.22, "decays: 0.5", ha="center", color=ROI_INK, fontsize=10.5,
+             fontweight="bold")
+    axl.text(3.82, 0.66, "per 110 min", ha="center", color=MUTED, fontsize=9)
+    axl.annotate("", xy=(1.47, 0.78), xytext=(1.47, 1.22),
+                 arrowprops=dict(arrowstyle="-|>", color=TEAL, lw=2.0,
+                                 connectionstyle="arc3,rad=1.9"))
+    axl.text(0.62, 1.0, "stays:\n0.5", ha="right", va="center", color=TEAL, fontsize=10.5,
+             fontweight="bold", linespacing=1.15)
+    axl.text(3.7, -1.15, "the SAME 0.5 for A and B — the atom's past adds nothing.",
+             ha="center", fontsize=11.2, color=INK, fontweight="bold")
+    axl.text(3.7, -1.65, "next state depends only on the current state", ha="center",
+             fontsize=10.2, color=MUTED)
+    # ---------------- RIGHT: a stock's price alone -----------------------------
+    axr.set_xlim(-0.6, 7.8); axr.set_ylim(-2.2, 4.4); axr.axis("off")
+    axr.text(3.6, 4.1, "✗  NOT MARKOV — a stock's price alone", ha="center",
              color=RED, fontsize=13, fontweight="bold")
-    # the photo frame with the ball in it
-    axr.add_patch(FancyBboxPatch((0.4, 0.55), 2.6, 2.6, boxstyle="round,pad=0.02,rounding_size=0.08",
-                  facecolor=WHITE, edgecolor=INK_SOFT, lw=1.8))
-    axr.add_patch(plt.Circle((1.7, 1.95), 0.26, color=AMBER, zorder=4))
-    axr.text(1.7, 0.2, "the snapshot: position only", ha="center", fontsize=9.5, color=MUTED)
-    # two futures from the same position
-    xs = np.linspace(0, 1, 40)
-    axr.plot(3.35 + 1.9 * xs, 1.95 + 1.15 * np.sin(xs * np.pi * 0.5), color=TEAL, lw=2.4, ls=(0, (4, 2)))
-    axr.annotate("", xy=(5.3, 3.12), xytext=(5.15, 3.08), arrowprops=dict(arrowstyle="-|>", color=TEAL, lw=2.2))
-    axr.text(5.45, 3.15, "rising?", fontsize=11, color=TEAL, fontweight="bold", va="center")
-    axr.plot(3.35 + 1.9 * xs, 1.95 - 1.15 * np.sin(xs * np.pi * 0.5), color=RED, lw=2.4, ls=(0, (4, 2)))
-    axr.annotate("", xy=(5.3, 0.78), xytext=(5.15, 0.82), arrowprops=dict(arrowstyle="-|>", color=RED, lw=2.2))
-    axr.text(5.45, 0.75, "falling?", fontsize=11, color=RED, fontweight="bold", va="center")
-    axr.annotate("", xy=(3.3, 1.95), xytext=(3.02, 1.95), arrowprops=dict(arrowstyle="-", color=MUTED, lw=1.2))
-    axr.text(3.9, -0.9, "fix: add the velocity (or the previous frame)\n→ position + velocity IS Markov",
-             ha="center", fontsize=10.5, color=TEAL, fontweight="bold", linespacing=1.35,
-             bbox=dict(boxstyle="round,pad=0.45", fc=TEAL_SOFT, ec=TEAL, lw=1.6))
-    axr.text(3.9, -1.85, "that is why Atari-playing agents stack their last 4 frames", ha="center",
-             fontsize=10, color=MUTED, style="italic")
-    fig.text(0.5, 0.02, "Markov is a property of the STATE YOU CHOOSE, not of the world.",
-             ha="center", fontsize=12.5, color=INK, fontweight="bold")
+    axr.text(3.6, 3.6, "two stocks, both at $100 today", ha="center",
+             color=MUTED, fontsize=10, style="italic")
+    def py(p):                                  # price $70-$140 -> plot height
+        return -0.35 + (p - 70) / 70 * 3.6
+    days = np.arange(5); dx = 0.95
+    calm, wild = [98, 99, 100, 99, 100], [130, 85, 120, 90, 100]
+    axr.plot([0.2 + d * dx for d in days], [py(p) for p in calm], color=TEAL, lw=2.4, marker="o", ms=4)
+    axr.plot([0.2 + d * dx for d in days], [py(p) for p in wild], color=RED, lw=2.4, marker="o", ms=4)
+    for p in (80, 100, 120):
+        axr.text(-0.15, py(p), f"${p}", ha="right", va="center", color=MUTED, fontsize=8.5)
+        axr.plot([0.0, 5.3], [py(p), py(p)], color=HAIRLINE, lw=0.8, zorder=0)
+    axr.text(2.1, py(70) - 0.05, "last 5 days", ha="center", color=MUTED, fontsize=9)
+    xt = 0.2 + 4 * dx
+    axr.axvline(xt, ymin=0.27, ymax=0.83, color=INK_SOFT, lw=1.0, ls=":")
+    axr.text(xt, py(140) + 0.12, "today", ha="center", color=INK_SOFT, fontsize=9)
+    # tomorrow's typical range (illustrative)
+    for lo, hi, col, face, lab, dy in ((99, 101, TEAL, TEAL_SOFT, "A, after a calm week: ± $1", 0.32),
+                                        (80, 120, RED, "#F7E4E3", "B, after a wild week: ± $20", -0.32)):
+        axr.add_patch(plt.Polygon([[xt, py(100)], [xt + 1.0, py(hi)], [xt + 1.0, py(lo)]],
+                      closed=True, facecolor=face, edgecolor=col, alpha=0.9,
+                      lw=3.0 if hi - lo < 5 else 1.6, zorder=5 if hi - lo < 5 else 3))
+    axr.text(5.55, py(112), "B: ± $20", ha="left", va="center", color=RED, fontsize=10.5, fontweight="bold")
+    axr.text(5.55, py(101), "A: ± $1", ha="left", va="center", color=TEAL, fontsize=10.5, fontweight="bold")
+    axr.text(5.55, py(88), "tomorrow's\ntypical swing", ha="left", va="center", color=MUTED,
+             fontsize=8.5, linespacing=1.2)
+    axr.text(3.6, -1.0, "same state ($100), different futures — big swings follow big swings",
+             ha="center", fontsize=10.6, color=INK, fontweight="bold")
+    axr.text(3.6, -1.7, "fix: add the recent volatility to the state", ha="center",
+             fontsize=10.5, color=TEAL, fontweight="bold",
+             bbox=dict(boxstyle="round,pad=0.4", fc=TEAL_SOFT, ec=TEAL, lw=1.5))
+    fig.text(0.5, 0.02, "Markov: the next state depends only on the current one — "
+             "a property of the STATE YOU CHOOSE, not of the world.",
+             ha="center", fontsize=12.2, color=INK, fontweight="bold")
     _save(fig, name)
 
 
