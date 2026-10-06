@@ -30,6 +30,7 @@ export ANTHROPIC_API_KEY=sk-ant-...              # from console.anthropic.com
 export ANTHROPIC_MODEL=claude-3-5-haiku-latest   # optional (any model you can access)
 
 python3 stage1_chatbot.py     # no memory
+python3 stage1_chatbot.py --chat   # stage 1, typing your own questions live
 python3 stage2_memory.py      # + memory
 python3 stage3_react.py       # + tools (ReAct)
 ```
@@ -59,6 +60,9 @@ and `FORCE_COLOR=1` forces it on (useful when piping to `tee` for a transcript).
 - **Stage 1 — "the raw LLM is a stateless text function."** Q1 answers fine.
   Then Q2 — "which run did I just say?" — and it has already forgotten. No memory,
   every turn starts from nothing.
+  To show the manual way of talking to an AI, run it with `--chat` and type the
+  questions yourself (or take them from the room). A blank line, `quit` or Ctrl-D
+  ends. It is still stateless: tell it a run ID, then ask which run you named.
 - **Stage 2 — "memory ≠ knowledge."** Now Q2 works. But Q3 exposes a scarier
   failure: with no way to *see* the data it invents a clean number and passes a
   run that is actually out of spec. A chatbot here would release a bad batch.

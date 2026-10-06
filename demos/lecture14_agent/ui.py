@@ -78,6 +78,21 @@ def user(text):
     _block("YOU", BLUE, text, (1,))
 
 
+def ask():
+    """Read one typed question behind a YOU chip; None when the user is done.
+
+    Typing happens live in front of the room, so the prompt wears the same chip
+    and bar as a scripted question. A blank line, 'quit', Ctrl-D or Ctrl-C ends.
+    """
+    print()
+    try:
+        text = input(f"{_chip('YOU', BLUE)} {_c('┃', 1, 38, 5, BLUE)} ").strip()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return None
+    return None if text.lower() in ("", "quit", "exit", "q") else text
+
+
 def bot(text):
     _block("BOT", GREEN, text, (1,))
 
