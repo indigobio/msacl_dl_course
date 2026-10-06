@@ -7778,19 +7778,20 @@ def tour_prosit(name="fig_tour_prosit.png"):
 
 
 def tour_diann(name="fig_tour_diann.png"):
-    """DIA-NN's headline experiment (paper Fig. 1b), described honestly: the
-    paper plots precursor identifications against FDR for 0.5-4 h gradients,
-    DIA-NN vs Spectronaut vs OpenSWATH. The one hard number quoted in the text
-    is >35,000 precursors from a half-hour gradient."""
+    """DIA-NN's experiments as the paper states them (checked 2026-10-05): the
+    benchmark plots precursor IDs against FDR for a HeLa digest on a Q Exactive HF
+    at 0.5-4 h gradients, DIA-NN vs OpenSWATH, Skyline and Spectronaut; the hard
+    number in the text -- over 35,000 precursors -- comes from a K562 digest on a
+    TripleTOF 6600 with a fast 19-minute gradient (not a half-hour one)."""
     fig, (axl, axr) = plt.subplots(1, 2, figsize=(12.6, 4.6),
                                    gridspec_kw={"width_ratios": [1.1, 1]})
     axl.set_xlim(0, 10); axl.set_ylim(0, 10); axl.axis("off")
     axl.text(5.0, 9.4, "the experiment in the paper", ha="center", color=INK,
              fontsize=12.5, fontweight="bold")
-    rows = [("sample", "technical repeat injections of a HeLa tryptic digest"),
-            ("gradients", "0.5 h  ·  1 h  ·  2 h  ·  4 h  (Q Exactive HF)"),
+    rows = [("benchmark", "HeLa digest · Q Exactive HF · 0.5 – 4 h gradients"),
             ("measured", "precursor IDs plotted against FDR"),
-            ("compared", "DIA-NN  vs  Spectronaut  vs  OpenSWATH")]
+            ("compared", "DIA-NN vs OpenSWATH · Skyline · Spectronaut"),
+            ("fast run", "K562 digest · TripleTOF 6600 · 19-min gradient")]
     y = 8.0
     for k, (head, gloss) in enumerate(rows):
         axl.add_patch(FancyBboxPatch((0.3, y - 1.55), 9.4, 1.50,
@@ -7808,7 +7809,7 @@ def tour_diann(name="fig_tour_diann.png"):
                   facecolor=TEAL_SOFT, edgecolor=TEAL, lw=2.4))
     axr.text(5.0, 7.35, "> 35,000", ha="center", color=TEAL, fontsize=30,
              fontweight="bold")
-    axr.text(5.0, 6.15, "precursors from a HALF-HOUR gradient",
+    axr.text(5.0, 6.15, "precursors from a 19-MINUTE gradient",
              ha="center", color=INK, fontsize=11.5, fontweight="bold")
     axr.text(5.0, 5.50, "“more than what was achieved only a few years ago\n"
              "with 2 h nanoflow gradients”", ha="center", va="center",
@@ -7963,16 +7964,16 @@ def landscape_match(mode="ido", name="fig_landscape_match_ido.png"):
     columns and gives word banks for the spoken match (the old Quiz 13 Q1
     transfer question was removed from the sheet)."""
     rows = [
-        ("Casanovo", TEAL, "de novo peptide sequencing",
-         "Transformer (translation)", "reads peptides not in any database"),
+        ("DeepNovo", TEAL, "de novo peptide sequencing",
+         "CNN + LSTM (spectrum → letters)", "reads peptides not in any database"),
         ("Prosit", AMBER, "predict fragment spectrum + RT",
-         "deep sequence model (RNN/attn)", "rescores IDs → more confident hits"),
+         "recurrent encoder (GRU) + attention", "rescores IDs → more confident hits"),
         ("DIA-NN", RED, "ID + quantify in DIA runs",
-         "feed-forward neural net (MLP)", "robust high-throughput proteomics"),
+         "ensemble of small MLPs", "robust high-throughput proteomics"),
         ("DRIAMS", INK_SOFT, "resistance (R/S) from MALDI-TOF",
-         "1D CNN (spectrum classifier)", "faster antibiotic calls, routine data"),
+         "MLP / boosted trees on bins", "faster antibiotic calls, routine data"),
         ("AlphaFold", TEAL, "3D protein structure from sequence",
-         "Transformer / attention", "near-experimental accuracy — flagship"),
+         "attention (Evoformer)", "near-experimental accuracy — flagship"),
     ]
     fig, ax = plt.subplots(figsize=(12.8, 6.2))
     ax.set_xlim(0, 13)
@@ -8019,8 +8020,8 @@ def landscape_match(mode="ido", name="fig_landscape_match_ido.png"):
                 "DIA ID+quant · MALDI-TOF resistance · protein structure",
                 ha="center", color=INK_SOFT, fontsize=8.6)
         ax.text(6.5, 0.1,
-                "architecture bank: Transformer (translation) · sequence model "
-                "(RNN/attn) · MLP · 1D CNN · Transformer/attention",
+                "architecture bank: CNN + LSTM · GRU + attention · MLP ensemble · "
+                "MLP / boosted trees · attention (Evoformer)",
                 ha="center", color=INK_SOFT, fontsize=8.6)
     _save(fig, name)
 
@@ -8104,14 +8105,362 @@ def landscape_transfer(name="fig_landscape_transfer.png"):
         ax.text(1.35, y - 0.44, "architecture family?  ______      most like which landmark?  ______",
                 ha="left", va="center", color=MUTED, fontsize=10, fontweight="bold")
     ax.text(6.5, 1.45,
-            "(c)  Casanovo and AlphaFold solve very different problems but share ONE\n"
-            "architecture family — which, and what do their problems have in common\n"
-            "that makes that architecture fit?",
+            "(c)  DeepNovo and Prosit run in OPPOSITE directions (spectrum → sequence,\n"
+            "sequence → spectrum). Which network family handles the peptide SEQUENCE\n"
+            "in both — and why does an ordered sequence need it?",
             ha="center", va="center", color=INK, fontsize=10.8, fontweight="bold",
             bbox=dict(boxstyle="round,pad=0.6", fc=TEAL_SOFT, ec=TEAL, lw=1.8))
     ax.text(6.5, 0.3, "reference: the five-tool map on the previous slide",
             ha="center", color=MUTED, fontsize=9.5, style="italic")
     _save(fig, name)
+
+
+
+# ---- Landscape tour, deepened (instructor, 2026-10-05) ---------------------
+# Only flagship works stay (>400 citations, Semantic Scholar + OpenAlex agree;
+# DRIAMS kept as the clinical exception).  Each gets two deep-dive slides: WHAT
+# THE DATA LOOKS LIKE and HOW THE NETWORK IS BUILT + ITS LOSS.  Every number is
+# from the paper or its official code (see course_plan/DECISIONS.md).
+TOUR_CITE["deepnovo"] = ("Tran NH, Zhang X, Xin L, Shan B, Li M. “De novo peptide sequencing by deep "
+                         "learning.” PNAS 114:8247–8252 (2017) · doi:10.1073/pnas.1705691114 — numbers "
+                         "quoted from the paper, diagrams drawn for this course")
+
+
+def _box(ax, x, y, w, h, text, fc=WHITE, ec=HAIRLINE, tc=INK, fs=10, bold=True, lw=1.6, ls="solid"):
+    ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.02,rounding_size=0.08",
+                 facecolor=fc, edgecolor=ec, lw=lw, ls=ls, zorder=3))
+    ax.text(x + w / 2, y + h / 2, text, ha="center", va="center", color=tc, fontsize=fs,
+            fontweight="bold" if bold else "normal", linespacing=1.35, zorder=4)
+
+
+def _arrow(ax, x0, y0, x1, y1, col=INK_SOFT, lw=1.8, label=None, lab_dy=0.22, fs=9.2):
+    ax.annotate("", xy=(x1, y1), xytext=(x0, y0), arrowprops=dict(arrowstyle="-|>", color=col, lw=lw))
+    if label:
+        ax.text((x0 + x1) / 2, (y0 + y1) / 2 + lab_dy, label, ha="center", fontsize=fs, color=col,
+                fontweight="bold")
+
+
+def _dd_canvas(title, key, w=12.8, h=5.2):
+    fig, ax = plt.subplots(figsize=(w, h))
+    ax.set_xlim(0, 12.8); ax.set_ylim(0, 5.2); ax.axis("off")
+    ax.text(6.4, 5.0, title, ha="center", fontsize=13, color=INK, fontweight="bold")
+    _cite_strip(fig, key)
+    return fig, ax
+
+
+def _stick_spectrum(ax, x0, y0, w, h, peaks, labels=None, col=INK_SOFT):
+    ax.plot([x0, x0 + w], [y0, y0], color=MUTED, lw=1.2)
+    for i, (px_, ht) in enumerate(peaks):
+        ax.plot([x0 + px_ * w, x0 + px_ * w], [y0, y0 + ht * h], color=col, lw=2.0)
+        if labels and labels[i]:
+            ax.text(x0 + px_ * w, y0 + ht * h + 0.08, labels[i], ha="center", fontsize=8.5,
+                    color=TEAL, fontweight="bold")
+
+
+def tour_deepnovo(name="fig_tour_deepnovo.png"):
+    """DeepNovo's headline (PNAS 2017 abstract): 7.7-22.9% higher accuracy than the
+    previous best tools at the amino-acid level and 38.1-64.0% at the peptide level,
+    and complete mouse antibody chains reassembled at 97.5-100% coverage."""
+    fig, (axl, axr) = plt.subplots(1, 2, figsize=(12.6, 4.6), gridspec_kw={"width_ratios": [1, 1]})
+    for ax in (axl, axr):
+        ax.set_xlim(0, 10); ax.set_ylim(0, 10); ax.axis("off")
+    axl.text(5.0, 9.4, "the problem", ha="center", color=INK, fontsize=12.5, fontweight="bold")
+    _stick_spectrum(axl, 0.8, 4.6, 8.4, 3.2, [(0.08, .35), (0.2, .8), (0.33, .5), (0.47, 1), (0.6, .42),
+                                                (0.72, .7), (0.86, .3)])
+    axl.text(5.0, 4.0, "one MS/MS spectrum  →  the peptide that made it", ha="center", fontsize=11,
+             color=INK, fontweight="bold")
+    _box(axl, 0.3, 1.4, 9.4, 1.6, "no database: the sequence is READ off the spectrum\n"
+         "(new peptides, antibodies, unsequenced organisms)", fc=TEAL_SOFT, ec=TEAL, fs=9.6)
+    axr.text(5.0, 9.4, "what it bought", ha="center", color=INK, fontsize=12.5, fontweight="bold")
+    facts = [("+38–64 %", "more peptides read fully right than the previous best tools"),
+             ("+8–23 %", "more amino acids right (the easier, letter-level score)"),
+             ("97.5–100 %", "coverage of whole mouse antibody chains, no database")]
+    y = 8.6
+    for big, gloss in facts:
+        axr.add_patch(FancyBboxPatch((0.2, y - 2.35), 9.6, 2.25, boxstyle="round,pad=0.05,rounding_size=0.1",
+                      facecolor=WHITE, edgecolor=TEAL, lw=2.0))
+        axr.text(0.7, y - 0.85, big, fontsize=17, color=TEAL, va="center", fontweight="bold")
+        axr.text(0.7, y - 1.80, gloss, fontsize=10.2, color=INK_SOFT, va="center")
+        y -= 2.75
+    fig.subplots_adjust(wspace=0.2, bottom=0.115, top=0.95)
+    _cite_strip(fig, "deepnovo")
+    _save(fig, name)
+
+
+def dd_deepnovo_data(name="fig_dd_deepnovo_data.png"):
+    fig, ax = _dd_canvas("DeepNovo · what the data looks like", "deepnovo")
+    # input spectrum with b/y ions labelled for P-E-P-T
+    ax.text(2.6, 4.45, "INPUT: one MS/MS spectrum + precursor mass", ha="center", fontsize=10.5,
+            color=INK, fontweight="bold")
+    _stick_spectrum(ax, 0.3, 1.65, 4.6, 2.2, [(0.06, .3), (0.17, .75), (0.3, .45), (0.43, .9), (0.55, .25),
+                                               (0.68, .65), (0.8, .5), (0.92, .35)],
+                    ["", "b2", "", "y3", "", "b3", "y2", ""])
+    ax.text(2.6, 1.25, "peaks = (m/z, intensity); b / y = fragment ions", ha="center", fontsize=9.2,
+            color=MUTED, style="italic")
+    _arrow(ax, 5.1, 2.9, 6.0, 2.9, col=TEAL, lw=2.4)
+    ax.text(8.6, 4.45, "LABEL: the peptide, from a database search", ha="center", fontsize=10.5,
+            color=INK, fontweight="bold")
+    for i, aa in enumerate("PEPTIDE"):
+        _chip(ax, 6.25 + i * 0.66, 3.55, 0.56, 0.5, aa, TEAL_SOFT, txt=INK, fs=13, edge=TEAL)
+    ax.text(8.6, 2.95, "one TRAINING STEP = predict the next letter:", ha="center", fontsize=10,
+            color=INK_SOFT, fontweight="bold")
+    for i, aa in enumerate("PEP"):
+        _chip(ax, 6.6 + i * 0.66, 2.35, 0.56, 0.5, aa, WHITE, txt=INK, fs=12.5, edge=INK_SOFT)
+    _arrow(ax, 8.6, 2.35, 9.3, 2.35, col=TEAL)
+    _chip(ax, 9.45, 2.35, 0.56, 0.5, "T", AMBER_SOFT, txt=ROI_INK, fs=13, edge=AMBER)
+    ax.text(10.6, 2.35, "← the answer", fontsize=9.5, color=ROI_INK, fontweight="bold", va="center")
+    ax.text(8.6, 1.45, "labels: PEAKS DB search at 1 % FDR  ·  7 low-res + 9 high-res datasets\n"
+            "trained on all species but one, tested on the held-out species", ha="center",
+            fontsize=9.3, color=MUTED, linespacing=1.45)
+    _save(fig, name)
+
+
+def dd_deepnovo_net(name="fig_dd_deepnovo_net.png"):
+    fig, ax = _dd_canvas("DeepNovo · how the network is built, and its loss", "deepnovo")
+    # prefix + candidate letters -> theoretical ions -> windows -> ion-CNN
+    _box(ax, 0.2, 3.55, 2.2, 0.75, "prefix so far\nP E P", fc=WHITE, ec=INK_SOFT, fs=10)
+    _box(ax, 2.9, 3.55, 2.6, 0.75, "for each candidate letter:\nwhere would its b / y ions be?",
+         fc=WHITE, ec=INK_SOFT, fs=9.2)
+    _arrow(ax, 2.4, 3.92, 2.9, 3.92)
+    _box(ax, 6.0, 3.55, 2.1, 0.75, "cut a 1.0 Da window\naround each ion", fc=WHITE, ec=INK_SOFT, fs=9.2)
+    _arrow(ax, 5.5, 3.92, 6.0, 3.92)
+    _box(ax, 8.6, 3.55, 1.6, 0.75, "ion-CNN", fc=TEAL_SOFT, ec=TEAL, tc=TEAL, fs=12)
+    _arrow(ax, 8.1, 3.92, 8.6, 3.92)
+    # whole spectrum -> spectrum-CNN -> LSTM
+    _box(ax, 0.2, 1.85, 2.2, 0.75, "the whole spectrum\n(as an intensity vector)", fc=WHITE, ec=INK_SOFT, fs=9.2)
+    _box(ax, 2.9, 1.85, 2.0, 0.75, "spectrum-CNN", fc=TEAL_SOFT, ec=TEAL, tc=TEAL, fs=11.5)
+    _arrow(ax, 2.4, 2.22, 2.9, 2.22)
+    _box(ax, 5.6, 1.85, 2.5, 0.75, "LSTM reads P → E → P\n(starts from the spectrum)", fc=AMBER_SOFT,
+         ec=AMBER, tc=ROI_INK, fs=9.6)
+    _arrow(ax, 4.9, 2.22, 5.6, 2.22, label="initialise", fs=8.6)
+    _arrow(ax, 8.1, 2.22, 10.45, 2.95, col=AMBER)
+    _arrow(ax, 10.2, 3.92, 10.45, 3.3, col=TEAL)
+    _box(ax, 10.45, 2.65, 2.15, 1.0, "probability of\neach next letter\nT 0.81 · L 0.06 …", fc=WHITE,
+         ec=RED, tc=INK, fs=9.6)
+    ax.text(6.4, 1.15, "LOSS = cross-entropy on the true next letter = −log p(T) = −log 0.81 = 0.21",
+            ha="center", fontsize=11.5, color=RED, fontweight="bold")
+    ax.text(6.4, 0.68, "decoding: beam search, keeping only sequences whose mass can still add up to the "
+            "precursor mass (knapsack)", ha="center", fontsize=9.3, color=MUTED, style="italic")
+    _save(fig, name)
+
+
+def dd_prosit_data(name="fig_dd_prosit_data.png"):
+    fig, ax = _dd_canvas("Prosit · what the data looks like", "prosit")
+    ax.text(2.6, 4.45, "INPUT", ha="center", fontsize=11, color=INK, fontweight="bold")
+    for i, aa in enumerate("LGEYGFQNAILVR"[:9]):
+        _chip(ax, 0.25 + i * 0.52, 3.7, 0.44, 0.46, aa, TEAL_SOFT, txt=INK, fs=11, edge=TEAL)
+    ax.text(2.6, 3.15, "a peptide (≤ 30 residues; 20 amino acids + oxidised M)", ha="center",
+            fontsize=9.3, color=INK_SOFT)
+    _box(ax, 0.3, 2.05, 2.2, 0.7, "precursor charge\n1 – 6", fc=WHITE, ec=INK_SOFT, fs=9.6)
+    _box(ax, 2.75, 2.05, 2.2, 0.7, "collision energy\ne.g. 28", fc=WHITE, ec=INK_SOFT, fs=9.6)
+    _arrow(ax, 4.95, 3.0, 5.55, 3.0, col=TEAL, lw=2.4)
+    ax.text(9.2, 4.45, "OUTPUT: 174 fragment intensities", ha="center", fontsize=11, color=INK,
+            fontweight="bold")
+    # 6 rows x 29 cols grid, last columns masked for a 9-mer (8 real ion positions)
+    gx, gy, cw, ch = 6.1, 1.95, 0.205, 0.33
+    rows = ["y 1+", "y 2+", "y 3+", "b 1+", "b 2+", "b 3+"]
+    rng = np.random.RandomState(3)
+    for r, lab in enumerate(rows):
+        ax.text(gx - 0.08, gy + (5 - r) * ch + ch / 2, lab, ha="right", va="center", fontsize=7.8, color=MUTED)
+        for c in range(29):
+            if c < 8:
+                v = rng.rand() * (1.0 if r in (0, 3) else 0.45)
+                fc = plt.cm.Greens(0.15 + 0.8 * v)
+            else:
+                fc = "#EDEDE8"
+            ax.add_patch(plt.Rectangle((gx + c * cw, gy + (5 - r) * ch), cw * 0.92, ch * 0.88, color=fc, zorder=3))
+    ax.text(gx + 4 * cw, gy - 0.22, "ion 1 … 8", ha="center", fontsize=8.5, color=TEAL, fontweight="bold")
+    ax.text(gx + 18.5 * cw, gy - 0.22, "positions that cannot exist for a 9-mer → −1 (masked)", ha="center",
+            fontsize=8.3, color=MUTED, style="italic")
+    ax.text(9.2, 1.3, "29 positions × (b, y) × charge 1–3 = 174 numbers", ha="center", fontsize=9.8,
+            color=INK_SOFT, fontweight="bold")
+    ax.text(6.4, 0.7, "TRAINING DATA: the ProteomeTools synthetic-peptide library — 550,000 tryptic peptides, "
+            "21 million high-quality spectra", ha="center", fontsize=9.8, color=TEAL, fontweight="bold")
+    _save(fig, name)
+
+
+def dd_prosit_net(name="fig_dd_prosit_net.png"):
+    fig, ax = _dd_canvas("Prosit · how the network is built, and its loss", "prosit")
+    y = 3.55
+    steps = [("peptide\nletters", WHITE, INK_SOFT, INK), ("embedding\n16 numbers / letter", WHITE, INK_SOFT, INK),
+             ("bidirectional GRU\nencoder", TEAL_SOFT, TEAL, TEAL), ("attention\n(weighted sum)", TEAL_SOFT, TEAL, TEAL),
+             ("× charge &\ncollision energy", AMBER_SOFT, AMBER, ROI_INK), ("GRU decoder\n→ 29 × 6", TEAL_SOFT, TEAL, TEAL)]
+    x = 0.2; w = 1.85; gap = 0.27
+    for k, (t, fc, ec, tc) in enumerate(steps):
+        _box(ax, x, y, w, 0.95, t, fc=fc, ec=ec, tc=tc, fs=9.4)
+        if k < len(steps) - 1:
+            _arrow(ax, x + w, y + 0.47, x + w + gap, y + 0.47)
+        x += w + gap
+    ax.text(6.4, 3.05, "a recurrent network reads the sequence both ways, attention pools it, the instrument "
+            "settings scale it, a decoder writes the intensities", ha="center", fontsize=9.3, color=MUTED,
+            style="italic")
+    ax.text(6.4, 2.45, "LOSS = spectral angle between the true and predicted 174-vectors (masked ions ignored)",
+            ha="center", fontsize=11.2, color=RED, fontweight="bold")
+    ax.text(6.4, 1.92, "SD = 2 · arccos( cos θ ) / π,    cos θ = (true · pred) / (|true| · |pred|)",
+            ha="center", fontsize=11, color=INK, family="monospace")
+    _box(ax, 1.4, 0.75, 3.0, 0.75, "identical shape\ncos θ = 1  →  SD = 0", fc=WHITE, ec=TEAL, tc=TEAL, fs=9.6)
+    _box(ax, 4.9, 0.75, 3.0, 0.75, "true (1, 0), pred (0.7, 0.7)\ncos θ = 0.71  →  SD = 0.5", fc=WHITE,
+         ec=AMBER, tc=ROI_INK, fs=9.6)
+    _box(ax, 8.4, 0.75, 3.0, 0.75, "no overlap at all\ncos θ = 0  →  SD = 1", fc=WHITE, ec=RED, tc=RED, fs=9.6)
+    _save(fig, name)
+
+
+def dd_diann_data(name="fig_dd_diann_data.png"):
+    fig, ax = _dd_canvas("DIA-NN · what the data looks like", "diann")
+    ax.text(2.4, 4.45, "for every candidate precursor …", ha="center", fontsize=10.5, color=INK, fontweight="bold")
+    xs = np.linspace(0, 1, 60)
+    for k, (sh, col) in enumerate([(0.0, TEAL), (0.02, TEAL), (-0.02, TEAL), (0.25, RED)]):
+        ys = np.exp(-((xs - 0.5 - sh) / 0.09) ** 2) * (0.9 - 0.15 * k)
+        ax.plot(0.4 + 4.0 * xs, 1.75 + 2.1 * ys, color=col, lw=2.0, alpha=0.95 if col == TEAL else 0.7)
+    ax.plot([0.4, 4.4], [1.75, 1.75], color=MUTED, lw=1.0)
+    ax.text(2.4, 1.2, "fragment-ion chromatograms around its expected RT\n(teal co-elute; red = interference)",
+            ha="center", fontsize=9, color=MUTED, linespacing=1.4)
+    _arrow(ax, 4.7, 2.9, 5.5, 2.9, col=TEAL, lw=2.4)
+    _box(ax, 5.6, 2.25, 3.3, 1.35, "the best elution peak,\ndescribed by 73 scores\n(peak shape, co-elution,\nmass accuracy, RT …)",
+         fc=WHITE, ec=INK_SOFT, fs=9.4)
+    _arrow(ax, 8.9, 2.9, 9.6, 2.9, col=TEAL, lw=2.4)
+    _box(ax, 9.7, 3.0, 2.9, 0.75, "TARGET precursor\nlabel 1", fc=TEAL_SOFT, ec=TEAL, tc=TEAL, fs=10)
+    _box(ax, 9.7, 2.05, 2.9, 0.75, "DECOY (scrambled)\nlabel 0", fc="#F7E4E3", ec=RED, tc=RED, fs=10)
+    ax.text(6.4, 0.72, "no human labels: the decoys are generated on purpose, so the network learns what a REAL "
+            "signal looks like in THIS run", ha="center", fontsize=9.8, color=INK_SOFT, fontweight="bold")
+    ax.text(6.4, 0.36, "precursors come from a spectral library — measured, or predicted (e.g. by Prosit) in "
+            "library-free mode", ha="center", fontsize=9.2, color=MUTED, style="italic")
+    _save(fig, name)
+
+
+def dd_diann_net(name="fig_dd_diann_net.png"):
+    fig, ax = _dd_canvas("DIA-NN · how the network is built, and its loss", "diann")
+    sizes = [73, 25, 20, 15, 10, 5, 2]
+    labels = ["73 scores\n(standardised)", "25", "20", "15", "10", "5", "softmax\ntarget / decoy"]
+    x0 = 0.9; dx = 1.45
+    for k, (n, lab) in enumerate(zip(sizes, labels)):
+        x = x0 + k * dx
+        h = 0.35 + 1.75 * (min(n, 30) / 30)
+        col = INK_SOFT if k == 0 else (RED if k == 6 else TEAL)
+        ax.add_patch(FancyBboxPatch((x - 0.32, 3.1 - h / 2), 0.64, h, boxstyle="round,pad=0.02,rounding_size=0.08",
+                     facecolor=WHITE if k == 0 else TEAL_SOFT, edgecolor=col, lw=1.8, zorder=3))
+        ax.text(x, 3.1 - h / 2 - 0.12, lab, ha="center", va="top", fontsize=9, color=col, fontweight="bold")
+        if k < len(sizes) - 1:
+            _arrow(ax, x + 0.34, 3.1, x + dx - 0.34, 3.1, col=MUTED, lw=1.4)
+    ax.text(4.5, 4.3, "5 hidden layers, tanh — a plain MLP", ha="center", fontsize=10.5, color=TEAL, fontweight="bold")
+    _box(ax, 10.2, 3.55, 2.4, 0.9, "× 12 networks\noutputs averaged", fc=AMBER_SOFT, ec=AMBER, tc=ROI_INK, fs=10)
+    _box(ax, 10.2, 2.25, 2.4, 0.9, "score → q-value\n(FDR control)", fc=WHITE, ec=INK_SOFT, fs=10)
+    _arrow(ax, 11.4, 3.55, 11.4, 3.15)
+    ax.text(6.4, 0.95, "LOSS = cross-entropy, target = 1 vs decoy = 0:   a target scored 0.9 costs −log 0.9 = 0.11",
+            ha="center", fontsize=11, color=RED, fontweight="bold")
+    ax.text(6.4, 0.5, "trained fresh on each run · Adam · one epoch only (to avoid over-fitting)", ha="center",
+            fontsize=9.3, color=MUTED, style="italic")
+    _save(fig, name)
+
+
+def dd_driams_data(name="fig_dd_driams_data.png"):
+    fig, ax = _dd_canvas("DRIAMS · what the data looks like", "driams")
+    ax.text(2.5, 4.45, "INPUT: a routine MALDI-TOF spectrum", ha="center", fontsize=10.5, color=INK, fontweight="bold")
+    xs = np.linspace(0, 1, 400); rng = np.random.RandomState(5)
+    ys = 0.05 + 0.03 * rng.rand(400)
+    for c, a in [(0.12, .5), (0.2, .9), (0.31, .35), (0.45, .7), (0.52, .4), (0.66, .6), (0.8, .3), (0.9, .2)]:
+        ys += a * np.exp(-((xs - c) / 0.008) ** 2)
+    ax.plot(0.3 + 4.4 * xs, 2.0 + 2.0 * ys / ys.max(), color=INK_SOFT, lw=1.2)
+    ax.text(0.3, 1.7, "2,000 Da", fontsize=8.5, color=MUTED); ax.text(4.7, 1.7, "20,000 Da", fontsize=8.5, color=MUTED, ha="right")
+    _arrow(ax, 4.9, 2.9, 5.6, 2.9, col=TEAL, lw=2.4, label="bin", lab_dy=0.22)
+    for i in range(14):
+        v = rng.rand()
+        _chip(ax, 5.7 + i * 0.27, 2.9, 0.24, 0.55, "", plt.cm.Greens(0.15 + 0.75 * v), edge="none")
+    ax.text(7.6, 2.3, "3 Da bins → a vector of 6,000 numbers", ha="center", fontsize=9.6, color=TEAL, fontweight="bold")
+    _arrow(ax, 9.6, 2.9, 10.2, 2.9, col=TEAL, lw=2.4)
+    _box(ax, 10.25, 3.1, 2.35, 0.7, "LABEL: resistant = 1", fc="#F7E4E3", ec=RED, tc=RED, fs=9.8)
+    _box(ax, 10.25, 2.2, 2.35, 0.7, "susceptible = 0", fc=TEAL_SOFT, ec=TEAL, tc=TEAL, fs=9.8)
+    ax.text(11.4, 1.8, "from the lab's routine\nsusceptibility test", ha="center", fontsize=8.6, color=MUTED, linespacing=1.3)
+    ax.text(6.4, 1.0, "DRIAMS: 300,000+ spectra · 750,000+ resistance phenotypes · 4 hospital sites — public, "
+            "and the data behind Labs 2 and 5", ha="center", fontsize=10, color=INK_SOFT, fontweight="bold")
+    ax.text(6.4, 0.58, "one model per species × antibiotic (e.g. S. aureus × oxacillin); resistant cases are "
+            "the rare class — Lecture 10", ha="center", fontsize=9.2, color=MUTED, style="italic")
+    _save(fig, name)
+
+
+def dd_driams_net(name="fig_dd_driams_net.png"):
+    fig, ax = _dd_canvas("DRIAMS · the models, and their loss", "driams")
+    _box(ax, 0.3, 2.45, 2.0, 1.1, "6,000-bin\nspectrum vector", fc=WHITE, ec=INK_SOFT, fs=10)
+    models = [("logistic regression", "one weight per bin", WHITE, INK_SOFT),
+              ("LightGBM", "gradient-boosted trees", WHITE, INK_SOFT),
+              ("MLP", "e.g. 6,000 → 512 → 256 → 128 → 1\nReLU, Adam", TEAL_SOFT, TEAL)]
+    for k, (m, sub, fc, ec) in enumerate(models):
+        y = 3.85 - k * 0.98
+        _box(ax, 3.0, y, 3.6, 0.85, f"{m}\n{sub}", fc=fc, ec=ec, tc=INK if fc == WHITE else TEAL, fs=9.4)
+        _arrow(ax, 2.3, 3.0, 3.0, y + 0.42, col=MUTED, lw=1.3)
+        _arrow(ax, 6.6, y + 0.42, 7.3, 3.0, col=MUTED, lw=1.3)
+    _box(ax, 7.3, 2.5, 2.4, 1.0, "calibrated\nP(resistant)", fc=WHITE, ec=RED, tc=RED, fs=10.5)
+    _box(ax, 10.1, 2.5, 2.5, 1.0, "AUROC 0.80 · 0.74 · 0.74\nS. aureus · E. coli · K. pn.", fc=TEAL_SOFT,
+         ec=TEAL, tc=TEAL, fs=9.4)
+    _arrow(ax, 9.7, 3.0, 10.1, 3.0)
+    ax.text(6.4, 1.3, "LOSS = binary cross-entropy (log loss), resistant cases up-weighted (class_weight = 'balanced')",
+            ha="center", fontsize=10.8, color=RED, fontweight="bold")
+    ax.text(6.4, 0.9, "not a CNN: the spectrum is binned into a flat vector — and plain models already reach "
+            "these AUROCs", ha="center", fontsize=9.4, color=MUTED, style="italic")
+    ax.text(6.4, 0.55, "models from the paper's public code (BorgwardtLab/maldi_amr)", ha="center", fontsize=8.6,
+            color=MUTED, style="italic")
+    _save(fig, name)
+
+
+def dd_alphafold_data(name="fig_dd_alphafold_data.png"):
+    fig, ax = _dd_canvas("AlphaFold · what the data looks like", "alphafold")
+    ax.text(2.7, 4.45, "INPUT", ha="center", fontsize=11, color=INK, fontweight="bold")
+    seq = "MKTAYIAKQR"
+    for i, aa in enumerate(seq):
+        _chip(ax, 0.3 + i * 0.47, 3.85, 0.4, 0.42, aa, TEAL_SOFT, txt=INK, fs=10.5, edge=TEAL)
+    ax.text(0.3, 3.4, "the protein's sequence", fontsize=9.2, color=INK_SOFT)
+    msa = ["MKTAYIAKQR", "MRTAYVAKQR", "MKSAFIAKHR", "LKTAYIGKQR"]
+    for r, s in enumerate(msa[1:]):
+        for i, aa in enumerate(s):
+            diff = aa != seq[i]
+            ax.text(0.5 + i * 0.47, 3.05 - r * 0.34, aa, ha="center", fontsize=10, family="monospace",
+                    color=RED if diff else MUTED, fontweight="bold" if diff else "normal")
+    ax.text(0.3, 1.5, "MSA: the same protein in many other species —\nwhich positions mutate TOGETHER hints which touch",
+            fontsize=9, color=INK_SOFT, linespacing=1.4)
+    _arrow(ax, 5.3, 3.0, 6.3, 3.0, col=TEAL, lw=2.4)
+    ax.text(9.4, 4.45, "OUTPUT", ha="center", fontsize=11, color=INK, fontweight="bold")
+    t = np.linspace(0, 4 * np.pi, 120)
+    ax.plot(7.0 + 1.0 * np.cos(t) * (1 - t / 18) + t * 0.12, 2.9 + 0.75 * np.sin(t), color=TEAL, lw=2.4)
+    ax.text(9.6, 3.2, "x, y, z for every\nheavy atom", fontsize=9.8, color=TEAL, fontweight="bold", linespacing=1.35)
+    ax.text(9.6, 2.35, "+ pLDDT: its own\nconfidence per residue", fontsize=9.4, color=ROI_INK, linespacing=1.35)
+    ax.text(6.4, 0.75, "TRAINING DATA: experimental structures from the Protein Data Bank — plus ~350,000 of its "
+            "own confident predictions (self-distillation)", ha="center", fontsize=9.8, color=TEAL, fontweight="bold")
+    _save(fig, name)
+
+
+def dd_alphafold_net(name="fig_dd_alphafold_net.png"):
+    fig, ax = _dd_canvas("AlphaFold · how the network is built, and its loss", "alphafold")
+    _box(ax, 0.2, 2.75, 1.8, 1.2, "sequence\n+ MSA", fc=WHITE, ec=INK_SOFT, fs=10.5)
+    _arrow(ax, 2.0, 3.35, 2.6, 3.35)
+    ax.add_patch(FancyBboxPatch((2.6, 2.05), 4.2, 2.3, boxstyle="round,pad=0.02,rounding_size=0.1",
+                 facecolor=TEAL_SOFT, edgecolor=TEAL, lw=2.2, zorder=2))
+    ax.text(4.7, 4.13, "Evoformer  × 48 blocks", ha="center", fontsize=11, color=TEAL, fontweight="bold", zorder=5)
+    _box(ax, 2.85, 2.45, 1.75, 1.45, "MSA\nrepresentation\n(sequences ×\nresidues)", fc=WHITE, ec=TEAL, tc=INK, fs=8.8)
+    _box(ax, 4.85, 2.45, 1.75, 1.45, "PAIR\nrepresentation\n(residue ×\nresidue)", fc=WHITE, ec=TEAL, tc=INK, fs=8.8)
+    ax.annotate("", xy=(4.85, 3.17), xytext=(4.6, 3.17), arrowprops=dict(arrowstyle="<|-|>", color=TEAL, lw=1.6), zorder=6)
+    ax.text(4.72, 2.2, "the two exchange information (attention)", ha="center", fontsize=7.8, color=TEAL, zorder=6)
+    _arrow(ax, 6.8, 3.35, 7.4, 3.35)
+    _box(ax, 7.4, 2.75, 2.4, 1.2, "structure module\nrotate + move each\nresidue into place", fc=AMBER_SOFT,
+         ec=AMBER, tc=ROI_INK, fs=9.4)
+    _arrow(ax, 9.8, 3.35, 10.4, 3.35)
+    _box(ax, 10.4, 2.75, 2.2, 1.2, "3D atoms\n+ confidence", fc=WHITE, ec=INK_SOFT, fs=10)
+    ax.annotate("", xy=(1.1, 3.98), xytext=(11.5, 3.98), arrowprops=dict(arrowstyle="-|>", color=MUTED, lw=1.4,
+                ls=(0, (3, 2)), connectionstyle="arc3,rad=0.15"))
+    ax.text(6.4, 4.84, "recycling: feed the output back in and refine", ha="center", fontsize=8.8, color=MUTED, style="italic")
+    ax.text(6.4, 1.5, "LOSS = FAPE: line each residue up with the true one, then measure how far every atom is off",
+            ha="center", fontsize=10.8, color=RED, fontweight="bold")
+    ax.text(6.4, 1.0, "+ helper losses: distance histogram (cross-entropy), masked-MSA (BERT-style), and predicting "
+            "its own accuracy (pLDDT)", ha="center", fontsize=9.3, color=INK_SOFT)
+    ax.text(6.4, 0.6, "result: median CASP14 backbone error 0.96 Å vs 2.8 Å for the next best method", ha="center",
+            fontsize=9.2, color=MUTED, style="italic")
+    _save(fig, name)
+
+
+def _tour_deepdive_figures():
+    tour_deepnovo()
+    for f in (dd_deepnovo_data, dd_deepnovo_net, dd_prosit_data, dd_prosit_net, dd_diann_data, dd_diann_net,
+              dd_driams_data, dd_driams_net, dd_alphafold_data, dd_alphafold_net):
+        f()
 
 
 def _lecture13_figures():
@@ -9293,8 +9642,10 @@ FUNCS = {
     ),
     "rl_anatomy": rl_anatomy,
     "markov": markov_property,
-    "tour_papers": lambda: (tour_casanovo(), tour_prosit(), tour_diann(),
+    "tour_deepdives": _tour_deepdive_figures,
+    "tour_papers": lambda: (tour_deepnovo(), tour_prosit(), tour_diann(),
                             tour_driams(), tour_alphafold()),
+    "tour_diann": tour_diann,
     "explore": lambda: (explore_exploit("ido", "fig_explore_ido.png"),
                         explore_exploit("youdo", "fig_explore_youdo.png")),
     "return_discount": discounted_return,

@@ -1412,3 +1412,35 @@ not a wall of text.
   original. The callout is one line; notes carry the worked QC example.
 - Figures enlarged to fill their bands; notes on slides 1, 2, 9 and the Q1 you-do no
   longer mention the corridor; `Learning_outcomes.md` follows. Lint: no new problems.
+
+## 2026-10-05 — Lecture 13 landscape tour: flagship works only, two deep-dive slides each
+
+**Asked for:** keep only flagship works in the tour (roughly 400+ citations; drop anything
+the community does not widely recognise), and add one or two slides per work explaining
+how the network is built, what the loss is and what the data looks like.
+
+**Citation check** (Semantic Scholar / OpenAlex, 2026-10-05): DeepNovo 414 / 486, Prosit
+792 / 999, DIA-NN 2,837 / 3,708, AlphaFold 39,641 / 47,924 — kept. DRIAMS 243 / 300 —
+**kept by the instructor as the clinical exception** (closest to the room's bench; the
+Labs 2 and 5 data). Casanovo (61 + 109 across its two papers) and AlphaPeptDeep (195 / 216)
+— removed. DeepNovo (PNAS 2017) replaces Casanovo as the de novo sequencing stop.
+
+**Done:**
+- Each of the five overview slides is followed by **THE DATA** and **THE NETWORK + LOSS**
+  slides (`fig_dd_*.png`, from `tools/make_slide_figures.py tour_deepdives`), every detail
+  checked against the paper or its official code, with a small worked number where the
+  course has taught the formula: DeepNovo −log 0.81 = 0.21; Prosit spectral distance
+  (true (1, 0) vs predicted (0.7, 0.7) → cos 0.71 → SD 0.5); DIA-NN −log 0.9 = 0.11.
+  Deck goes from 35 to 45 slides; the deep dives are marked OPTIONAL DEPTH because the
+  16-minute tour slot cannot hold them all.
+- **Two factual corrections** to the old tour: DRIAMS is *not* a 1D CNN (the paper's code
+  uses logistic regression, LightGBM and an MLP on 3 Da bins, 6,000 features); DIA-NN's
+  >35,000 precursors came from a **19-minute** K562 / TripleTOF 6600 run, not a half-hour
+  gradient.
+- `fig_tour_deepnovo.png` is new; `fig_tour_diann`, `fig_landscape_match_ido` (the one-page
+  tour) and `fig_landscape_transfer` (pair item (c) is now "DeepNovo and Prosit run in
+  opposite directions — which family reads the peptide in both?" → recurrent networks)
+  were redrawn. Notes on slides 1, 2, the divider and the recap no longer mention
+  Casanovo, AlphaPeptDeep or the 1D CNN. Lecture 8 still uses Casanovo as its
+  peak-as-token example, which is a separate decision and is left unchanged.
+  `Learning_outcomes.md` follows. Lint: no new problems.
