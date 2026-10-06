@@ -7010,53 +7010,59 @@ def rl_anatomy(name="fig_rl_anatomy.png"):
 
 def markov_property(name="fig_markov.png"):
     """THE requirement RL is built on, shown as a TRANSITION MODEL (instructor,
-    2026-10-06: the old examples showed no transitions; use physics for Markov
-    and the stock market for non-Markov).  Left: radioactive decay of 18F (the
-    PET isotope, half-life 110 min) -- a two-state chain whose transition
-    probability is 0.5 per half-life whatever the atom's age, so the current
-    state is all you need.  Right: a stock's PRICE alone -- two stocks both at
+    2026-10-06: the old examples showed no transitions; then: not atom decay --
+    use a robot's movement, with the stock market as non-Markov).  Left: the
+    classic slipping robot -- told "move right" from a cell it goes right with
+    probability 0.8 and slips up or down with 0.1 each, whichever path brought it
+    there, so the current cell (plus the command) is all you need.  Right: a stock's PRICE alone -- two stocks both at
     $100 today, one after a calm week, one after a wild week; big swings tend to
     follow big swings (volatility clustering), so the same price leads to
     different futures.  Fix: put recent volatility into the state."""
     fig, (axl, axr) = plt.subplots(1, 2, figsize=(13.2, 5.4),
                                    gridspec_kw={"width_ratios": [1, 1.05]})
-    # ---------------- LEFT: 18F decay as a two-state transition model ---------
+    # ---------------- LEFT: a slipping robot on a grid --------------------------
     axl.set_xlim(0, 7.4); axl.set_ylim(-2.2, 4.4); axl.axis("off")
-    axl.text(3.7, 4.1, "✓  MARKOV — radioactive decay", ha="center",
+    axl.text(3.7, 4.1, "✓  MARKOV — a robot moving on a grid", ha="center",
              color=TEAL, fontsize=13, fontweight="bold")
-    axl.text(3.7, 3.6, "¹⁸F, the PET isotope · half-life 110 min", ha="center",
-             color=MUTED, fontsize=10, style="italic")
-    for x0, who, past in ((0.25, "atom A", "made 1 minute ago"),
-                          (3.85, "atom B", "already survived 3 hours")):
-        axl.add_patch(FancyBboxPatch((x0, 2.45), 3.3, 0.8,
-                      boxstyle="round,pad=0.02,rounding_size=0.08",
-                      facecolor="#F1F1EC", edgecolor=HAIRLINE, lw=1.4))
-        axl.text(x0 + 1.65, 3.0, who, ha="center", va="center", color=INK,
-                 fontsize=10.5, fontweight="bold")
-        axl.text(x0 + 1.65, 2.66, past, ha="center", va="center", color=INK_SOFT,
-                 fontsize=9.5)
-        axl.annotate("", xy=(2.05, 1.62), xytext=(x0 + 1.65, 2.42),
-                     arrowprops=dict(arrowstyle="-|>", color=MUTED, lw=1.4))
-    # the two states
-    axl.add_patch(plt.Circle((2.05, 1.0), 0.62, facecolor=TEAL_SOFT, edgecolor=TEAL, lw=2.4))
-    axl.text(2.05, 1.0, "NOT YET\nDECAYED", ha="center", va="center", color=TEAL,
-             fontsize=9.5, fontweight="bold", linespacing=1.2)
-    axl.add_patch(plt.Circle((5.6, 1.0), 0.62, facecolor="#F1F1EC", edgecolor=INK_SOFT, lw=2.0))
-    axl.text(5.6, 1.0, "DECAYED", ha="center", va="center", color=INK_SOFT,
-             fontsize=9.5, fontweight="bold")
-    axl.annotate("", xy=(4.95, 1.0), xytext=(2.7, 1.0),
-                 arrowprops=dict(arrowstyle="-|>", color=ROI_INK, lw=2.4))
-    axl.text(3.82, 1.22, "decays: 0.5", ha="center", color=ROI_INK, fontsize=10.5,
-             fontweight="bold")
-    axl.text(3.82, 0.66, "per 110 min", ha="center", color=MUTED, fontsize=9)
-    axl.annotate("", xy=(1.47, 0.78), xytext=(1.47, 1.22),
-                 arrowprops=dict(arrowstyle="-|>", color=TEAL, lw=2.0,
-                                 connectionstyle="arc3,rad=1.9"))
-    axl.text(0.62, 1.0, "stays:\n0.5", ha="right", va="center", color=TEAL, fontsize=10.5,
-             fontweight="bold", linespacing=1.15)
-    axl.text(3.7, -1.15, "the SAME 0.5 for A and B — the atom's past adds nothing.",
-             ha="center", fontsize=11.2, color=INK, fontweight="bold")
-    axl.text(3.7, -1.65, "next state depends only on the current state", ha="center",
+    axl.text(3.7, 3.6, "told “move →”, it sometimes slips (the classic textbook robot)",
+             ha="center", color=MUTED, fontsize=10, style="italic")
+
+    def grid(x0, y0, c, lw):
+        for i in range(4):
+            axl.plot([x0 + i * c] * 2, [y0, y0 + 3 * c], color=HAIRLINE if lw < 1.5 else INK_SOFT, lw=lw)
+            axl.plot([x0, x0 + 3 * c], [y0 + i * c] * 2, color=HAIRLINE if lw < 1.5 else INK_SOFT, lw=lw)
+
+    def ctr(x0, y0, c, col, row):
+        return x0 + (col + 0.5) * c, y0 + (row + 0.5) * c
+
+    # two different pasts, each ending in the centre cell
+    for (x0, y0), who, path, colr in (((0.25, 1.75), "robot A's path", [(0, 1), (1, 1)], TEAL),
+                                       ((0.25, -0.35), "robot B's path", [(2, 2), (2, 1), (2, 0), (1, 0), (1, 1)], ROI_INK)):
+        c = 0.42
+        grid(x0, y0, c, 1.2)
+        pts = [ctr(x0, y0, c, *q) for q in path]
+        axl.plot([p[0] for p in pts], [p[1] for p in pts], color=colr, lw=2.0, ls=(0, (3, 1.5)))
+        axl.add_patch(plt.Circle(pts[0], 0.06, color=colr))
+        axl.add_patch(FancyBboxPatch((pts[-1][0] - 0.11, pts[-1][1] - 0.11), 0.22, 0.22,
+                      boxstyle="round,pad=0.01,rounding_size=0.04", facecolor=AMBER, edgecolor=ROI_INK, lw=1.0))
+        axl.text(x0 + 1.5 * c, y0 + 3 * c + 0.13, who, ha="center", color=colr, fontsize=9, fontweight="bold")
+        axl.annotate("", xy=(2.95, 1.55), xytext=(x0 + 3 * c + 0.1, y0 + 1.5 * c),
+                     arrowprops=dict(arrowstyle="-|>", color=MUTED, lw=1.3))
+    # the transition, from the same cell with the same command
+    X0, Y0, C = 3.1, -0.05, 1.05
+    grid(X0, Y0, C, 2.0)
+    cx, cy = ctr(X0, Y0, C, 1, 1)
+    axl.add_patch(FancyBboxPatch((cx - 0.24, cy - 0.24), 0.48, 0.48,
+                  boxstyle="round,pad=0.01,rounding_size=0.08", facecolor=AMBER, edgecolor=ROI_INK, lw=1.6))
+    axl.text(cx, cy, "→", ha="center", va="center", color=INK, fontsize=15, fontweight="bold")
+    for (dc, dr), prob, col in (((1, 0), "0.8", TEAL), ((0, 1), "0.1", RED), ((0, -1), "0.1", RED)):
+        tx, ty = ctr(X0, Y0, C, 1 + dc, 1 + dr)
+        axl.annotate("", xy=(tx - dc * 0.25, ty - dr * 0.25), xytext=(cx + dc * 0.3, cy + dr * 0.3),
+                     arrowprops=dict(arrowstyle="-|>", color=col, lw=2.6 if prob == "0.8" else 1.8))
+        axl.text(tx, ty, prob, ha="center", va="center", color=col, fontsize=14, fontweight="bold")
+    axl.text(3.7, -1.15, "same cell + same command → same chances, whichever path it took.",
+             ha="center", fontsize=10.8, color=INK, fontweight="bold")
+    axl.text(3.7, -1.65, "next state depends only on the current state (and the action)", ha="center",
              fontsize=10.2, color=MUTED)
     # ---------------- RIGHT: a stock's price alone -----------------------------
     axr.set_xlim(-0.6, 7.8); axr.set_ylim(-2.2, 4.4); axr.axis("off")
