@@ -7010,107 +7010,68 @@ def rl_anatomy(name="fig_rl_anatomy.png"):
 
 def markov_property(name="fig_markov.png"):
     """THE requirement RL is built on, stated correctly: MARKOV is a property of
-    the STATE YOU HAND THE AGENT, not of the world.  Left, the good case — the
-    gridworld cell is enough, so two agents arriving by different routes face
-    identical futures.  Right, the classic failure, PERCEPTUAL ALIASING: in a
-    five-cell corridor an agent that senses only 'wall to my left? wall to my
-    right?' gets the SAME reading in cell 2 and cell 4, yet must go right from
-    one and left from the other.  The underlying cell is Markov; the observation
-    is not.  (Deliberately NOT cart-pole — instructor, 2026-09-12: cart-pole's
-    physics state is perfectly Markov, so it is a bad example of failure.)"""
+    the STATE YOU HAND THE AGENT, not of the world (instructor, 2026-10-05:
+    replace the corridor with plainer examples).  Left, the clean good case -- a
+    tic-tac-toe BOARD: reach the same board by two different move orders and the
+    best next move is identical, so the board is enough.  Right, the clean
+    failure -- ONE photo of a ball in flight: from position alone you cannot tell
+    rising from falling, so the snapshot is not Markov; add the velocity (or the
+    previous frame) and it is -- which is why Atari-playing agents stack their
+    last four frames.  (Not a stock price: under the textbook random-walk model
+    tomorrow depends only on today, i.e. it IS Markov, so it would confuse.)"""
     fig, (axl, axr) = plt.subplots(1, 2, figsize=(13.2, 5.2),
-                                   gridspec_kw={"width_ratios": [1, 1.12]})
-
-    # ---------------- LEFT: gridworld — two paths, same future -------------
-    axl.set_xlim(-0.3, 7.4)
-    axl.set_ylim(-2.05, 4.3)
-    axl.axis("off")
-    axl.text(3.55, 4.05, "✓  MARKOV — the cell is enough", ha="center",
+                                   gridspec_kw={"width_ratios": [1, 1.05]})
+    # ---------------- LEFT: tic-tac-toe, two move orders, one board -----------
+    axl.set_xlim(0, 7.4); axl.set_ylim(-2.1, 4.3); axl.axis("off")
+    axl.text(3.7, 4.05, "✓  MARKOV — the board is enough", ha="center",
              color=TEAL, fontsize=13, fontweight="bold")
-    for x0, pth, lab in ((0.0, [(0, 0), (0, 1), (1, 1)], "arrived the short way"),
-                         (4.1, [(2, 0), (1, 0), (1, 1)], "arrived the long way")):
-        for c in range(GRID_N):
-            for r in range(GRID_N):
-                here = (c, r) == (1, 1)
-                axl.add_patch(FancyBboxPatch(
-                    (x0 + c * 1.0, r * 1.0), 0.94, 0.94,
-                    boxstyle="round,pad=0.01,rounding_size=0.04",
-                    facecolor=AMBER_SOFT if here else WHITE,
-                    edgecolor=AMBER if here else HAIRLINE,
-                    lw=2.4 if here else 1.4, zorder=2))
-        for (c1, r1), (c2, r2) in zip(pth[:-1], pth[1:]):
-            axl.annotate("", xy=(x0 + c2 + 0.47, r2 + 0.47),
-                         xytext=(x0 + c1 + 0.47, r1 + 0.47),
-                         arrowprops=dict(arrowstyle="-|>", color=MUTED, lw=2.2,
-                                         shrinkA=10, shrinkB=10), zorder=5)
-        axl.add_patch(Circle((x0 + 1.47, 1.47), 0.20, facecolor=AMBER,
-                             edgecolor=ROI_INK, lw=1.6, zorder=6))
-        axl.text(x0 + 1.5, -0.45, lab, ha="center", color=MUTED, fontsize=10,
-                 style="italic")
-    axl.text(3.55, -1.05, "same cell → same best move, same expected future.",
-             ha="center", color=INK, fontsize=11, fontweight="bold")
-    axl.text(3.55, -1.55, "how you got there carries NO extra information.",
-             ha="center", color=MUTED, fontsize=10.5, style="italic")
-
-    # ------- RIGHT: perceptual aliasing — the observation is not enough ----
-    axr.set_xlim(0, 10.6)
-    axr.set_ylim(-2.30, 4.3)
-    axr.axis("off")
-    axr.text(5.3, 4.05, "✗  NOT MARKOV — what the agent can SEE", ha="center",
+    marks = {(0, 0): "X", (1, 1): "X", (0, 2): "O"}       # (row, col): row 0 = top
+    orders = ["X top-left → O top-right → X centre",
+              "X centre → O top-right → X top-left"]
+    for k, x0 in enumerate((0.45, 4.05)):
+        c = 0.95
+        for i in range(1, 3):
+            axl.plot([x0 + i * c, x0 + i * c], [0.35, 0.35 + 3 * c], color=INK_SOFT, lw=2.2)
+            axl.plot([x0, x0 + 3 * c], [0.35 + i * c, 0.35 + i * c], color=INK_SOFT, lw=2.2)
+        for (r, col), m in marks.items():
+            axl.text(x0 + (col + 0.5) * c, 0.35 + (2 - r + 0.5) * c, m, ha="center", va="center",
+                     fontsize=24, fontweight="bold", color=TEAL if m == "X" else ROI_INK)
+        # O must block the diagonal at bottom-right -- the same best move on both boards
+        axl.add_patch(FancyBboxPatch((x0 + 2 * c + 0.12, 0.35 + 0.12), c - 0.24, c - 0.24,
+                      boxstyle="round,pad=0.01,rounding_size=0.08", fill=False,
+                      edgecolor=RED, lw=2.0, ls=(0, (3, 2))))
+        axl.text(x0 + 1.5 * c, -0.05, orders[k], ha="center", fontsize=8.8, color=MUTED)
+    axl.text(3.7, -0.75, "same board → same best move (O must block, red box).",
+             ha="center", fontsize=11.5, color=INK, fontweight="bold")
+    axl.text(3.7, -1.3, "how you got there carries NO extra information.", ha="center",
+             fontsize=10.5, color=MUTED)
+    # ---------------- RIGHT: one snapshot of a ball -----------------------------
+    axr.set_xlim(0, 7.8); axr.set_ylim(-2.1, 4.3); axr.axis("off")
+    axr.text(3.9, 4.05, "✗  NOT MARKOV — one photo of a ball", ha="center",
              color=RED, fontsize=13, fontweight="bold")
-    axr.text(5.3, 3.58,
-             "a corridor; the agent senses only “wall left? wall right?”",
-             ha="center", color=MUTED, fontsize=10.3, style="italic")
-    cw, x0, y0 = 1.72, 0.9, 1.55
-    cells = ["1", "2", "3", "4", "5"]
-    for k, lab in enumerate(cells):
-        goal = k == 2
-        alias = k in (1, 3)
-        axr.add_patch(FancyBboxPatch((x0 + k * cw, y0), cw * 0.94, 1.25,
-                      boxstyle="round,pad=0.01,rounding_size=0.05",
-                      facecolor=TEAL_SOFT if goal else
-                      ("#F9EDEC" if alias else WHITE),
-                      edgecolor=TEAL if goal else (RED if alias else HAIRLINE),
-                      lw=2.6 if (goal or alias) else 1.5, zorder=3))
-        axr.text(x0 + k * cw + cw * 0.47, y0 + 0.86,
-                 "GOAL" if goal else f"cell {lab}", ha="center", va="center",
-                 color=TEAL if goal else (RED if alias else MUTED),
-                 fontsize=10 if goal else 9.5, fontweight="bold")
-        if alias:
-            axr.add_patch(Circle((x0 + k * cw + cw * 0.47, y0 + 0.40), 0.19,
-                                 facecolor=AMBER, edgecolor=ROI_INK, lw=1.5,
-                                 zorder=5))
-    for wx in (x0 - 0.16, x0 + len(cells) * cw - 0.10):
-        axr.plot([wx, wx], [y0 - 0.05, y0 + 1.30], color=INK_SOFT, lw=5.0,
-                 solid_capstyle="butt", zorder=4)
-    axr.text(x0 - 0.16, y0 - 0.42, "wall", ha="center", color=INK_SOFT,
-             fontsize=9)
-    axr.text(x0 + len(cells) * cw - 0.10, y0 - 0.42, "wall", ha="center",
-             color=INK_SOFT, fontsize=9)
-    for k, arrow in ((1, "must go  →"), (3, "←  must go")):
-        axr.text(x0 + k * cw + cw * 0.47, y0 + 1.52, arrow, ha="center",
-                 color=RED, fontsize=10.5, fontweight="bold")
-    axr.add_patch(FancyBboxPatch((0.25, -1.18), 10.1, 1.42,
-                  boxstyle="round,pad=0.04,rounding_size=0.09",
-                  facecolor="#F9EDEC", edgecolor=RED, lw=2.2))
-    axr.text(5.3, -0.47,
-             "cells 2 and 4 give the IDENTICAL reading “open | open”\n"
-             "— yet the correct moves are opposite",
-             ha="center", va="center", color=RED, fontsize=10.4,
-             fontweight="bold", linespacing=1.6)
-    axr.add_patch(FancyBboxPatch((0.25, -2.25), 10.1, 0.92,
-                  boxstyle="round,pad=0.04,rounding_size=0.09",
-                  facecolor=TEAL_SOFT, edgecolor=TEAL, lw=2.2))
-    axr.text(5.3, -1.80,
-             "the CELL is Markov; the OBSERVATION is not — enrich the state",
-             ha="center", va="center", color=TEAL, fontsize=10.8,
-             fontweight="bold")
-    fig.text(0.5, 0.012,
-             "Markov is a property of the STATE YOU CHOOSE, not of the world.",
-             ha="center", va="bottom", color=INK, fontsize=11.5,
-             fontweight="bold")
-    fig.subplots_adjust(wspace=0.14, bottom=0.09)
+    # the photo frame with the ball in it
+    axr.add_patch(FancyBboxPatch((0.4, 0.55), 2.6, 2.6, boxstyle="round,pad=0.02,rounding_size=0.08",
+                  facecolor=WHITE, edgecolor=INK_SOFT, lw=1.8))
+    axr.add_patch(plt.Circle((1.7, 1.95), 0.26, color=AMBER, zorder=4))
+    axr.text(1.7, 0.2, "the snapshot: position only", ha="center", fontsize=9.5, color=MUTED)
+    # two futures from the same position
+    xs = np.linspace(0, 1, 40)
+    axr.plot(3.35 + 1.9 * xs, 1.95 + 1.15 * np.sin(xs * np.pi * 0.5), color=TEAL, lw=2.4, ls=(0, (4, 2)))
+    axr.annotate("", xy=(5.3, 3.12), xytext=(5.15, 3.08), arrowprops=dict(arrowstyle="-|>", color=TEAL, lw=2.2))
+    axr.text(5.45, 3.15, "rising?", fontsize=11, color=TEAL, fontweight="bold", va="center")
+    axr.plot(3.35 + 1.9 * xs, 1.95 - 1.15 * np.sin(xs * np.pi * 0.5), color=RED, lw=2.4, ls=(0, (4, 2)))
+    axr.annotate("", xy=(5.3, 0.78), xytext=(5.15, 0.82), arrowprops=dict(arrowstyle="-|>", color=RED, lw=2.2))
+    axr.text(5.45, 0.75, "falling?", fontsize=11, color=RED, fontweight="bold", va="center")
+    axr.annotate("", xy=(3.3, 1.95), xytext=(3.02, 1.95), arrowprops=dict(arrowstyle="-", color=MUTED, lw=1.2))
+    axr.text(3.9, -0.9, "fix: add the velocity (or the previous frame)\n→ position + velocity IS Markov",
+             ha="center", fontsize=10.5, color=TEAL, fontweight="bold", linespacing=1.35,
+             bbox=dict(boxstyle="round,pad=0.45", fc=TEAL_SOFT, ec=TEAL, lw=1.6))
+    axr.text(3.9, -1.85, "that is why Atari-playing agents stack their last 4 frames", ha="center",
+             fontsize=10, color=MUTED, style="italic")
+    fig.text(0.5, 0.02, "Markov is a property of the STATE YOU CHOOSE, not of the world.",
+             ha="center", fontsize=12.5, color=INK, fontweight="bold")
     _save(fig, name)
+
 
 
 # Explore vs exploit, with exact probabilities.  I-do: the classic two-armed
@@ -7361,39 +7322,78 @@ def discounted_return(name="fig_return_discount.png"):
     _save(fig, name)
 
 
+def _net_icon(ax, cx, cy, w, h, label, col, soft, sub=None, fs=11, faded=False):
+    """A model drawn as a small layered network inside a rounded card, so the
+    LLM and the reward model are visible OBJECTS rather than words."""
+    alpha = 0.45 if faded else 1.0
+    ax.add_patch(FancyBboxPatch((cx - w / 2, cy - h / 2), w, h,
+                 boxstyle="round,pad=0.02,rounding_size=0.12", facecolor=soft,
+                 edgecolor=col, lw=2.2, alpha=alpha, ls=(0, (4, 2)) if faded else "solid", zorder=3))
+    layers = [3, 4, 3]
+    top, bot = cy + h / 2 - 0.22, cy - h / 2 + 0.62
+    pts = []
+    for li, n in enumerate(layers):
+        x = cx - w * 0.28 + li * w * 0.28
+        ys = [bot + (top - bot) * (j + 0.5) / n for j in range(n)]
+        pts.append([(x, y) for y in ys])
+    for a_, b_ in zip(pts, pts[1:]):
+        for (x1, y1) in a_:
+            for (x2, y2) in b_:
+                ax.plot([x1, x2], [y1, y2], color=col, lw=0.6, alpha=0.35 * alpha, zorder=4)
+    for layer in pts:
+        for (x, y) in layer:
+            ax.add_patch(plt.Circle((x, y), 0.07, color=col, alpha=alpha, zorder=5))
+    ax.text(cx, cy - h / 2 + 0.3, label, ha="center", va="center", fontsize=fs,
+            color=col, fontweight="bold", alpha=alpha, zorder=6)
+    if sub:
+        ax.text(cx, cy - h / 2 - 0.22, sub, ha="center", va="top", fontsize=9.2,
+                color=MUTED, style="italic", zorder=6)
+
+
 def rlhf_as_rl(name="fig_rlhf.png"):
-    """RLHF = RL where the reward comes from human preferences. Map each RL role
-    onto the LLM-training setting, and note it is the third pipeline stage."""
-    fig, ax = plt.subplots(figsize=(11.6, 4.4))
-    ax.set_xlim(0, 12)
-    ax.set_ylim(0, 5)
-    ax.axis("off")
-    ax.text(6.0, 4.7, "RLHF = RL where the reward is a human preference",
-            ha="center", color=INK, fontsize=14, fontweight="bold")
-    rows = [
-        ("AGENT", TEAL, "the LLM being tuned"),
-        ("ACTION", TEAL, "write an answer to a prompt"),
-        ("ENVIRONMENT", AMBER, "the prompt + a human rater"),
-        ("REWARD", RED, "how much a human PREFERS the answer"),
-    ]
-    ys = [3.55, 2.75, 1.95, 1.15]
-    for (role, col, meaning), y in zip(rows, ys):
-        ax.add_patch(FancyBboxPatch((1.1, y - 0.33), 2.9, 0.66,
-                    boxstyle="round,pad=0.02,rounding_size=0.08",
-                    facecolor=col, edgecolor=col, lw=2.0))
-        ax.text(2.55, y, role, ha="center", va="center", color=WHITE,
-                fontsize=12, fontweight="bold")
-        ax.annotate("", xy=(4.55, y), xytext=(4.05, y),
-                    arrowprops=dict(arrowstyle="-|>", color=col, lw=2.0))
-        ax.add_patch(FancyBboxPatch((4.65, y - 0.33), 6.2, 0.66,
-                    boxstyle="round,pad=0.02,rounding_size=0.08",
-                    facecolor=WHITE, edgecolor=col, lw=1.8))
-        ax.text(7.75, y, meaning, ha="center", va="center", color=INK,
-                fontsize=11.5, fontweight="bold")
-    ax.text(6.0, 0.45,
-            "this is stage 3 of the pipeline — no new machinery, just RL",
-            ha="center", color=MUTED, fontsize=10.5, style="italic")
+    """RLHF as an RL loop with the roles filled in for language (instructor,
+    2026-10-05): the STATE is the CONTEXT -- the prompt plus every token written
+    so far; the AGENT is the LLM; its ACTION is the next token, which is appended
+    to the context; the ENVIRONMENT is therefore the context plus the REWARD
+    MODEL, which scores the FINISHED answer -- so the reward is delayed, exactly
+    the credit-assignment problem of the earlier slides."""
+    fig, ax = plt.subplots(figsize=(12.4, 4.8))
+    ax.set_xlim(0, 12.4); ax.set_ylim(0, 5); ax.axis("off")
+    # environment bracket: context + reward model
+    ax.add_patch(FancyBboxPatch((0.25, 0.35), 12.0, 2.15, boxstyle="round,pad=0.02,rounding_size=0.12",
+                 facecolor=AMBER_SOFT, edgecolor=AMBER, lw=1.8, ls=(0, (5, 3)), zorder=1))
+    ax.text(0.5, 0.52, "ENVIRONMENT = the context + the reward model", fontsize=11.5,
+            color=ROI_INK, fontweight="bold", ha="left", zorder=2)
+    # context (the state) -- the prompt, the tokens so far, the new token
+    ax.add_patch(FancyBboxPatch((0.55, 1.0), 6.6, 1.2, boxstyle="round,pad=0.02,rounding_size=0.08",
+                 facecolor=WHITE, edgecolor=INK_SOFT, lw=1.6, zorder=3))
+    ax.text(0.75, 1.95, "STATE = the context", fontsize=10.5, color=INK_SOFT, fontweight="bold", zorder=4)
+    ax.text(0.75, 1.42, "“QC failed — report the result?”", fontsize=10.5, color=MUTED, zorder=4)
+    ax.text(3.95, 1.42, "No — a failed QC", fontsize=11, color=INK, fontweight="bold", zorder=4)
+    _chip(ax, 5.75, 1.42, 1.25, 0.42, "invalidates", TEAL_SOFT, txt=TEAL, fs=10.5, edge=TEAL, lw=1.6)
+    # the agent
+    _net_icon(ax, 4.2, 3.85, 2.3, 1.55, "AGENT = the LLM", TEAL, TEAL_SOFT, fs=10.5)
+    ax.annotate("", xy=(3.3, 3.07), xytext=(2.4, 2.2),
+                arrowprops=dict(arrowstyle="-|>", color=INK_SOFT, lw=1.8))
+    ax.text(1.5, 2.85, "reads the\nwhole context", fontsize=9.8, color=INK_SOFT, ha="center")
+    ax.annotate("", xy=(6.35, 1.9), xytext=(5.25, 3.1),
+                arrowprops=dict(arrowstyle="-|>", color=TEAL, lw=2.4))
+    ax.text(6.6, 2.95, "ACTION = the next token,\nappended to the context", fontsize=10,
+            color=TEAL, fontweight="bold", ha="left")
+    # reward model at the end
+    _net_icon(ax, 10.2, 1.45, 2.4, 1.6, "REWARD MODEL", RED, "#F7E4E3", fs=10.5)
+    ax.annotate("", xy=(8.95, 1.6), xytext=(7.2, 1.6),
+                arrowprops=dict(arrowstyle="-|>", color=INK_SOFT, lw=1.8))
+    ax.text(8.05, 1.85, "finished\nanswer", fontsize=9.5, color=INK_SOFT, ha="center")
+    ax.text(10.45, 3.45, "REWARD = +0.8", fontsize=12.5, color=RED, fontweight="bold", ha="left")
+    ax.text(10.45, 2.95, "arrives only at the END —\nthe delayed reward again", fontsize=9.5,
+            color=MUTED, ha="left", style="italic", va="center")
+    ax.annotate("", xy=(10.2, 3.6), xytext=(10.2, 2.3),
+                arrowprops=dict(arrowstyle="-|>", color=RED, lw=2.0))
+    ax.text(6.2, 4.75, "RLHF is RL on language: each step writes ONE token; the reward comes when the answer is done",
+            ha="center", fontsize=11.5, color=INK, fontweight="bold")
     _save(fig, name)
+
 
 
 # ---- RLHF opened up (instructor, 2026-09-14) -------------------------------
@@ -7410,119 +7410,56 @@ RLHF_BAD = ("Yes, as long as the patient value\nlooks clinically reasonable.")
 
 
 def rlhf_pipeline(name="fig_rlhf_pipeline.png"):
-    """RLHF in the three steps it is actually built from: (1) humans compare two
-    answers to the same prompt; (2) a REWARD MODEL is trained on those
-    comparisons to score answers the way the raters did; (3) the LLM — the
-    POLICY from the anatomy slide — is tuned to earn higher scores, on a leash
-    that stops it drifting away from the model it started as."""
-    fig, axes = plt.subplots(1, 3, figsize=(13.4, 5.0))
-    steps = [
-        ("1 · COLLECT PREFERENCES", TEAL,
-         "same prompt, two answers,\na human says which is better"),
-        ("2 · TRAIN A REWARD MODEL", AMBER,
-         "a second network learns to score\nanswers the way the raters did"),
-        ("3 · TUNE THE POLICY", RED,
-         "the LLM is nudged toward answers\nthe reward model scores higher"),
-    ]
-    for ax, (head, col, gloss) in zip(axes, steps):
-        ax.set_xlim(0, 10); ax.set_ylim(0, 10); ax.axis("off")
-        ax.add_patch(FancyBboxPatch((0.2, 8.75), 9.6, 1.05,
-                     boxstyle="round,pad=0.04,rounding_size=0.09",
-                     facecolor=col, edgecolor=col, lw=2.0))
-        ax.text(5.0, 9.28, head, ha="center", va="center", color=WHITE,
-                fontsize=11.5, fontweight="bold")
-        ax.text(5.0, 7.95, gloss, ha="center", va="center", color=INK_SOFT,
-                fontsize=9.8, linespacing=1.5)
-
-    # ---------------- step 1: the preference pair ----------------
-    ax = axes[0]
-    ax.add_patch(FancyBboxPatch((0.2, 6.45), 9.6, 1.10,
-                 boxstyle="round,pad=0.04,rounding_size=0.09",
-                 facecolor="#F1F1EC", edgecolor=MUTED, lw=1.6))
-    ax.text(5.0, 7.26, "prompt", ha="center", va="center", color=MUTED,
-            fontsize=8.6, style="italic")
-    ax.text(5.0, 6.82, RLHF_PROMPT, ha="center", va="center", color=INK,
-            fontsize=8.0)
-    for k, (lab, txt, col, mark) in enumerate((
-            ("answer A", RLHF_GOOD, TEAL, "✓ preferred"),
-            ("answer B", RLHF_BAD, MUTED, ""))):
-        y0 = 3.95 - k * 2.50
-        ax.add_patch(FancyBboxPatch((0.2, y0), 9.6, 2.20,
-                     boxstyle="round,pad=0.04,rounding_size=0.09",
-                     facecolor=TEAL_SOFT if col is TEAL else WHITE,
-                     edgecolor=col, lw=2.2 if col is TEAL else 1.5))
-        ax.text(0.65, y0 + 1.86, lab, ha="left", va="center", color=col,
-                fontsize=9.5, fontweight="bold")
-        if mark:
-            ax.text(9.35, y0 + 1.86, mark, ha="right", va="center", color=TEAL,
-                    fontsize=9.5, fontweight="bold")
-        ax.text(5.0, y0 + 0.92, txt, ha="center", va="center", color=INK,
-                fontsize=8.5, linespacing=1.5)
-    ax.text(5.0, 0.52, "→ thousands of (prompt, better, worse) triples",
-            ha="center", color=TEAL, fontsize=9.4, fontweight="bold")
-
-    # ---------------- step 2: the reward model ----------------
-    ax = axes[1]
-    ax.add_patch(FancyBboxPatch((1.3, 5.15), 7.4, 1.85,
-                 boxstyle="round,pad=0.04,rounding_size=0.1",
-                 facecolor=AMBER_SOFT, edgecolor=AMBER, lw=2.4))
-    ax.text(5.0, 6.42, "REWARD MODEL", ha="center", va="center", color=ROI_INK,
-            fontsize=12, fontweight="bold")
-    ax.text(5.0, 5.70, "(prompt, answer)  →  one number",
-            ha="center", va="center", color=INK, fontsize=9.6)
-    ax.annotate("", xy=(5.0, 7.30), xytext=(5.0, 7.00),
-                arrowprops=dict(arrowstyle="-|>", color=AMBER, lw=2.2))
-    ax.text(5.0, 4.55, "what it learns from the pairs",
-            ha="center", color=INK, fontsize=9.8, fontweight="bold")
-    ax.add_patch(FancyBboxPatch((1.0, 3.05), 8.0, 1.15,
-                 boxstyle="round,pad=0.04,rounding_size=0.09",
-                 facecolor=WHITE, edgecolor=TEAL, lw=2.2))
-    ax.text(5.0, 3.62, "score(A)   >   score(B)", ha="center", va="center",
-            color=TEAL, fontsize=13, fontweight="bold")
-    ax.text(5.0, 2.45, "it never sees an absolute “correct” score —\n"
-            "only which of two answers people preferred",
-            ha="center", va="center", color=MUTED, fontsize=9.0,
-            style="italic", linespacing=1.5)
-    ax.add_patch(FancyBboxPatch((0.5, 0.25), 9.0, 1.35,
-                 boxstyle="round,pad=0.04,rounding_size=0.09",
-                 facecolor="#F1F1EC", edgecolor=MUTED, lw=1.6))
-    ax.text(5.0, 0.92, "now the reward is automatic — no human\n"
-            "in the loop for every single answer",
-            ha="center", va="center", color=INK, fontsize=9.2,
-            linespacing=1.5)
-
-    # ---------------- step 3: tune the policy ----------------
-    ax = axes[2]
-    ax.add_patch(FancyBboxPatch((0.6, 5.55), 8.8, 1.45,
-                 boxstyle="round,pad=0.04,rounding_size=0.1",
-                 facecolor=TEAL_SOFT, edgecolor=TEAL, lw=2.4))
-    ax.text(5.0, 6.28, "the LLM = the POLICY", ha="center", va="center",
-            color=TEAL, fontsize=11.5, fontweight="bold")
-    ax.annotate("", xy=(9.05, 4.40), xytext=(9.05, 5.45),
-                arrowprops=dict(arrowstyle="-|>", color=INK_SOFT, lw=2.0))
-    ax.annotate("", xy=(0.95, 5.45), xytext=(0.95, 4.40),
-                arrowprops=dict(arrowstyle="-|>", color=RED, lw=2.0))
-    ax.text(5.0, 4.92, "write  →  score  →  nudge", ha="center", va="center",
-            color=INK_SOFT, fontsize=9.2, fontweight="bold")
-    ax.add_patch(FancyBboxPatch((0.6, 3.15), 8.8, 1.15,
-                 boxstyle="round,pad=0.04,rounding_size=0.09",
-                 facecolor=AMBER_SOFT, edgecolor=AMBER, lw=2.2))
-    ax.text(5.0, 3.72, "reward model scores it", ha="center", va="center",
-            color=ROI_INK, fontsize=10.5, fontweight="bold")
-    ax.text(5.0, 2.62, "repeat over millions of answers", ha="center",
-            color=MUTED, fontsize=9.2, style="italic")
-    ax.add_patch(FancyBboxPatch((0.35, 0.25), 9.3, 1.85,
-                 boxstyle="round,pad=0.04,rounding_size=0.09",
-                 facecolor=WHITE, edgecolor=RED, lw=2.2))
-    ax.text(5.0, 1.72, "and keep it on a leash", ha="center", va="center",
-            color=RED, fontsize=10, fontweight="bold")
-    ax.text(5.0, 0.90, "penalise drifting too far from the model it\n"
-            "started as — otherwise it games the score\nand stops writing English",
-            ha="center", va="center", color=INK, fontsize=8.6,
-            linespacing=1.5)
-    fig.subplots_adjust(wspace=0.16, top=0.97, bottom=0.03)
+    """RLHF in the three steps it is built from, drawn as diagrams around the two
+    MODELS (instructor, 2026-10-05: diagrams, not a wall of text): (1) the LLM
+    writes two answers and a human picks the better one; (2) those comparisons
+    train a REWARD MODEL to score answers the way people did; (3) the LLM writes,
+    the reward model scores, the LLM is nudged -- on a leash to its original self."""
+    fig, ax = plt.subplots(figsize=(13.4, 5.0))
+    ax.set_xlim(0, 13.4); ax.set_ylim(0, 5.2); ax.axis("off")
+    heads = [(2.15, "1 · HUMANS COMPARE", TEAL), (6.7, "2 · TRAIN THE REWARD MODEL", AMBER),
+             (11.2, "3 · TUNE THE LLM", RED)]
+    for cx, t, col in heads:
+        ax.text(cx, 4.95, t, ha="center", va="center", fontsize=12, color=WHITE, fontweight="bold",
+                bbox=dict(boxstyle="round,pad=0.45", fc=col, ec=col))
+    for x in (4.45, 9.0):
+        ax.plot([x, x], [0.3, 4.6], color=HAIRLINE, lw=1.2)
+    # ---- 1: the LLM writes A and B; a person picks A ----
+    _net_icon(ax, 1.2, 3.25, 1.7, 1.35, "LLM", TEAL, TEAL_SOFT)
+    _chip(ax, 2.75, 3.75, 0.7, 0.5, "A", TEAL_SOFT, txt=INK, fs=13, edge=TEAL)
+    _chip(ax, 2.75, 2.75, 0.7, 0.5, "B", WHITE, txt=INK, fs=13, edge=INK_SOFT)
+    for y in (3.75, 2.75):
+        ax.annotate("", xy=(2.72, y), xytext=(2.08, 3.25), arrowprops=dict(arrowstyle="-|>", color=INK_SOFT, lw=1.4))
+    # a person
+    ax.add_patch(plt.Circle((2.15, 1.62), 0.2, color=INK_SOFT))
+    ax.add_patch(matplotlib.patches.Wedge((2.15, 1.05), 0.42, 0, 180, color=INK_SOFT))
+    ax.annotate("", xy=(2.55, 1.45), xytext=(3.1, 2.45), arrowprops=dict(arrowstyle="-|>", color=INK_SOFT, lw=1.4))
+    ax.text(2.15, 0.55, "A ≻ B", ha="center", fontsize=17, color=TEAL, fontweight="bold")
+    ax.text(2.15, 0.2, "a person picks the better answer", ha="center", fontsize=9.2, color=MUTED, style="italic")
+    # ---- 2: pairs -> reward model -> scores ----
+    for k in range(3):
+        _chip(ax, 4.85 + k * 0.08, 3.4 - k * 0.08, 1.15, 0.55, "A ≻ B" if k == 2 else "",
+              WHITE, txt=INK, fs=11, edge=AMBER)
+    ax.text(5.45, 2.55, "1000s of\npairs", ha="center", fontsize=9.5, color=MUTED)
+    ax.annotate("", xy=(6.55, 3.2), xytext=(6.1, 3.2), arrowprops=dict(arrowstyle="-|>", color=AMBER, lw=2.0))
+    _net_icon(ax, 7.6, 3.2, 1.9, 1.45, "REWARD MODEL", RED, "#F7E4E3", fs=10)
+    ax.text(7.6, 1.55, "score(A) 0.8  >  score(B) 0.2", ha="center", fontsize=12, color=RED, fontweight="bold")
+    ax.annotate("", xy=(7.6, 1.8), xytext=(7.6, 2.42), arrowprops=dict(arrowstyle="-|>", color=RED, lw=1.8))
+    ax.text(6.7, 0.55, "learns to score answers the way people chose", ha="center", fontsize=9.5,
+            color=MUTED, style="italic")
+    # ---- 3: the loop, with the leash ----
+    _net_icon(ax, 9.95, 3.3, 1.55, 1.4, "LLM", TEAL, TEAL_SOFT)
+    _net_icon(ax, 12.5, 3.3, 1.55, 1.4, "REWARD\nMODEL", RED, "#F7E4E3", fs=9)
+    ax.annotate("", xy=(11.68, 3.55), xytext=(10.78, 3.55), arrowprops=dict(arrowstyle="-|>", color=INK_SOFT, lw=1.8))
+    ax.text(11.23, 3.78, "answer", ha="center", fontsize=9.5, color=INK_SOFT)
+    ax.annotate("", xy=(10.1, 2.55), xytext=(12.35, 2.55),
+                arrowprops=dict(arrowstyle="-|>", color=RED, lw=2.0, connectionstyle="arc3,rad=-0.4"))
+    ax.text(11.23, 1.62, "score → nudge the LLM", ha="center", fontsize=10.5, color=RED, fontweight="bold")
+    _net_icon(ax, 9.95, 0.8, 1.4, 0.85, "original", TEAL, TEAL_SOFT, fs=9, faded=True)
+    ax.plot([9.6, 9.6], [1.25, 2.58], color=MUTED, lw=1.6, ls=(0, (2, 2)))
+    ax.text(11.85, 0.8, "leash: don't drift\nfar from the original", ha="center", fontsize=9.5,
+            color=MUTED, style="italic")
     _save(fig, name)
-
 
 def rlhf_limits(name="fig_rlhf_limits.png"):
     """What RLHF buys and what it breaks. LEFT: the same clinical question put
