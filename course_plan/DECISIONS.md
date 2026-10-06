@@ -1479,3 +1479,17 @@ Thoughts and adds Actions that fetch the data. Credit: Wei et al., NeurIPS 2022 
 the example is the course's own). Notes on the definition and ReAct slides now link to it.
 No new quiz item: it is a ~3-minute conceptual bridge whose reasoning-vs-acting
 distinction is already assessed by Quiz 14 Q1. Lint: no new problems.
+
+## 2026-10-06 — Lecture 13 Markov slide: a slipping robot instead of atom decay
+
+**Asked for:** the radioactive-decay example is not an obvious illustration of the Markov
+property — use a robot's movement (or weather) instead.
+
+**Done:** the left panel of `fig_markov.png` is now the classic slipping robot (Russell &
+Norvig's gridworld): told "move →" from a cell it goes right with probability 0.8 and slips up
+or down with 0.1 each. Two robots reach the centre cell by different paths (one step from the
+left vs. the long way round) and face the same 0.8 / 0.1 / 0.1 — same cell + same command,
+same chances. Chosen over weather because it is Markov by construction (real weather has
+memory) and it reuses the gridworld from the previous slide. The stock-market half is
+unchanged. Callout, notes and the notes passages naming the examples are updated;
+`Learning_outcomes.md` follows.
