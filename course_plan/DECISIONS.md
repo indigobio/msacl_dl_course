@@ -1444,3 +1444,23 @@ Labs 2 and 5 data). Casanovo (61 + 109 across its two papers) and AlphaPeptDeep 
   Casanovo, AlphaPeptDeep or the 1D CNN. Lecture 8 still uses Casanovo as its
   peak-as-token example, which is a separate decision and is left unchanged.
   `Learning_outcomes.md` follows. Lint: no new problems.
+
+## 2026-10-06 — Lecture 13 Markov slide: a transition model, decay vs the stock market
+
+**Asked for:** slide 12's Markov examples were wrong — the Markov property is about the
+transition from the current state to the next, and neither a tic-tac-toe board nor a ball
+photo showed a transition. Replace them completely: a physics example that is Markov, and
+the stock market as the non-Markov one.
+
+**Done:** `fig_markov.png` redrawn. ✓ Radioactive decay of ¹⁸F (the PET isotope, half-life
+110 min) as a two-state transition model — NOT YET DECAYED → DECAYED with probability 0.5
+per half-life, stays with 0.5 — for an atom made a minute ago and one that has survived three
+hours alike: the past adds nothing. ✗ A stock's price alone: two stocks at $100 today after a
+calm week (98, 99, 100, 99, 100) and a wild week (130, 85, 120, 90, 100); big swings follow big
+swings (volatility clustering), so tomorrow's typical swing is ± $1 vs ± $20 (illustrative) —
+same state, different futures. Fix: add recent volatility to the state; footer kept (Markov is
+a property of the state you choose). This supersedes the 2026-10-05 note that ruled the stock
+example out on random-walk grounds: the notes now say precisely that history predicts the
+SIZE of the swing, not its direction, which is enough to break Markov for price alone.
+Callout, notes and the three notes passages that named the old examples are updated;
+`Learning_outcomes.md` follows. Quiz 13 Q1(f) is unchanged. Lint: no new problems.
