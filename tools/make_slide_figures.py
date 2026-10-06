@@ -9404,8 +9404,78 @@ def human_review(name="fig_human_review.png"):
     _save(fig, name)
 
 
+def chain_of_thought(name="fig_chain_of_thought.png"):
+    """Chain of thought, the step before ReAct. One mass-accuracy question asked
+    two ways: answered in one shot (the small-looking gap is waved through) vs
+    with the reasoning written out first (Δ = 0.0029 → 5.5 ppm → out of spec).
+    The footer bridges to ReAct: CoT reasons only over numbers in the prompt."""
+    fig, ax = plt.subplots(figsize=(12.4, 5.6))
+    ax.set_xlim(0, 13)
+    ax.set_ylim(0, 6.4)
+    ax.axis("off")
+
+    # the shared question
+    ax.add_patch(FancyBboxPatch((0.4, 5.25), 12.2, 0.85,
+                boxstyle="round,pad=0.02,rounding_size=0.06",
+                facecolor="#F1F1EC", edgecolor=INK_SOFT, lw=1.5))
+    ax.text(0.65, 5.67, "QUESTION", ha="left", va="center", color=INK_SOFT,
+            fontsize=9.5, fontweight="bold")
+    ax.text(2.1, 5.67, "A peptide's theoretical m/z is 524.2652; we observed 524.2681. "
+            "Is it within the ±2 ppm limit?", ha="left", va="center", color=INK,
+            fontsize=11.5)
+
+    def panel(x, w, title, sub, colour, face):
+        ax.add_patch(FancyBboxPatch((x, 1.25), w, 3.7,
+                    boxstyle="round,pad=0.02,rounding_size=0.06",
+                    facecolor=PAPER, edgecolor=colour, lw=2.0))
+        ax.text(x + w / 2, 4.55, title, ha="center", color=colour, fontsize=13,
+                fontweight="bold")
+        ax.text(x + w / 2, 4.15, sub, ha="center", color=MUTED, fontsize=9.5,
+                style="italic")
+
+    # left: one-shot answer
+    panel(0.4, 4.6, "DIRECT ANSWER", "asked to reply straight away", RED, "#F7E4E3")
+    ax.add_patch(FancyBboxPatch((0.7, 2.55), 4.0, 1.15,
+                boxstyle="round,pad=0.02,rounding_size=0.06",
+                facecolor="#F7E4E3", edgecolor=RED, lw=1.8))
+    ax.text(2.7, 3.12, "“Yes — the two values differ\nby only 0.003, so it passes.”",
+            ha="center", va="center", color=INK, fontsize=11)
+    ax.text(2.7, 1.85, "✗  the gap LOOKS tiny — with no\nworking shown, it guesses",
+            ha="center", va="center", color=RED, fontsize=10.5, fontweight="bold")
+
+    # right: chain of thought
+    panel(5.4, 7.2, "CHAIN OF THOUGHT", "same question + “show your working, step by step”",
+          TEAL, TEAL_SOFT)
+    steps = ["difference = 524.2681 − 524.2652 = 0.0029",
+             "ppm = 0.0029 ÷ 524.2652 × 10⁶ = 5.5 ppm",
+             "5.5 ppm is more than 2 ppm → outside the limit"]
+    for i, t in enumerate(steps):
+        y = 3.6 - i * 0.55
+        ax.add_patch(FancyBboxPatch((5.75, y - 0.21), 0.42, 0.42,
+                    boxstyle="round,pad=0.02,rounding_size=0.06",
+                    facecolor=TEAL_SOFT, edgecolor=TEAL, lw=1.5))
+        ax.text(5.96, y, str(i + 1), ha="center", va="center", color=TEAL,
+                fontsize=10.5, fontweight="bold")
+        ax.text(6.4, y, t, ha="left", va="center", color=INK, fontsize=11)
+    ax.add_patch(FancyBboxPatch((5.75, 1.5), 6.5, 0.6,
+                boxstyle="round,pad=0.02,rounding_size=0.06",
+                facecolor=TEAL_SOFT, edgecolor=TEAL, lw=1.8))
+    ax.text(9.0, 1.8, "✓  “No — 5.5 ppm, out of spec.”", ha="center", va="center",
+            color=TEAL, fontsize=11.5, fontweight="bold")
+
+    # bridge to ReAct
+    ax.text(6.5, 0.78, "every step uses only numbers already in the prompt — when the "
+            "number lives in a file, it can only invent one  →  ReAct adds ACTIONS",
+            ha="center", va="center", color=ROI_INK, fontsize=10.5, fontweight="bold")
+    ax.text(6.5, 0.25, "idea: Wei J et al., “Chain-of-thought prompting elicits reasoning "
+            "in large language models,” NeurIPS 2022 — example drawn for the course",
+            ha="center", va="center", color=MUTED, fontsize=8.5, style="italic")
+    _save(fig, name)
+
+
 def _lecture14_figures():
     agent_schematic()
+    chain_of_thought()
     react_transcript("ido", "fig_react_transcript_ido.png")
     react_transcript("youdo", "fig_react_transcript_youdo.png")
     followalong_card()
@@ -9640,6 +9710,7 @@ FUNCS = {
     # ---- Lecture 14 ----
     "agents": _lecture14_figures,
     "agent_schematic": agent_schematic,
+    "cot": chain_of_thought,
     "react": lambda: (
         react_transcript("ido", "fig_react_transcript_ido.png"),
         react_transcript("youdo", "fig_react_transcript_youdo.png"),

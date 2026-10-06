@@ -1464,3 +1464,18 @@ example out on random-walk grounds: the notes now say precisely that history pre
 SIZE of the swing, not its direction, which is enough to break Markov for price alone.
 Callout, notes and the three notes passages that named the old examples are updated;
 `Learning_outcomes.md` follows. Quiz 13 Q1(f) is unchanged. Lint: no new problems.
+## 2026-10-06 — Lecture 14: a chain-of-thought slide before ReAct
+
+**Asked for:** add a chain-of-thought slide before the ReAct slide.
+
+**Done:** new slide **CHATBOT → AGENT · 2 OF 4 · CHAIN OF THOUGHT · I-DO** between the
+agent definition and the annotated ReAct transcript (section renumbered 1–4 of 4; deck
+21 → 22 slides). `fig_chain_of_thought.png` (`make_slide_figures.py cot`) asks one
+mass-accuracy question two ways — theoretical m/z 524.2652, observed 524.2681, limit
+±2 ppm: a one-shot answer waves the small-looking gap through; the worked chain gives
+Δ = 0.0029 → 0.0029 ÷ 524.2652 × 10⁶ = 5.5 ppm (5.53) → out of spec. The footer bridges
+to ReAct: chain of thought reasons only over numbers in the prompt, so ReAct keeps the
+Thoughts and adds Actions that fetch the data. Credit: Wei et al., NeurIPS 2022 (the idea;
+the example is the course's own). Notes on the definition and ReAct slides now link to it.
+No new quiz item: it is a ~3-minute conceptual bridge whose reasoning-vs-acting
+distinction is already assessed by Quiz 14 Q1. Lint: no new problems.
